@@ -1,6 +1,6 @@
 import { parseHref, constructOuterUrl } from '../src/urlUtils'
 
-const URL_PREFIX = 'https://tinkerable-site.local.peterneumark.com/present/github/tinkerable-site/vibe-blog/published';
+const URL_PREFIX = 'https://tinkerable-site.local.peterneumark.com/present/github/immediately-run/vibe-blog/published';
 
 describe('parseHref', function () {
 
@@ -10,7 +10,7 @@ describe('parseHref', function () {
     ).toEqual({
       "mode": "present",
       "provider": "github",
-      "namespace": "tinkerable-site",
+      "namespace": "immediately-run",
       "repository": "vibe-blog",
       "ref": "published",
       "sandboxPath": "/files/App.tsx",
@@ -23,7 +23,7 @@ describe('parseHref', function () {
     ).toEqual({
       "mode": "present",
       "provider": "github",
-      "namespace": "tinkerable-site",
+      "namespace": "immediately-run",
       "repository": "vibe-blog",
       "ref": "published",
       "sandboxPath": "/files/App.tsx",
@@ -36,7 +36,7 @@ describe('parseHref', function () {
     ).toEqual({
       "mode": "present",
       "provider": "github",
-      "namespace": "tinkerable-site",
+      "namespace": "immediately-run",
       "repository": "vibe-blog",
       "ref": "published",
       "sandboxPath": "/files/App.tsx",
@@ -49,7 +49,7 @@ describe('parseHref', function () {
     ).toEqual({
       "mode": "present",
       "provider": "github",
-      "namespace": "tinkerable-site",
+      "namespace": "immediately-run",
       "repository": "vibe-blog",
       "ref": "published",
       "sandboxPath": "/files/App.tsx",
@@ -89,7 +89,7 @@ describe('constructOuterUrl', function () {
       relative('../../../index.tsx')
       // note that this navigation request will not be allowed by the outer iframe, but as far as the absolute
       // URl constuction goes, this is what we expect.
-    ).toEqual("https://tinkerable-site.local.peterneumark.com/present/github/tinkerable-site/index.tsx");
+    ).toEqual("https://tinkerable-site.local.peterneumark.com/present/github/immediately-run/index.tsx");
   });
 
   it('relative to a directory', async () => {

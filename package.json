@@ -1,9 +1,9 @@
 {
-  "name": "@tinkerable/sdk",
+  "name": "@immediately-run/sdk",
   "version": "0.1.0",
-  "description": "Runtime SDK for code executing inside a Tinkerable sandbox.",
+  "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
-  "repository": "github:tinkerable-site/tinkerable-sdk",
+  "repository": "github:immediately-run/immediately-run-sdk",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

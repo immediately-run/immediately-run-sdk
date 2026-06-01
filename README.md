@@ -1,24 +1,24 @@
-# @tinkerable/sdk
+# @immediately-run/sdk
 
-Runtime SDK for code executing inside a [Tinkerable](https://tinkerable.site) sandbox.
+Runtime SDK for code executing inside an [immediately.run](https://immediately.run) sandbox.
 It is the API that user code running in the sandboxed preview iframe imports to
 query files by MDX frontmatter, dynamically `require` JS modules, navigate, and
-hook into the Tinkerable runtime.
+hook into the immediately.run runtime.
 
 ## Install
 
 ```sh
-npm install @tinkerable/sdk
+npm install @immediately-run/sdk
 ```
 
 `react` and `react-dom` (v19+) are peer dependencies — the host app provides them.
 
 ## Top-level exports
 
-The public surface is re-exported from the package root (`@tinkerable/sdk`) and
-also reachable via subpaths (`@tinkerable/sdk/boot`, `@tinkerable/sdk/hooks`, …):
+The public surface is re-exported from the package root (`@immediately-run/sdk`) and
+also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/hooks`, …):
 
-- `boot` — entry point that mounts a Tinkerable app into the sandbox.
+- `boot` — entry point that mounts an immediately.run app into the sandbox.
 - `Include` (`components/Include`) — render another file's exported component inline.
 - `MDXComponents` (`Link`, …) — MDX component overrides.
 - `useMetadataQuery`, `useFileMetadata` (`hooks`) — query files by frontmatter metadata.
@@ -29,7 +29,7 @@ also reachable via subpaths (`@tinkerable/sdk/boot`, `@tinkerable/sdk/hooks`, �
 ## API documentation
 
 Full API reference is published to GitHub Pages:
-<https://tinkerable-site.github.io/tinkerable-sdk/>
+<https://immediately-run.github.io/immediately-run-sdk/>
 
 ## License
 
