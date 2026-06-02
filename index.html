@@ -17,6 +17,12 @@ also reachable via subpaths (<code>@immediately-run/sdk/boot</code>, <code>@imme
 login / account state (<code>{ status, user: { login } }</code>). Poll with <code>getAuthState()</code>,
 subscribe with <code>onAuthChange(listener)</code> (the listener is called immediately with the
 current state), or use the <code>useAuth()</code> React hook.</li>
+<li><code>getMounts</code>, <code>findMount</code>, <code>onMountsChange</code>, <code>useMounts</code>, <code>waitForMount</code> (<code>mounts</code>) —
+read or subscribe to the filesystem mounts available to the sandbox (e.g. a
+Firestore-backed store mounted at <code>/firestore</code> after sign-in). Poll with
+<code>getMounts()</code> / <code>findMount({ type })</code>, subscribe with <code>onMountsChange(listener)</code> or
+the <code>useMounts()</code> hook, or <code>await waitForMount({ type: 'firestore' })</code> before using a
+mount. Access the files via the <code>fs</code> module at the mount's <code>path</code>.</li>
 <li>routing helpers (<code>Router</code>, <code>SandboxRouter</code>, …).</li>
 <li><code>MDXProvider</code> — the MDX context provider used by transformed <code>.mdx</code> files.</li>
 <li><code>sandboxTypes</code> — shared TypeScript types for the sandbox runtime.</li>
