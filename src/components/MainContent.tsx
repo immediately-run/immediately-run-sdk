@@ -1,16 +1,20 @@
 import { Suspense, use, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { navigate, useTinkerableLink } from '../routing';
-import { FILES_PREFIX } from '../urlUtils';
+import { FILES_PREFIX, underAppRoot } from '../urlUtils';
 
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 
+// Repo-relative candidate paths. These are kept repo-relative because the
+// returned path is reused below to build the redirect URL (which is anchored to
+// `/app` by the file router); only the filesystem existence check is resolved
+// under `APP_ROOT`, since `bundler.fs` is rooted at `/`.
 const candidates = ['/src/App.tsx', '/src/App.ts', '/src/App.js', '/App.tsx', '/App.ts', '/App.js', '/README.md', '/README.mdx', '/README.html'];
 
 const fileExists = async (path: string): Promise<[string, boolean]> => {
   // @ts-ignore
   const bundler = module.evaluation.module.bundler;
-  const exists = await bundler.fs.isFile.async(path);
+  const exists = await bundler.fs.isFile.async(underAppRoot(path));
   return [path, exists];
 };
 

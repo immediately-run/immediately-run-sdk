@@ -26,6 +26,12 @@ also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/
   login / account state (`{ status, user: { login } }`). Poll with `getAuthState()`,
   subscribe with `onAuthChange(listener)` (the listener is called immediately with the
   current state), or use the `useAuth()` React hook.
+- `getMounts`, `findMount`, `onMountsChange`, `useMounts`, `waitForMount` (`mounts`) —
+  read or subscribe to the filesystem mounts available to the sandbox (e.g. a
+  Firestore-backed store mounted at `/firestore` after sign-in). Poll with
+  `getMounts()` / `findMount({ type })`, subscribe with `onMountsChange(listener)` or
+  the `useMounts()` hook, or `await waitForMount({ type: 'firestore' })` before using a
+  mount. Access the files via the `fs` module at the mount's `path`.
 - routing helpers (`Router`, `SandboxRouter`, …).
 - `MDXProvider` — the MDX context provider used by transformed `.mdx` files.
 - `sandboxTypes` — shared TypeScript types for the sandbox runtime.

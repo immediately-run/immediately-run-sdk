@@ -3,6 +3,18 @@ import { NavigationState, PathState } from "./TinkerableContext";
 
 export const FILES_PREFIX = '/files';
 
+/**
+ * Mount point of the Git repository inside the sandbox filesystem. The sandbox
+ * fs is rooted at `/` (so apps can reach dynamic mounts like `/firestore`), with
+ * the repo mounted here. URL subpaths are repo-relative, so the file router
+ * resolves them under `APP_ROOT`.
+ */
+export const APP_ROOT = '/app';
+
+/** Resolve a repo-relative path (e.g. a URL subpath) to its absolute sandbox path. */
+export const underAppRoot = (repoRelativePath: string): string =>
+  joinPaths(APP_ROOT, repoRelativePath);
+
 export const getOuterHostname = (outerHref:string) => {
   const url = new URL(outerHref);
   return `${url.protocol}//${url.hostname}`;
