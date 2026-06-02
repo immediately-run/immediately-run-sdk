@@ -4,4 +4,5 @@ export * from "./boot";
 export * from './components/Include';
 export * from './components/MDXComponents';
 export * from './hooks'
+export * from './auth';
 export * from './sandboxTypes';

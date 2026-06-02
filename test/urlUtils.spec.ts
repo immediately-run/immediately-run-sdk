@@ -58,6 +58,27 @@ describe('parseHref', function () {
     });
   });
 
+  it('parses the repository root with or without a trailing slash', async () => {
+    // A short `/:mode/.../:repository` URL redirects to `.../<ref>` with no
+    // trailing slash. The trailing sandboxPath group must be optional, else the
+    // regex matches nothing and every segment comes back empty — which produced
+    // the `//////files/...` garbage URL this guards against.
+    const expected = {
+      "mode": "present",
+      "provider": "github",
+      "namespace": "immediately-run",
+      "repository": "vibe-blog",
+      "ref": "published",
+      "sandboxPath": "/",
+      "search": "",
+      "hash": ""
+    };
+    // No trailing slash after the ref (the regression).
+    expect(parseHref(URL_PREFIX)).toEqual(expected);
+    // Trailing slash, no sub-path.
+    expect(parseHref(`${URL_PREFIX}/`)).toEqual(expected);
+  });
+
 });
 
 const defaultOuterHref = `${URL_PREFIX}/files/App.tsx`;

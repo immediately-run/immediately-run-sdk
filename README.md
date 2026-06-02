@@ -22,6 +22,10 @@ also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/
 - `Include` (`components/Include`) — render another file's exported component inline.
 - `MDXComponents` (`Link`, …) — MDX component overrides.
 - `useMetadataQuery`, `useFileMetadata` (`hooks`) — query files by frontmatter metadata.
+- `getAuthState`, `onAuthChange`, `useAuth` (`auth`) — read or subscribe to the user's
+  login / account state (`{ status, user: { login } }`). Poll with `getAuthState()`,
+  subscribe with `onAuthChange(listener)` (the listener is called immediately with the
+  current state), or use the `useAuth()` React hook.
 - routing helpers (`Router`, `SandboxRouter`, …).
 - `MDXProvider` — the MDX context provider used by transformed `.mdx` files.
 - `sandboxTypes` — shared TypeScript types for the sandbox runtime.

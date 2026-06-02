@@ -5,12 +5,7 @@ import { FILES_PREFIX } from '../urlUtils';
 
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 
-const directories = ['/', '/src/'];
-const basenames = ['App', 'landing', 'main', 'README'];
-const extensions = ['.js', '.jsx', '.mjs', '.cjs', '.ts', '.tsx', '.mdx', '.md'];
-const candidates = directories.flatMap((dir) =>
-  basenames.flatMap((basename) => extensions.map((ext) => `${dir}${basename}${ext}`))
-);
+const candidates = ['/src/App.tsx', '/src/App.ts', '/src/App.js', '/App.tsx', '/App.ts', '/App.js', '/README.md', '/README.mdx', '/README.html'];
 
 const fileExists = async (path: string): Promise<[string, boolean]> => {
   // @ts-ignore

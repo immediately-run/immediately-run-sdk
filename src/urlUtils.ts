@@ -74,7 +74,13 @@ export const isInternalHref = (outerHref:string, target: string, navigationState
 export type PathSegment = {
   name: string,
   pattern: string,
-  transform?: (pathSegment: string) => string
+  transform?: (pathSegment: string) => string,
+  // When true, the leading slash that delimits this segment is optional, so the
+  // whole `/segment` group can be absent. Used for the trailing sandboxPath:
+  // an outer href of `/mode/provider/namespace/repository/ref` (no trailing
+  // slash, no sub-path) must still parse, otherwise the regex matches nothing
+  // and every segment comes back empty.
+  optionalLeadingSlash?: boolean
 }
 
 const PATH_SEGMENTS: PathSegment[] = [
@@ -83,10 +89,18 @@ const PATH_SEGMENTS: PathSegment[] = [
   { name: 'namespace', pattern: '[a-zA-Z0-9-_]+' },
   { name: 'repository', pattern: '[a-zA-Z0-9-_]+' },
   { name: 'ref', pattern: '[a-zA-Z0-9-_]+' },
-  { name: 'sandboxPath', pattern: '.*', transform: s => `/${s}` }
+  { name: 'sandboxPath', pattern: '.*', transform: s => `/${s}`, optionalLeadingSlash: true }
 ];
 
-const OUTER_HREF_REGEXP = new RegExp('^' + PATH_SEGMENTS.map(({ name, pattern }) => `\/(?<${name}>${pattern})`).join('') + "$");
+const OUTER_HREF_REGEXP = new RegExp(
+  '^' +
+  PATH_SEGMENTS.map(({ name, pattern, optionalLeadingSlash }) =>
+    optionalLeadingSlash
+      ? `(?:\/(?<${name}>${pattern}))?`
+      : `\/(?<${name}>${pattern})`
+  ).join('') +
+  "$"
+);
 
 
 export const parsePath = (pathname: string): PathState => {
