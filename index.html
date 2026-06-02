@@ -13,6 +13,10 @@ also reachable via subpaths (<code>@immediately-run/sdk/boot</code>, <code>@imme
 <li><code>Include</code> (<code>components/Include</code>) — render another file's exported component inline.</li>
 <li><code>MDXComponents</code> (<code>Link</code>, …) — MDX component overrides.</li>
 <li><code>useMetadataQuery</code>, <code>useFileMetadata</code> (<code>hooks</code>) — query files by frontmatter metadata.</li>
+<li><code>getAuthState</code>, <code>onAuthChange</code>, <code>useAuth</code> (<code>auth</code>) — read or subscribe to the user's
+login / account state (<code>{ status, user: { login } }</code>). Poll with <code>getAuthState()</code>,
+subscribe with <code>onAuthChange(listener)</code> (the listener is called immediately with the
+current state), or use the <code>useAuth()</code> React hook.</li>
 <li>routing helpers (<code>Router</code>, <code>SandboxRouter</code>, …).</li>
 <li><code>MDXProvider</code> — the MDX context provider used by transformed <code>.mdx</code> files.</li>
 <li><code>sandboxTypes</code> — shared TypeScript types for the sandbox runtime.</li>
