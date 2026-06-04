@@ -5,5 +5,7 @@ export * from './components/Include';
 export * from './components/MDXComponents';
 export * from './hooks'
 export * from './auth';
+export * from './theme';
+export * from './formFactor';
 export * from './mounts';
 export * from './sandboxTypes';
