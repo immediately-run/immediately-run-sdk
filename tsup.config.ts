@@ -7,7 +7,7 @@ import { defineConfig } from "tsup";
 // resolved against per-file URLs at runtime — a single bundled index.js would
 // not expose those subpaths.
 export default defineConfig({
-  entry: ["src/**/*.ts", "src/**/*.tsx"],
+  entry: ["src/**/*.ts", "src/**/*.tsx", "!src/**/*.test.ts", "!src/**/*.test.tsx"],
   format: ["esm", "cjs"],
   bundle: false,
   dts: true,
