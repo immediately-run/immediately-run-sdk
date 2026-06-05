@@ -3,6 +3,7 @@
 // this app may invoke (MCP-tool-shaped); `invoke()` calls one by its catalog name.
 // Handing the catalog to an embedded agent as its tool list confines the agent to
 // the app's authority (agent sandboxing falls out of the capability model, §5.9).
+import { useEffect, useState } from 'react';
 import { protocolRequest } from './sandboxUtils';
 import type { StreamFrame } from './protocolStream';
 import { consumeStream } from './protocolStream';
@@ -56,3 +57,34 @@ export function invokeStream<T = unknown, R = unknown>(
   const [scheme, method] = split(name);
   return consumeStream<T, R>(bundlerTransport, `protocol-${scheme}`, method, [params]);
 }
+
+interface CatalogService {
+  getCatalog(): ApiMethod[];
+  onChange(listener: (catalog: ApiMethod[]) => void): { dispose(): void };
+}
+
+// `module.evaluation.module.bundler.catalog` — injected by the sandbox runtime.
+const catalogService = (): CatalogService => {
+  // @ts-ignore - injected by the sandbox runtime
+  return module.evaluation.module.bundler.catalog;
+};
+
+/** The methods this app may call (grant-filtered, §5.5). Poll for a one-off read;
+ *  use {@link onCatalogChange} / {@link useCatalog} to react. */
+export const getCatalog = (): ApiMethod[] => catalogService().getCatalog();
+
+/** Subscribe to catalog changes (e.g. a grant added/revoked). Invoked immediately
+ *  with the current catalog, then on every change. Returns an unsubscribe fn. */
+export const onCatalogChange = (listener: (catalog: ApiMethod[]) => void): (() => void) => {
+  const disposable = catalogService().onChange(listener);
+  return () => disposable.dispose();
+};
+
+/** React hook returning this app's method catalog, re-rendering on change. Hand
+ *  it to an embedded agent as its tool list to confine the agent to the app's
+ *  authority (§5.9). */
+export const useCatalog = (): ApiMethod[] => {
+  const [catalog, setCatalog] = useState<ApiMethod[]>(getCatalog);
+  useEffect(() => onCatalogChange(setCatalog), []);
+  return catalog;
+};
