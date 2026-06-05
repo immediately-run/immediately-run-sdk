@@ -248,3 +248,25 @@ export const setSpaceRole = async (spaceId: string, uid: string, role: Role): Pr
  *  rate-limited host-side. */
 export const lookupUser = (login: string): Promise<ResolvedUser> =>
   request<ResolvedUser>('lookupUser', { login });
+
+/** One durable grant an app holds, for the §8.11 capability audit view. */
+export interface GrantRecord {
+  /** The app's provider-qualified identity (`provider__namespace__repository`). */
+  appKey: string;
+  spaceId: string;
+  /** Universal mount id (§3.5). */
+  mountId: string;
+  subtree?: string;
+  mode: 'ro' | 'rw';
+  name?: string;
+}
+
+/** Enumerate every (app, mount) grant the user holds — the audit view
+ *  (§8.11). Elevated `spaces:admin`. */
+export const listGrants = (): Promise<GrantRecord[]> => request<GrantRecord[]>('grants', {});
+
+/** Revoke one app's grant on a space — durable (the app can't re-mount) plus a
+ *  best-effort live teardown. Elevated `spaces:admin`. */
+export const revokeGrant = async (appKey: string, spaceId: string): Promise<void> => {
+  await request('revokeGrant', { appKey, spaceId });
+};
