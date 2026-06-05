@@ -98,7 +98,13 @@ export interface SpaceInfo {
 
 /** An error from a space operation, carrying a machine-readable `code`. */
 export interface SpaceError extends Error {
-  code: 'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unknown';
+  code:
+    | 'auth-required'
+    | 'cancelled'
+    | 'forbidden'
+    | 'not-found'
+    | 'unsupported-scheme'
+    | 'unknown';
 }
 
 type SpaceResult =
@@ -140,9 +146,19 @@ const requestMount = async (
 export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
   requestMount('open', { slot });
 
-/** Mount a specific space by id (e.g. one shared with you, or from a link). */
+/**
+ * Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) —
+ * `scheme:locator`, e.g. `space:{spaceId}` or `github:owner/repo@ref`. Backend-blind:
+ * the host resolves the scheme. A scheme with no resolver rejects with
+ * {@link SpaceError} `unsupported-scheme`.
+ */
+export const mount = (mountId: string): Promise<SandboxMount> =>
+  requestMount('mount', { mount: mountId });
+
+/** Mount a specific space by id (e.g. one shared with you, or from a link). A thin
+ *  shim over {@link mount} with the `space:` scheme. */
 export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
-  requestMount('mount', query);
+  mount(`space:${query.spaceId}`);
 
 /**
  * Ask the user to grant a workspace to this app — the §8.6 powerbox. The app
