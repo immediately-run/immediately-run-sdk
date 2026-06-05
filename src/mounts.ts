@@ -190,3 +190,61 @@ export const listSpaces = (opts: { app?: boolean } = {}): Promise<SpaceInfo[]> =
 export const unmountSpace = async (query: { spaceId: string }): Promise<void> => {
   await request('unmount', query);
 };
+
+// ---------------------------------------------------------------------------
+// Space management (the space-manager app) — UI_AS_APPS_SPEC §5.2. These are
+// ELEVATED: enumerating all the user's spaces is `spaces:user`; mutating
+// membership (share/unshare/setRole) and resolving handles is `spaces:admin`.
+// The host enforces the owner-lockout invariant (a space always keeps an owner,
+// T41) and rate-limits handle lookups (L1); the OAuth/identity token never
+// crosses to the app.
+// ---------------------------------------------------------------------------
+
+export type Role = 'owner' | 'writer' | 'reader';
+
+/** A member of a space (for the share/manage UI). */
+export interface Member {
+  /** `user:{uid}` | `group:{gid}`. */
+  principal: string;
+  role: Role;
+  login?: string;
+  avatarUrl?: string;
+}
+
+/** A handle resolved to a principal (handle → who). */
+export interface ResolvedUser {
+  uid: string;
+  login: string;
+  avatarUrl?: string;
+}
+
+/** Enumerate ALL the user's spaces (not just this app's) — `spaces:user`. */
+export const listAllSpaces = (): Promise<SpaceInfo[]> => request<SpaceInfo[]>('listAll', {});
+
+/** Read a space's members one-shot — `spaces:admin`. */
+export const getSpaceMembers = (spaceId: string): Promise<Member[]> =>
+  request<Member[]>('members', { spaceId });
+
+/** Invite a user (by provider handle) to a space at a role — `spaces:admin`. The
+ *  host resolves the handle, so the app never sees other users' uids except the
+ *  one it invited. */
+export const shareSpace = async (spaceId: string, login: string, role: Role): Promise<void> => {
+  await request('share', { spaceId, login, role });
+};
+
+/** Remove a member from a space — `spaces:admin`. Refused if it would orphan the
+ *  space (owner-lockout, T41). */
+export const unshareSpace = async (spaceId: string, uid: string): Promise<void> => {
+  await request('unshare', { spaceId, uid });
+};
+
+/** Change a member's role — `spaces:admin`. Refused if it would drop the sole
+ *  owner (owner-lockout, T41). */
+export const setSpaceRole = async (spaceId: string, uid: string, role: Role): Promise<void> => {
+  await request('setRole', { spaceId, uid, role });
+};
+
+/** Resolve a provider handle to a principal (for the invite flow) — `spaces:admin`,
+ *  rate-limited host-side. */
+export const lookupUser = (login: string): Promise<ResolvedUser> =>
+  request<ResolvedUser>('lookupUser', { login });
