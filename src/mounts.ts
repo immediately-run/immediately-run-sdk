@@ -129,7 +129,7 @@ const request = async <T = unknown>(
 // Request a space mount, then wait until the host actually registers it. The
 // host announces the mount (`mount-add`) separately from the protocol reply, so
 // an immediate read could otherwise race the mount.
-const requestMount = async (
+const requestMountInternal = async (
   method: string,
   query: Record<string, unknown>,
 ): Promise<SandboxMount> => {
@@ -144,7 +144,7 @@ const requestMount = async (
  * create-or-pick dialog. Rejects with a {@link SpaceError} (`.code`) on cancel.
  */
 export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
-  requestMount('open', { slot });
+  requestMountInternal('open', { slot });
 
 /**
  * Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) —
@@ -153,7 +153,7 @@ export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
  * {@link SpaceError} `unsupported-scheme`.
  */
 export const mount = (mountId: string): Promise<SandboxMount> =>
-  requestMount('mount', { mount: mountId });
+  requestMountInternal('mount', { mount: mountId });
 
 /** Mount a specific space by id (e.g. one shared with you, or from a link). A thin
  *  shim over {@link mount} with the `space:` scheme. */
@@ -161,20 +161,26 @@ export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
   mount(`space:${query.spaceId}`);
 
 /**
- * Ask the user to grant a workspace to this app — the §8.6 powerbox. The app
- * asks; the HOST shows the user their spaces and the access choice (which space,
+ * Ask the user to grant a filesystem to this app — the §8.6 powerbox. The app
+ * asks; the HOST shows the user their mounts and the access choice (which mount,
  * an optional subtree, read-only vs read-write); the USER picks or declines. The
- * app never sees the list — it resolves with the single granted mount, or
- * rejects with a {@link SpaceError} (`cancelled`) if declined. The granted scope
- * is enforced host-side: the mount is chroot'd / `ro`-limited accordingly.
+ * app never sees the list — it resolves with the single granted mount, or rejects
+ * with a {@link SpaceError} (`cancelled`) if declined. The granted scope is
+ * enforced host-side: the mount is chroot'd / `ro`-limited accordingly.
+ *
+ * Backend-general (§3.5): the picker offers whatever mounts the user has (today,
+ * their spaces). Returns the granted mount by its universal id.
  */
-export const requestSpace = (): Promise<SandboxMount> =>
-  requestMount('request', {});
+export const requestMount = (): Promise<SandboxMount> =>
+  requestMountInternal('request', {});
+
+/** @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
+export const requestSpace = requestMount;
 
 /** Create a brand-new space, optionally binding it to this app (a slot). */
 export const createSpace = (
   opts: { name?: string; slot?: string; bindToApp?: boolean } = {}
-): Promise<SandboxMount> => requestMount('create', opts);
+): Promise<SandboxMount> => requestMountInternal('create', opts);
 
 /** List spaces you can access — all of them, or just those bound to this app. */
 export const listSpaces = (opts: { app?: boolean } = {}): Promise<SpaceInfo[]> =>
