@@ -6,6 +6,7 @@ export * from './components/MDXComponents';
 export * from './hooks'
 export * from './auth';
 export * from './theme';
+export * from './editorContext';
 export * from './formFactor';
 export * from './mounts';
 export * from './contribute';
