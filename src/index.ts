@@ -10,5 +10,6 @@ export * from './editorContext';
 export * from './formFactor';
 export * from './mounts';
 export * from './contribute';
+export * from './catalog';
 export * from './protocolStream';
 export * from './sandboxTypes';
