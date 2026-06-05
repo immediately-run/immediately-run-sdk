@@ -31,9 +31,24 @@ const split = (name: string): [string, string] => {
  * call (an un-granted method → `forbidden`, even if you name it directly). For a
  * STREAMING method (`ApiMethod.stream`), use {@link invokeStream}.
  */
-export const invoke = <T = unknown>(name: string, params: Record<string, unknown> = {}): Promise<T> => {
+export const invoke = async <T = unknown>(
+  name: string,
+  params: Record<string, unknown> = {},
+): Promise<T> => {
   const [scheme, method] = split(name);
-  return protocolRequest(scheme, method, [params]) as Promise<T>;
+  // The host replies with an `{ ok, data } | { ok:false, code }` envelope; unwrap
+  // it and THROW on refusal (a `.code` like `forbidden` for an off-catalog call)
+  // so callers — and any agent driving `invoke` — see the gate's verdict.
+  const res = (await protocolRequest(scheme, method, [params])) as
+    | { ok: true; data: unknown }
+    | { ok: false; code?: string; message?: string }
+    | undefined;
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? `${name} failed`) as Error & { code?: string };
+    err.code = res?.code ?? 'unknown';
+    throw err;
+  }
+  return res.data as T;
 };
 
 const bundlerTransport = {
