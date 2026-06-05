@@ -144,6 +144,17 @@ export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
 export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
   requestMount('mount', query);
 
+/**
+ * Ask the user to grant a workspace to this app — the §8.6 powerbox. The app
+ * asks; the HOST shows the user their spaces and the access choice (which space,
+ * an optional subtree, read-only vs read-write); the USER picks or declines. The
+ * app never sees the list — it resolves with the single granted mount, or
+ * rejects with a {@link SpaceError} (`cancelled`) if declined. The granted scope
+ * is enforced host-side: the mount is chroot'd / `ro`-limited accordingly.
+ */
+export const requestSpace = (): Promise<SandboxMount> =>
+  requestMount('request', {});
+
 /** Create a brand-new space, optionally binding it to this app (a slot). */
 export const createSpace = (
   opts: { name?: string; slot?: string; bindToApp?: boolean } = {}
