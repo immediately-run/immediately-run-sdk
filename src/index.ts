@@ -13,5 +13,6 @@ export * from './contribute';
 export * from './catalog';
 export * from './ipc';
 export * from './tasks';
+export * from './runtime';
 export * from './protocolStream';
 export * from './sandboxTypes';
