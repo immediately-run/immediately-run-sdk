@@ -8,4 +8,6 @@ export * from './auth';
 export * from './theme';
 export * from './formFactor';
 export * from './mounts';
+export * from './contribute';
+export * from './protocolStream';
 export * from './sandboxTypes';
