@@ -20,6 +20,9 @@ jobs:
       # Trusted publishing requires npm >= 11.5.1
       - run: npm install -g npm@latest
       - run: npm ci
+      # Fail fast on a circular import — the sandbox bundler infinite-loops on one
+      # at app boot ("Maximum call stack size exceeded"). Caught the 0.2.7 cycle.
+      - run: npm run check:circular
       - run: npm test
       - run: npm run build
       - run: npm run docs
