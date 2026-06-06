@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { protocolRequest } from "./sandboxUtils";
+import { getHostRuntime } from "./hostRuntime";
+const getAppMountPath = () => getHostRuntime()?.appMountPath ?? "/app";
 const mountService = () => {
   return module.evaluation.module.bundler.mounts;
 };
@@ -66,6 +68,7 @@ const revokeGrant = async (appKey, spaceId) => {
 export {
   createSpace,
   findMount,
+  getAppMountPath,
   getMounts,
   getSpaceMembers,
   listAllSpaces,

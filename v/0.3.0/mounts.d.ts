@@ -1,4 +1,13 @@
 /**
+ * The absolute path where this app's own repository filesystem is mounted
+ * (FILE_SHARING_SPEC §11.2). Prefer this over hardcoding `/app`: the repo is
+ * dual-mounted at both `/app` (back-compat) and its canonical `/mnt/{hash}`
+ * address, and this returns the canonical one the host reports. Falls back to
+ * `/app` when the host hasn't reported a canonical path (older host / before the
+ * report arrives) — both paths are live, so either resolves the same files.
+ */
+declare const getAppMountPath: () => string;
+/**
  * A filesystem mount available to the sandbox, mirrored from the host window.
  *
  * Mounts appear on demand — call {@link openAppSpace} / {@link mountSpace} to ask
@@ -148,4 +157,4 @@ declare const listGrants: () => Promise<GrantRecord[]>;
  *  best-effort live teardown. Elevated `spaces:admin`. */
 declare const revokeGrant: (appKey: string, spaceId: string) => Promise<void>;
 
-export { type GrantRecord, type Member, type MountQuery, type ResolvedUser, type Role, type SandboxMount, type SpaceError, type SpaceInfo, createSpace, findMount, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount };
+export { type GrantRecord, type Member, type MountQuery, type ResolvedUser, type Role, type SandboxMount, type SpaceError, type SpaceInfo, createSpace, findMount, getAppMountPath, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount };
