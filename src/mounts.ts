@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
 import { protocolRequest } from './sandboxUtils';
+import { getHostRuntime } from './hostRuntime';
+
+/**
+ * The absolute path where this app's own repository filesystem is mounted
+ * (FILE_SHARING_SPEC §11.2). Prefer this over hardcoding `/app`: the repo is
+ * dual-mounted at both `/app` (back-compat) and its canonical `/mnt/{hash}`
+ * address, and this returns the canonical one the host reports. Falls back to
+ * `/app` when the host hasn't reported a canonical path (older host / before the
+ * report arrives) — both paths are live, so either resolves the same files.
+ */
+export const getAppMountPath = (): string => getHostRuntime()?.appMountPath ?? '/app';
 
 /**
  * A filesystem mount available to the sandbox, mirrored from the host window.

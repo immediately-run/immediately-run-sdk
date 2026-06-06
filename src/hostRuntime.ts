@@ -15,6 +15,9 @@ export interface ImmediatelyRunGlobal {
   transport?: unknown;
   /** Resolves when ports arrive, if they arrive async after register-frame. */
   ready?: Promise<void>;
+  /** Canonical `/mnt/{hash}` path of the app's own repo mount (FILE_SHARING §11.2);
+   *  surfaced to apps via `getAppMountPath()`. Absent until the host reports it. */
+  appMountPath?: string;
 }
 
 /**
