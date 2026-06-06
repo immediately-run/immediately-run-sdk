@@ -24,12 +24,27 @@ jobs:
       - run: npm run build
       - run: npm run docs
 
-      - name: Deploy docs to GitHub Pages
+      # Assemble the gh-pages payload: typedoc docs at the root + the versioned,
+      # self-hosted SDK build under v/<version>/ (SDK_PACKAGING_SPEC §5/§11,
+      # Option A). The sandbox bundler fetches v/<version>/manifest.json when an
+      # app opts the SDK into immediately.run.resolveFromRegistry — available the
+      # instant this CI finishes, with no npm→CDN replication lag.
+      - name: Assemble gh-pages payload (docs + versioned SDK build)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          rm -rf gh-pages-publish
+          cp -r docs gh-pages-publish
+          node scripts/build-selfhost.mjs gh-pages-publish
+
+      - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./docs
+          publish_dir: ./gh-pages-publish
+          # keep_files so previously published v/<version>/ artifacts (each
+          # immutable) accumulate rather than being wiped on each docs deploy.
+          keep_files: true
 
       - name: Publish to npm via trusted publishing (skip if version already published)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
