@@ -12,6 +12,7 @@ export * from './mounts';
 export * from './contribute';
 export * from './catalog';
 export * from './ipc';
+export * from './netFetch';
 export * from './tasks';
 export * from './runtime';
 export * from './protocolStream';
