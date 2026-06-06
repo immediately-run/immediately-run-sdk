@@ -258,6 +258,11 @@
     "consumeStream",
     "protocolStream"
   ],
+  "pushChannel": [
+    "ChannelTransport",
+    "PushChannel",
+    "createPushChannel"
+  ],
   "routing": [
     "AppliedRoutingRule",
     "Router",

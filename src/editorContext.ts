@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createPushChannel } from './pushChannel';
 
 /**
  * The editor "dirty set" mirrored from the immediately.run host into the sandbox
@@ -15,42 +15,36 @@ export interface EditorContext {
   dirtyPaths: string[];
 }
 
-interface EditorContextService {
-  getContext(): EditorContext;
-  onChange(listener: (context: EditorContext) => void): { dispose(): void };
-}
-
-// `module.evaluation.module.bundler.editorContext` is the sandbox bundler service
-// injected into the evaluation context (same path the other SDK helpers use).
-const editorContextService = (): EditorContextService => {
-  // @ts-ignore - injected by the sandbox runtime
-  return module.evaluation.module.bundler.editorContext;
-};
+// Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `editor-context`
+// and answers `request-editor-context` — but only for a frame holding `editor:read`
+// (gated by the channel router). An app without it gets no reply, so the empty
+// default below stands. Wire format: site-main channelBridge.ts.
+const channel = createPushChannel<EditorContext>({
+  pushType: 'editor-context',
+  requestType: 'request-editor-context',
+  initial: { dirtyPaths: [] },
+  parse: (msg) =>
+    Array.isArray(msg.dirtyPaths) && msg.dirtyPaths.every((p) => typeof p === 'string')
+      ? { dirtyPaths: msg.dirtyPaths as string[] }
+      : undefined,
+});
 
 /**
  * Returns the current editor context (dirty set). Poll this for a one-off read;
  * use {@link onEditorContextChange} or {@link useEditorContext} to react.
  */
-export const getEditorContext = (): EditorContext => editorContextService().getContext();
+export const getEditorContext = (): EditorContext => channel.get();
 
 /**
  * Subscribe to editor-context changes. The listener is invoked immediately with
  * the current context, then again on every change. Returns an unsubscribe fn.
  */
-export const onEditorContextChange = (
-  listener: (context: EditorContext) => void,
-): (() => void) => {
-  const disposable = editorContextService().onChange(listener);
-  return () => disposable.dispose();
-};
+export const onEditorContextChange = (listener: (context: EditorContext) => void): (() => void) =>
+  channel.onChange(listener);
 
 /**
  * React hook returning the current editor context (dirty set), re-rendering when
  * it changes. Handy for a contribute dialog: `const { dirtyPaths } =
  * useEditorContext()` to show "you'll save N files" before calling `contribute()`.
  */
-export const useEditorContext = (): EditorContext => {
-  const [context, setContext] = useState<EditorContext>(getEditorContext);
-  useEffect(() => onEditorContextChange(setContext), []);
-  return context;
-};
+export const useEditorContext = (): EditorContext => channel.use();

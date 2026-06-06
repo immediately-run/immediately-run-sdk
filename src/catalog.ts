@@ -3,10 +3,10 @@
 // this app may invoke (MCP-tool-shaped); `invoke()` calls one by its catalog name.
 // Handing the catalog to an embedded agent as its tool list confines the agent to
 // the app's authority (agent sandboxing falls out of the capability model, §5.9).
-import { useEffect, useState } from 'react';
-import { protocolRequest } from './sandboxUtils';
-import type { StreamFrame } from './protocolStream';
+import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import type { StreamFrame, StreamTransport } from './protocolStream';
 import { consumeStream } from './protocolStream';
+import { createPushChannel } from './pushChannel';
 
 /** One advertised method, as the host generated it from its gate table. */
 export interface ApiMethod {
@@ -51,17 +51,13 @@ export const invoke = async <T = unknown>(
   return res.data as T;
 };
 
-const bundlerTransport = {
-  send: (msg: { type: string; method: string; params: unknown[]; msgId: number; stream: true }) =>
-    // @ts-ignore - injected by the sandbox runtime
-    module.evaluation.module.bundler.messageBus.sendMessage(msg.type, msg),
-  subscribe: (type: string, handler: (msg: { msgId?: number; stream?: StreamFrame }) => void) => {
-    // @ts-ignore - injected by the sandbox runtime
-    const d = module.evaluation.module.bundler.messageBus.onMessage((m: { type?: string }) => {
-      if (m && m.type === type) handler(m as { msgId?: number; stream?: StreamFrame });
-    });
-    return () => d.dispose();
-  },
+// Stream transport over the resolver (SDK_PACKAGING_SPEC §4) — sendMessage /
+// addListener route through `transport()` (injected bundler messageBus or the §4
+// global), never `bundler.messageBus` directly.
+const streamTransport: StreamTransport = {
+  send: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
+  subscribe: (type, handler) =>
+    addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
 };
 
 /** Call a STREAMING catalog method by name, yielding its events. */
@@ -70,36 +66,29 @@ export function invokeStream<T = unknown, R = unknown>(
   params: Record<string, unknown> = {},
 ): AsyncGenerator<T, R, void> {
   const [scheme, method] = split(name);
-  return consumeStream<T, R>(bundlerTransport, `protocol-${scheme}`, method, [params]);
+  return consumeStream<T, R>(streamTransport, `protocol-${scheme}`, method, [params]);
 }
 
-interface CatalogService {
-  getCatalog(): ApiMethod[];
-  onChange(listener: (catalog: ApiMethod[]) => void): { dispose(): void };
-}
-
-// `module.evaluation.module.bundler.catalog` — injected by the sandbox runtime.
-const catalogService = (): CatalogService => {
-  // @ts-ignore - injected by the sandbox runtime
-  return module.evaluation.module.bundler.catalog;
-};
+// The catalog list is read over the transport (§4): the host pushes `api-catalog`
+// and answers `request-api-catalog` with this app's grant-filtered methods (wire
+// format: site-main channelBridge.ts).
+const channel = createPushChannel<ApiMethod[]>({
+  pushType: 'api-catalog',
+  requestType: 'request-api-catalog',
+  initial: [],
+  parse: (msg) => (Array.isArray(msg.methods) ? (msg.methods as ApiMethod[]) : undefined),
+});
 
 /** The methods this app may call (grant-filtered, §5.5). Poll for a one-off read;
  *  use {@link onCatalogChange} / {@link useCatalog} to react. */
-export const getCatalog = (): ApiMethod[] => catalogService().getCatalog();
+export const getCatalog = (): ApiMethod[] => channel.get();
 
 /** Subscribe to catalog changes (e.g. a grant added/revoked). Invoked immediately
  *  with the current catalog, then on every change. Returns an unsubscribe fn. */
-export const onCatalogChange = (listener: (catalog: ApiMethod[]) => void): (() => void) => {
-  const disposable = catalogService().onChange(listener);
-  return () => disposable.dispose();
-};
+export const onCatalogChange = (listener: (catalog: ApiMethod[]) => void): (() => void) =>
+  channel.onChange(listener);
 
 /** React hook returning this app's method catalog, re-rendering on change. Hand
  *  it to an embedded agent as its tool list to confine the agent to the app's
  *  authority (§5.9). */
-export const useCatalog = (): ApiMethod[] => {
-  const [catalog, setCatalog] = useState<ApiMethod[]>(getCatalog);
-  useEffect(() => onCatalogChange(setCatalog), []);
-  return catalog;
-};
+export const useCatalog = (): ApiMethod[] => channel.use();

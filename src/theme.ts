@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
 
 /**
@@ -12,45 +12,35 @@ import { protocolRequest } from './sandboxUtils';
  */
 export type HostTheme = 'light' | 'dark';
 
-interface ThemeService {
-  getTheme(): HostTheme;
-  onChange(listener: (theme: HostTheme) => void): { dispose(): void };
-}
-
-// `module.evaluation.module.bundler.theme` is the sandbox bundler injected into
-// the evaluation context (same path the other SDK helpers use for `auth`).
-const themeService = (): ThemeService => {
-  // @ts-ignore - injected by the sandbox runtime
-  return module.evaluation.module.bundler.theme;
-};
+// Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `theme` and
+// answers `request-theme` (wire format: site-main channelBridge.ts). The host's
+// default before it reports is `dark` (sandbox themeState.DEFAULT_THEME).
+const channel = createPushChannel<HostTheme>({
+  pushType: 'theme',
+  requestType: 'request-theme',
+  initial: 'dark',
+  parse: (msg) => (msg.theme === 'light' || msg.theme === 'dark' ? msg.theme : undefined),
+});
 
 /**
  * Returns the current host theme. Poll this for a one-off read; use
  * {@link onHostThemeChange} or {@link useHostTheme} to react to changes.
  */
-export const getHostTheme = (): HostTheme => themeService().getTheme();
+export const getHostTheme = (): HostTheme => channel.get();
 
 /**
  * Subscribe to host theme changes. The listener is invoked immediately with the
  * current theme, then again on every change. Returns an unsubscribe fn.
  */
-export const onHostThemeChange = (
-  listener: (theme: HostTheme) => void,
-): (() => void) => {
-  const disposable = themeService().onChange(listener);
-  return () => disposable.dispose();
-};
+export const onHostThemeChange = (listener: (theme: HostTheme) => void): (() => void) =>
+  channel.onChange(listener);
 
 /**
  * React hook returning the current host theme, re-rendering when it changes.
  * The recommended way to implement an app's own `useTheme`: follow the host,
  * allow a local override.
  */
-export const useHostTheme = (): HostTheme => {
-  const [theme, setTheme] = useState<HostTheme>(getHostTheme);
-  useEffect(() => onHostThemeChange(setTheme), []);
-  return theme;
-};
+export const useHostTheme = (): HostTheme => channel.use();
 
 /**
  * Set the host UI theme — the ELEVATED `theme:set` action (§8.5). The host
