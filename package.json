@@ -28,8 +28,10 @@
     "build": "tsup",
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",
+    "api:check": "node scripts/check-api-stability.mjs",
+    "api:update": "node scripts/check-api-stability.mjs --update",
     "docs": "typedoc",
-    "prepublishOnly": "npm run check:circular && npm run build"
+    "prepublishOnly": "npm run check:circular && npm run build && npm run api:check"
   },
   "peerDependencies": {
     "react": "^19.0.0",

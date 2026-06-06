@@ -25,6 +25,10 @@ jobs:
       - run: npm run check:circular
       - run: npm test
       - run: npm run build
+      # Fail if a public export was removed/renamed vs api-snapshot.json — pinned
+      # forks depend on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after
+      # build because it reads the emitted dist/*.d.ts.
+      - run: npm run api:check
       - run: npm run docs
 
       # Assemble the gh-pages payload: typedoc docs at the root + the versioned,
