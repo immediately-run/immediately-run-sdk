@@ -9,7 +9,7 @@
 // byte-for-byte preserved; the global is the fallback the npm-fetched SDK uses. When
 // injection is removed (phase 3), only the global path remains — `bundler.*` stops
 // being API, which is the whole point.
-import { getHostRuntime } from './runtime';
+import { getHostRuntime } from './hostRuntime';
 
 interface HostTransport {
   sendMessage(type: string, data?: Record<string, any>): void;

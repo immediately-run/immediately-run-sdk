@@ -14,38 +14,21 @@
 // exists when app-pinned versions become real.
 import { sendMessage, addListener } from './sandboxUtils';
 
+// `getHostRuntime` + `ImmediatelyRunGlobal` live in the leaf `hostRuntime` module
+// (imports nothing) and are re-exported here for a stable public API. This breaks
+// the sandboxUtils↔runtime import cycle: sandboxUtils reads `getHostRuntime` from
+// the leaf, while runtime still imports sandboxUtils for the handshake — one
+// direction only, no cycle.
+export { getHostRuntime } from './hostRuntime';
+export type { ImmediatelyRunGlobal } from './hostRuntime';
+
 /** The wire protocol (postMessage envelope / channels / methods) THIS SDK speaks.
  *  Additive-only (§9); bump only for a backwards-compatible extension. */
 export const SDK_PROTOCOL_VERSION = '1.0.0';
 
 /** This SDK's package version. Kept in step with package.json (a build step can
  *  inject it later; a constant is fine while versions are still effectively fixed). */
-export const SDK_VERSION = '0.2.7';
-
-/** The sandbox runtime's pre-evaluation discovery global (§4). */
-export interface ImmediatelyRunGlobal {
-  /** Sandbox-runtime protocol version (semver). */
-  runtimeVersion?: string;
-  /** postMessage envelope/protocol version. */
-  protocolVersion?: string;
-  /** The host channel the SDK talks over (MessagePort | message bus). */
-  transport?: unknown;
-  /** Resolves when ports arrive, if they arrive async after register-frame. */
-  ready?: Promise<void>;
-}
-
-/**
- * Read the sandbox runtime's discovery global (§4), or null when absent — in which
- * case the SDK uses the current INJECTED path (`module.evaluation.*`). Lets the SDK
- * detect a host too old/new and fail closed (§6) once the global ships.
- */
-export function getHostRuntime(): ImmediatelyRunGlobal | null {
-  try {
-    return (globalThis as { __immediatelyRun__?: ImmediatelyRunGlobal }).__immediatelyRun__ ?? null;
-  } catch {
-    return null;
-  }
-}
+export const SDK_VERSION = '0.2.8';
 
 /** This SDK's handshake payload — the version + protocol the host records + checks
  *  against `HOST_PROTOCOL_VERSION` (§6/T45). */
