@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
-const editorContextService = () => {
-  return module.evaluation.module.bundler.editorContext;
-};
-const getEditorContext = () => editorContextService().getContext();
-const onEditorContextChange = (listener) => {
-  const disposable = editorContextService().onChange(listener);
-  return () => disposable.dispose();
-};
-const useEditorContext = () => {
-  const [context, setContext] = useState(getEditorContext);
-  useEffect(() => onEditorContextChange(setContext), []);
-  return context;
-};
+import { createPushChannel } from "./pushChannel";
+const channel = createPushChannel({
+  pushType: "editor-context",
+  requestType: "request-editor-context",
+  initial: { dirtyPaths: [] },
+  parse: (msg) => Array.isArray(msg.dirtyPaths) && msg.dirtyPaths.every((p) => typeof p === "string") ? { dirtyPaths: msg.dirtyPaths } : void 0
+});
+const getEditorContext = () => channel.get();
+const onEditorContextChange = (listener) => channel.onChange(listener);
+const useEditorContext = () => channel.use();
 export {
   getEditorContext,
   onEditorContextChange,

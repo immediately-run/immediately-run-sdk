@@ -25,6 +25,7 @@
     "package.json",
     "pathUtils.js",
     "protocolStream.js",
+    "pushChannel.js",
     "routing.js",
     "runtime.js",
     "sandboxTypes.js",

@@ -1,17 +1,23 @@
-import { useEffect, useState } from "react";
-const formFactorService = () => {
-  return module.evaluation.module.bundler.formFactor;
+import { createPushChannel } from "./pushChannel";
+const DEFAULT_FORM_FACTOR = {
+  class: "desktop",
+  orientation: "landscape",
+  width: 1280,
+  height: 800
 };
-const getFormFactor = () => formFactorService().getFormFactor();
-const onFormFactorChange = (listener) => {
-  const disposable = formFactorService().onChange(listener);
-  return () => disposable.dispose();
+const isFormFactor = (v) => {
+  const f = v;
+  return !!f && (f.class === "mobile" || f.class === "tablet" || f.class === "desktop") && (f.orientation === "portrait" || f.orientation === "landscape") && typeof f.width === "number" && typeof f.height === "number";
 };
-const useFormFactor = () => {
-  const [ff, setFf] = useState(getFormFactor);
-  useEffect(() => onFormFactorChange(setFf), []);
-  return ff;
-};
+const channel = createPushChannel({
+  pushType: "form-factor",
+  requestType: "request-form-factor",
+  initial: DEFAULT_FORM_FACTOR,
+  parse: (msg) => isFormFactor(msg.formFactor) ? msg.formFactor : void 0
+});
+const getFormFactor = () => channel.get();
+const onFormFactorChange = (listener) => channel.onChange(listener);
+const useFormFactor = () => channel.use();
 export {
   getFormFactor,
   onFormFactorChange,

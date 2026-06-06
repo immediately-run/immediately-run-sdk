@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
-import { protocolRequest } from "./sandboxUtils";
+import { protocolRequest, sendMessage, addListener } from "./sandboxUtils";
 import { consumeStream } from "./protocolStream";
+import { createPushChannel } from "./pushChannel";
 const split = (name) => {
   const i = name.indexOf(":");
   if (i <= 0) throw new Error(`invalid catalog method name: ${name}`);
@@ -16,35 +16,23 @@ const invoke = async (name, params = {}) => {
   }
   return res.data;
 };
-const bundlerTransport = {
-  send: (msg) => (
-    // @ts-ignore - injected by the sandbox runtime
-    module.evaluation.module.bundler.messageBus.sendMessage(msg.type, msg)
-  ),
-  subscribe: (type, handler) => {
-    const d = module.evaluation.module.bundler.messageBus.onMessage((m) => {
-      if (m && m.type === type) handler(m);
-    });
-    return () => d.dispose();
-  }
+const streamTransport = {
+  send: (msg) => sendMessage(msg.type, msg),
+  subscribe: (type, handler) => addListener(type, (msg) => handler(msg))
 };
 function invokeStream(name, params = {}) {
   const [scheme, method] = split(name);
-  return consumeStream(bundlerTransport, `protocol-${scheme}`, method, [params]);
+  return consumeStream(streamTransport, `protocol-${scheme}`, method, [params]);
 }
-const catalogService = () => {
-  return module.evaluation.module.bundler.catalog;
-};
-const getCatalog = () => catalogService().getCatalog();
-const onCatalogChange = (listener) => {
-  const disposable = catalogService().onChange(listener);
-  return () => disposable.dispose();
-};
-const useCatalog = () => {
-  const [catalog, setCatalog] = useState(getCatalog);
-  useEffect(() => onCatalogChange(setCatalog), []);
-  return catalog;
-};
+const channel = createPushChannel({
+  pushType: "api-catalog",
+  requestType: "request-api-catalog",
+  initial: [],
+  parse: (msg) => Array.isArray(msg.methods) ? msg.methods : void 0
+});
+const getCatalog = () => channel.get();
+const onCatalogChange = (listener) => channel.onChange(listener);
+const useCatalog = () => channel.use();
 export {
   getCatalog,
   invoke,
