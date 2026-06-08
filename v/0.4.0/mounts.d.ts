@@ -22,6 +22,13 @@ interface SandboxMount {
     type: string;
     /** Optional stable identifier (the spaceId, for spaces). */
     id?: string;
+    /**
+     * Access mode of the granted view: `'rw'` (read-write) or `'ro'` (read-only).
+     * A live role downgrade re-announces the same mount with `mode: 'ro'`; apps
+     * observing `onMountsChange` see the change and writes start failing `EROFS`.
+     * Absent on the primary repo mount (treated as read-write).
+     */
+    mode?: "ro" | "rw";
 }
 /** A predicate-style matcher for {@link findMount} / {@link waitForMount}. */
 type MountQuery = {
