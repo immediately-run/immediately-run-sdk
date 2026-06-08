@@ -15,9 +15,10 @@
  * version reproduces identical bytes. Publishing uses keep_files so prior
  * versions accumulate.
  */
-import { readdirSync, mkdirSync, copyFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, mkdirSync, copyFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -65,9 +66,38 @@ writeFileSync(
 // Manifest of fetchable files (.js + package.json), sorted — the same shape the
 // bundler's addLocalModules reads. Sourcemaps/.d.ts are copied for debuggability
 // but intentionally not listed (the bundler only fetches manifest entries).
+const fetchable = [...jsFiles, 'package.json'].sort();
 writeFileSync(
   join(dest, 'manifest.json'),
-  JSON.stringify({ files: [...jsFiles, 'package.json'].sort() }, null, 2) + '\n',
+  JSON.stringify({ files: fetchable }, null, 2) + '\n',
 );
 
-console.log(`Built self-hosted SDK ${version} -> ${dest} (${jsFiles.length} js files)`);
+// Integrity manifest (SDK_PACKAGING_SPEC §5.2): SHA-384 per fetchable file
+// (manifest entries + manifest.json itself), so a verifier can check the bytes
+// it fetches against hashes pinned outside this origin. "Pinned versions are
+// immutable" becomes an enforced property, not an assumption about gh-pages.
+// integrity.json deliberately does NOT hash itself; its own digest is what the
+// deployment record / site-main's sdk-integrity.json pins.
+const sha384 = (buf) => `sha384-${createHash('sha384').update(buf).digest('base64')}`;
+const integrityFiles = {};
+for (const rel of [...fetchable, 'manifest.json']) {
+  integrityFiles[rel] = sha384(readFileSync(join(dest, rel)));
+}
+writeFileSync(
+  join(dest, 'integrity.json'),
+  JSON.stringify(
+    {
+      schemaVersion: 1,
+      name: pkg.name,
+      version,
+      algorithm: 'sha384',
+      files: integrityFiles,
+    },
+    null,
+    2,
+  ) + '\n',
+);
+
+console.log(
+  `Built self-hosted SDK ${version} -> ${dest} (${jsFiles.length} js files, integrity.json over ${Object.keys(integrityFiles).length} files)`,
+);

@@ -32,16 +32,21 @@ jobs:
       - run: npm run docs
 
       # Assemble the gh-pages payload: typedoc docs at the root + the versioned,
-      # self-hosted SDK build under v/<version>/ (SDK_PACKAGING_SPEC §5/§11,
-      # Option A). The sandbox bundler fetches v/<version>/manifest.json when an
-      # app opts the SDK into immediately.run.resolveFromRegistry — available the
-      # instant this CI finishes, with no npm→CDN replication lag.
-      - name: Assemble gh-pages payload (docs + versioned SDK build)
+      # self-hosted SDK build under v/<version>/ (SDK_PACKAGING_SPEC §5 — the
+      # SOLE SDK delivery path; every app's pinned version resolves from here,
+      # available the instant this CI finishes, no npm→CDN replication lag).
+      # build-selfhost.mjs also emits v/<version>/integrity.json (SHA-384 per
+      # fetchable file, §5.2) so verifiers can pin the artifact bytes. The
+      # backfill step adds integrity.json for the published version FLOOR
+      # (0.2.8, predates integrity generation) — idempotent, skips if already
+      # live (keep_files preserves the rest of the immutable version dir).
+      - name: Assemble gh-pages payload (docs + versioned SDK build + integrity)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           rm -rf gh-pages-publish
           cp -r docs gh-pages-publish
           node scripts/build-selfhost.mjs gh-pages-publish
+          node scripts/backfill-integrity.mjs 0.2.8 gh-pages-publish
 
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
