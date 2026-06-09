@@ -1,4 +1,5 @@
 import { protocolRequest } from "./sandboxUtils";
+import { protocolStream } from "./protocolStream";
 const hostFetch = async (url, init = {}) => {
   const res = await protocolRequest("fetch", "fetch", [
     { url, method: init.method, headers: init.headers, body: init.body }
@@ -10,7 +11,15 @@ const hostFetch = async (url, init = {}) => {
   }
   return res.data;
 };
+function hostFetchStream(url, init = {}) {
+  return protocolStream(
+    "protocol-fetch",
+    "fetchStream",
+    [{ url, method: init.method, headers: init.headers, body: init.body }]
+  );
+}
 export {
-  hostFetch
+  hostFetch,
+  hostFetchStream
 };
 //# sourceMappingURL=netFetch.js.map

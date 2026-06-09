@@ -13,7 +13,7 @@ export { GrantRecord, Member, MountQuery, ResolvedUser, Role, SandboxMount, Spac
 export { ContributeMode, ContributeOptions, ContributionEvent, ContributionResult, contribute } from './contribute.js';
 export { ApiMethod, getCatalog, invoke, invokeStream, onCatalogChange, useCatalog } from './catalog.js';
 export { RegionMessage, onRegionMessage, postToRegion, useRegionMessage } from './ipc.js';
-export { HostFetchInit, HostFetchResponse, hostFetch } from './netFetch.js';
+export { HostFetchInit, HostFetchResponse, HostFetchStreamEvent, HostFetchStreamResult, hostFetch, hostFetchStream } from './netFetch.js';
 export { FileCap, TaskInput, cancelTask, capFile, completeTask, getTaskInput, invokeTask, useTaskInput } from './tasks.js';
 export { SDK_PROTOCOL_VERSION, SDK_VERSION, SdkHandshake, announceHandshake, sdkHandshake } from './runtime.js';
 export { StreamError, StreamFrame, StreamTransport, consumeStream, protocolStream } from './protocolStream.js';
