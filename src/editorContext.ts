@@ -15,6 +15,16 @@ export interface EditorContext {
   dirtyPaths: string[];
   /** Repo-relative paths currently open as tabs in the host editor (§4.2). */
   openFiles: string[];
+  /**
+   * The one file currently focused in the host editor (repo-relative, leading
+   * slash — e.g. `/src/index.ts`), or `null` when no file is open. Distinct from
+   * {@link dirtyPaths} (the unsaved SET) and {@link openFiles} (the open-tab set):
+   * this is the single ACTIVE file. A baseline app reads its own active file from
+   * the route, but a self-routed system panel (`drivesHostRoute=false`, e.g. the
+   * file explorer) does not see the host editor's route, so it receives the active
+   * file here instead (UI_AS_APPS_SPEC §5.3 self-routed-panel refinement).
+   */
+  activeFile: string | null;
 }
 
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `editor-context`
@@ -27,7 +37,7 @@ const isStringArray = (v: unknown): v is string[] =>
 const channel = createPushChannel<EditorContext>({
   pushType: 'editor-context',
   requestType: 'request-editor-context',
-  initial: { dirtyPaths: [], openFiles: [] },
+  initial: { dirtyPaths: [], openFiles: [], activeFile: null },
   parse: (msg) =>
     isStringArray(msg.dirtyPaths)
       ? {
@@ -35,6 +45,9 @@ const channel = createPushChannel<EditorContext>({
           // `openFiles` is newer than `dirtyPaths`; tolerate an older host that
           // omits it (defensive SDK — defaults to empty rather than rejecting).
           openFiles: isStringArray(msg.openFiles) ? msg.openFiles : [],
+          // `activeFile` is newer still; an older host that omits it (or sends a
+          // non-string) reads as `null` — no file highlighted, never a throw.
+          activeFile: typeof msg.activeFile === 'string' ? msg.activeFile : null,
         }
       : undefined,
 });
