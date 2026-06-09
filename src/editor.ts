@@ -26,17 +26,65 @@ type EditorResult =
   | { ok: true; data: unknown }
   | { ok: false; code: string; message: string };
 
+const editorRequest = async (
+  method: string,
+  arg: Record<string, unknown>,
+): Promise<void> => {
+  const res = (await protocolRequest('editor', method, [arg])) as EditorResult;
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? `editor ${method} failed`) as EditorWriteError;
+    err.code = (res?.code as EditorWriteError['code']) ?? 'unknown';
+    throw err;
+  }
+};
+
 /**
  * Ask the host to open `path` (a repo-relative working-tree path, e.g. `src/App.tsx`
  * or `/src/App.tsx`) in the editor. Resolves once the editor switches to it; rejects
  * with an {@link EditorOpenError} (`.code`) if the path is invalid, missing, or this
  * app may not open files.
  */
-export const openInEditor = async (path: string): Promise<void> => {
-  const res = (await protocolRequest('editor', 'open', [{ path }])) as EditorResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'open failed') as EditorOpenError;
-    err.code = (res?.code as EditorOpenError['code']) ?? 'unknown';
-    throw err;
-  }
-};
+export const openInEditor = (path: string): Promise<void> => editorRequest('open', { path });
+
+// ---------------------------------------------------------------------------
+// Working-tree mutation (UI_AS_APPS_SPEC §4 / EDITOR_AS_APP_SPEC §5.2). The file
+// explorer NAMES a working-tree path and the HOST performs the COW write (and
+// refreshes the preview) — the app holds no write port; it asks. Gated by the
+// first-party `editor:write` capability, so only a first-party chrome app (the
+// file explorer) can call these; anyone else is refused at the gate.
+// ---------------------------------------------------------------------------
+
+/** An error from a working-tree mutation, carrying a machine-readable `.code`. */
+export interface EditorWriteError extends Error {
+  code:
+    | 'forbidden' // the frame lacks `editor:write` (first-party-only)
+    | 'not-found' // the target file/folder does not exist (delete/rename)
+    | 'exists' // the target already exists (create/rename would clobber)
+    | 'protected' // the host refuses to delete this file (e.g. package.json)
+    | 'too-large' // an upload exceeds the host's size limit
+    | 'invalid-params' // a path was empty / contained `..` / looked like a URI
+    | 'no-target' // there is no host editor session
+    | 'unknown';
+}
+
+/** Create an empty working-tree file at `path` and open it. Rejects `exists` if a
+ *  file is already there. */
+export const createFile = (path: string): Promise<void> => editorRequest('createFile', { path });
+
+/** Create a working-tree folder at `path` (materialised with a `.gitkeep`). */
+export const createFolder = (path: string): Promise<void> =>
+  editorRequest('createFolder', { path });
+
+/** Delete a working-tree file, or a folder and everything under it. Rejects
+ *  `protected` for files the host won't remove, `not-found` if absent. */
+export const deleteEntry = (path: string): Promise<void> => editorRequest('deleteEntry', { path });
+
+/** Rename/move a working-tree file from `from` to `to`. Rejects `exists` if `to`
+ *  is taken, `not-found` if `from` is absent. */
+export const renameEntry = (from: string, to: string): Promise<void> =>
+  editorRequest('rename', { from, to });
+
+/** Upload binary/text `bytes` to a working-tree file at `path`. Rejects
+ *  `too-large` past the host's size limit. The bytes are transferred (zero-copy). */
+export const uploadFile = (path: string, bytes: Uint8Array): Promise<void> =>
+  editorRequest('upload', { path, bytes });
