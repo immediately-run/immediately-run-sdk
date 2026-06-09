@@ -11,6 +11,8 @@
 interface EditorContext {
     /** Repo-relative paths the user has modified but not yet saved. */
     dirtyPaths: string[];
+    /** Repo-relative paths currently open as tabs in the host editor (§4.2). */
+    openFiles: string[];
 }
 /**
  * Returns the current editor context (dirty set). Poll this for a one-off read;
