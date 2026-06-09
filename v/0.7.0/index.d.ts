@@ -14,6 +14,7 @@ export { ContributeMode, ContributeOptions, ContributionEvent, ContributionResul
 export { ApiMethod, getCatalog, invoke, invokeStream, onCatalogChange, useCatalog } from './catalog.js';
 export { RegionMessage, onRegionMessage, postToRegion, useRegionMessage } from './ipc.js';
 export { HostFetchInit, HostFetchResponse, HostFetchStreamEvent, HostFetchStreamResult, hostFetch, hostFetchStream } from './netFetch.js';
+export { SecretError, SecretGrant, SecretHints, SecretQuery, SecretType, SecretView, getSecrets, onSecretsChange, requestAddSecret, requestSecret, revokeSecret, useSecrets } from './secrets.js';
 export { FileCap, TaskInput, cancelTask, capFile, completeTask, getTaskInput, invokeTask, useTaskInput } from './tasks.js';
 export { SDK_PROTOCOL_VERSION, SDK_VERSION, SdkHandshake, announceHandshake, sdkHandshake } from './runtime.js';
 export { StreamError, StreamFrame, StreamTransport, consumeStream, protocolStream } from './protocolStream.js';

@@ -32,6 +32,7 @@
     "runtime.js",
     "sandboxTypes.js",
     "sandboxUtils.js",
+    "secrets.js",
     "tasks.js",
     "theme.js",
     "urlUtils.js"
