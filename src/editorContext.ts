@@ -13,19 +13,29 @@ import { createPushChannel } from './pushChannel';
 export interface EditorContext {
   /** Repo-relative paths the user has modified but not yet saved. */
   dirtyPaths: string[];
+  /** Repo-relative paths currently open as tabs in the host editor (§4.2). */
+  openFiles: string[];
 }
 
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `editor-context`
 // and answers `request-editor-context` — but only for a frame holding `editor:read`
 // (gated by the channel router). An app without it gets no reply, so the empty
 // default below stands. Wire format: site-main channelBridge.ts.
+const isStringArray = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((p) => typeof p === 'string');
+
 const channel = createPushChannel<EditorContext>({
   pushType: 'editor-context',
   requestType: 'request-editor-context',
-  initial: { dirtyPaths: [] },
+  initial: { dirtyPaths: [], openFiles: [] },
   parse: (msg) =>
-    Array.isArray(msg.dirtyPaths) && msg.dirtyPaths.every((p) => typeof p === 'string')
-      ? { dirtyPaths: msg.dirtyPaths as string[] }
+    isStringArray(msg.dirtyPaths)
+      ? {
+          dirtyPaths: msg.dirtyPaths,
+          // `openFiles` is newer than `dirtyPaths`; tolerate an older host that
+          // omits it (defensive SDK — defaults to empty rather than rejecting).
+          openFiles: isStringArray(msg.openFiles) ? msg.openFiles : [],
+        }
       : undefined,
 });
 
