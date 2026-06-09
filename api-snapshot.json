@@ -125,6 +125,8 @@
     "GrantRecord",
     "HostFetchInit",
     "HostFetchResponse",
+    "HostFetchStreamEvent",
+    "HostFetchStreamResult",
     "HostTheme",
     "ImmediatelyRunGlobal",
     "Include",
@@ -181,6 +183,7 @@
     "getSpaceMembers",
     "getTaskInput",
     "hostFetch",
+    "hostFetchStream",
     "invoke",
     "invokeStream",
     "invokeTask",
@@ -273,7 +276,10 @@
   "netFetch": [
     "HostFetchInit",
     "HostFetchResponse",
-    "hostFetch"
+    "HostFetchStreamEvent",
+    "HostFetchStreamResult",
+    "hostFetch",
+    "hostFetchStream"
   ],
   "pathUtils": [
     "absPath",
