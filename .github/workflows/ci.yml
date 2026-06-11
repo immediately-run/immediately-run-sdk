@@ -37,16 +37,46 @@ jobs:
       # available the instant this CI finishes, no npm→CDN replication lag).
       # build-selfhost.mjs also emits v/<version>/integrity.json (SHA-384 per
       # fetchable file, §5.2) so verifiers can pin the artifact bytes. The
-      # backfill step adds integrity.json for the published version FLOOR
-      # (0.2.8, predates integrity generation) — idempotent, skips if already
-      # live (keep_files preserves the rest of the immutable version dir).
+      # backfill step adds integrity.json for every PUBLISHED version from the
+      # floor (0.2.8) up to current, so the trust root + sdk-integrity.json cover
+      # the whole floor..current pin range (SP2-2) — idempotent, skips versions
+      # already present (keep_files preserves the rest of each immutable dir).
       - name: Assemble gh-pages payload (docs + versioned SDK build + integrity)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           rm -rf gh-pages-publish
           cp -r docs gh-pages-publish
           node scripts/build-selfhost.mjs gh-pages-publish
-          node scripts/backfill-integrity.mjs 0.2.8 gh-pages-publish
+          node scripts/backfill-all-integrity.mjs 0.2.8 gh-pages-publish
+
+      # SDK trust root (SDK_PACKAGING_SPEC §5.2.1 / SP2-2, decision #6): the hashes
+      # site-main pins must come from a surface INDEPENDENT of the gh-pages origin
+      # they verify. So commit the per-version integrity.json into the REPO
+      # (integrity/v<version>/) and tag v<version>; site-main's build (R3-15)
+      # ingests them from git-at-tag, never from immediately-run.github.io. Guarded
+      # like the npm publish: a [skip ci] commit only when the trust root changed,
+      # a tag only when v<version> doesn't already exist.
+      - name: Commit integrity trust root + tag the release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v$VERSION"
+          node scripts/sync-repo-integrity.mjs gh-pages-publish
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add integrity/
+          if git diff --cached --quiet; then
+            echo "::notice::integrity trust root already up to date."
+          else
+            git commit -m "chore(integrity): sync SDK trust root for ${TAG} [skip ci]"
+            git push origin HEAD:main
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "::notice::tag ${TAG} already exists — skipping."
+          else
+            git tag -a "${TAG}" -m "@immediately-run/sdk ${VERSION}"
+            git push origin "refs/tags/${TAG}"
+          fi
 
       - name: Deploy to GitHub Pages
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
