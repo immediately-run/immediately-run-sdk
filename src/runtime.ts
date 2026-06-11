@@ -13,6 +13,7 @@
 // is unchanged here — this only wires the discovery + handshake fields so the check
 // exists when app-pinned versions become real.
 import { sendMessage, addListener } from './sandboxUtils';
+import { SDK_VERSION } from './version';
 
 // `getHostRuntime` + `ImmediatelyRunGlobal` live in the leaf `hostRuntime` module
 // (imports nothing) and are re-exported here for a stable public API. This breaks
@@ -26,9 +27,10 @@ export type { ImmediatelyRunGlobal } from './hostRuntime';
  *  Additive-only (§9); bump only for a backwards-compatible extension. */
 export const SDK_PROTOCOL_VERSION = '1.0.0';
 
-/** This SDK's package version. Kept in step with package.json (a build step can
- *  inject it later; a constant is fine while versions are still effectively fixed). */
-export const SDK_VERSION = '0.4.0';
+/** This SDK's package version, baked from package.json at build (SP2-6,
+ *  `scripts/gen-version.mjs`). Re-exported so the public surface is unchanged
+ *  (`@immediately-run/sdk` → `SDK_VERSION`); imported above for the handshake. */
+export { SDK_VERSION };
 
 /** This SDK's handshake payload — the version + protocol the host records + checks
  *  against `HOST_PROTOCOL_VERSION` (§6/T45). */

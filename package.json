@@ -25,6 +25,8 @@
   ],
   "sideEffects": false,
   "scripts": {
+    "gen:version": "node scripts/gen-version.mjs",
+    "prebuild": "node scripts/gen-version.mjs",
     "build": "tsup",
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",

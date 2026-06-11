@@ -377,5 +377,8 @@
     "parseTarget",
     "repositoryPrefixURL",
     "underAppRoot"
+  ],
+  "version": [
+    "SDK_VERSION"
   ]
 }
