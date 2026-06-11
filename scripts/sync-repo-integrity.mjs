@@ -12,9 +12,22 @@
  *
  * This copies `<pubDir>/v/<V>/integrity.json` → `integrity/v<V>/integrity.json`
  * for every version present in the publish dir. Idempotent: a manifest already
- * committed with identical bytes is left untouched (a published version dir is
- * immutable). Exits 0 always; prints the set of changed versions so CI can decide
- * whether to commit.
+ * committed with identical bytes is left untouched.
+ *
+ * IMMUTABILITY GUARD: a published version's artifact is immutable — its gh-pages
+ * bytes, its git-tag integrity, and its npm tarball must never change once the
+ * version is committed here. So if a freshly-built manifest DIFFERS from the one
+ * already committed for that version, this FAILS instead of silently following
+ * the new bytes. That is the exact divergence that broke prod: code landed on
+ * `main` after the `v0.8.0` tag (R3-19, R3-21) without a version bump, the CI
+ * rebuilt+republished `v/0.8.0/` from the newer `main`, and the host's git-at-tag
+ * pin no longer matched the served bytes → integrity verification failed closed.
+ * The guard runs BEFORE the gh-pages deploy step, so a violation also stops the
+ * mutated bytes from ever being published. The fix for a real change is always to
+ * bump the package version (a new, never-published `v<N>` dir is written freely).
+ *
+ * Exits 0 on success (prints the set of changed versions so CI can decide whether
+ * to commit); exits 1 on an immutability violation.
  *
  * Usage: node scripts/sync-repo-integrity.mjs <pubDir>   (the gh-pages payload)
  */
@@ -24,24 +37,51 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+/** Thrown when a freshly-built manifest would overwrite an already-committed one
+ *  with different bytes — i.e. a published version's artifact was mutated. */
+export class ImmutabilityViolation extends Error {
+  constructor(versions) {
+    super(
+      `Immutability violation: the integrity trust root for already-published ` +
+        `version(s) [${versions.join(', ')}] would change. A published SDK version ` +
+        `is immutable — its gh-pages bytes, git-tag integrity, and npm tarball must ` +
+        `never change once released. Bump the package version instead of re-publishing ` +
+        `${versions.length > 1 ? 'these versions' : 'this version'} with different bytes.`,
+    );
+    this.name = 'ImmutabilityViolation';
+    this.versions = versions;
+  }
+}
+
 /**
  * Plan + apply the sync. Returns the list of versions whose repo manifest was
- * created or updated (empty ⇒ nothing to commit). Pure-ish: only touches
- * `<repoRoot>/integrity/`.
+ * newly created (empty ⇒ nothing to commit). Throws {@link ImmutabilityViolation}
+ * if any already-committed manifest would change. Only touches `<repoRoot>/integrity/`,
+ * and only after the violation check passes (no partial writes on violation).
  */
 export const syncRepoIntegrity = (pubDir, repoRoot = root) => {
   const pubVersionsDir = join(pubDir, 'v');
   if (!existsSync(pubVersionsDir)) return [];
+  const versions = readdirSync(pubVersionsDir).filter((v) =>
+    existsSync(join(pubVersionsDir, v, 'integrity.json')),
+  );
+  const srcOf = (v) => readFileSync(join(pubVersionsDir, v, 'integrity.json'));
+  const destOf = (v) => join(repoRoot, 'integrity', `v${v}`, 'integrity.json');
+
+  // Pass 1 — detect immutability violations before writing anything. A committed
+  // manifest whose bytes would change means a released version was mutated.
+  const violations = versions.filter(
+    (v) => existsSync(destOf(v)) && !readFileSync(destOf(v)).equals(srcOf(v)),
+  );
+  if (violations.length) throw new ImmutabilityViolation(violations.sort());
+
+  // Pass 2 — write only never-committed versions (an existing dest is, post-Pass-1,
+  // guaranteed byte-identical ⇒ a no-op).
   const changed = [];
-  for (const version of readdirSync(pubVersionsDir)) {
-    const src = join(pubVersionsDir, version, 'integrity.json');
-    if (!existsSync(src)) continue; // a version dir without a manifest yet
-    const srcBytes = readFileSync(src);
-    const dest = join(repoRoot, 'integrity', `v${version}`, 'integrity.json');
-    // Immutable: skip an identical, already-committed manifest.
-    if (existsSync(dest) && readFileSync(dest).equals(srcBytes)) continue;
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, srcBytes);
+  for (const version of versions) {
+    if (existsSync(destOf(version))) continue;
+    mkdirSync(dirname(destOf(version)), { recursive: true });
+    writeFileSync(destOf(version), srcOf(version));
     changed.push(version);
   }
   return changed.sort();
@@ -55,7 +95,18 @@ if (isMain) {
     process.exit(1);
   }
   // Optional repoRoot for tests; defaults to this repo. The CI run omits it.
-  const changed = syncRepoIntegrity(pubDir, process.argv[3] ?? root);
+  let changed;
+  try {
+    changed = syncRepoIntegrity(pubDir, process.argv[3] ?? root);
+  } catch (err) {
+    if (err instanceof ImmutabilityViolation) {
+      // `::error::` surfaces it as a red CI annotation; the non-zero exit fails the
+      // release job BEFORE the gh-pages deploy, so the mutated bytes never publish.
+      console.error(`::error::${err.message}`);
+      process.exit(1);
+    }
+    throw err;
+  }
   if (changed.length === 0) {
     console.log('Repo integrity trust root already up to date — nothing to commit.');
   } else {

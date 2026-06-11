@@ -56,15 +56,38 @@ describe('sync-repo-integrity (SDK repo trust root, SP2-2)', () => {
     expect(out).toMatch(/already up to date/i);
   });
 
-  it('re-syncs a version whose manifest bytes changed (tamper/repair)', () => {
+  it('REJECTS a published version whose manifest bytes changed (immutability guard)', () => {
+    // A version is committed (= released + tagged). Its artifact is immutable.
     writeManifest(pubDir, '0.8.0', { version: '0.8.0', files: { a: 'sha384-AAA' } });
     runNode('sync-repo-integrity.mjs', [pubDir, repoRoot]);
-    // The published bytes change (e.g. a corrected hash) → the repo follows.
+
+    // Now the published bytes change WITHOUT a version bump — the exact divergence
+    // that broke prod (R3-19/R3-21 mutating 0.8.0). The guard must fail, not follow.
     writeManifest(pubDir, '0.8.0', { version: '0.8.0', files: { a: 'sha384-BBB' } });
-    const out = runNode('sync-repo-integrity.mjs', [pubDir, repoRoot]);
-    expect(out).toMatch(/CHANGED_VERSIONS=0\.8\.0/);
+    let err: { status?: number; stderr?: string } | undefined;
+    try {
+      runNode('sync-repo-integrity.mjs', [pubDir, repoRoot]);
+    } catch (e) {
+      err = e as { status?: number; stderr?: string };
+    }
+    expect(err).toBeDefined();
+    expect(err!.status).toBe(1);
+    expect(String(err!.stderr)).toMatch(/Immutability violation.*0\.8\.0/);
+    expect(String(err!.stderr)).toMatch(/Bump the package version/);
+
+    // The committed trust root is left UNTOUCHED — no partial mutation.
     const dest = join(repoRoot, 'integrity', 'v0.8.0', 'integrity.json');
-    expect(JSON.parse(readFileSync(dest, 'utf8')).files.a).toBe('sha384-BBB');
+    expect(JSON.parse(readFileSync(dest, 'utf8')).files.a).toBe('sha384-AAA');
+  });
+
+  it('still writes a NEW (never-published) version freely alongside an unchanged one', () => {
+    writeManifest(pubDir, '0.8.0', { version: '0.8.0', files: { a: 'sha384-AAA' } });
+    runNode('sync-repo-integrity.mjs', [pubDir, repoRoot]);
+    // Bump: 0.8.1 is new; 0.8.0 is present+identical (no-op, not a violation).
+    writeManifest(pubDir, '0.8.1', { version: '0.8.1', files: { a: 'sha384-BBB' } });
+    const out = runNode('sync-repo-integrity.mjs', [pubDir, repoRoot]);
+    expect(out).toMatch(/CHANGED_VERSIONS=0\.8\.1/);
+    expect(existsSync(join(repoRoot, 'integrity', 'v0.8.1', 'integrity.json'))).toBe(true);
   });
 });
 
