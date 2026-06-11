@@ -56,6 +56,14 @@ jobs:
       # ingests them from git-at-tag, never from immediately-run.github.io. Guarded
       # like the npm publish: a [skip ci] commit only when the trust root changed,
       # a tag only when v<version> doesn't already exist.
+      #
+      # IMMUTABILITY GUARD: sync-repo-integrity.mjs FAILS (exit 1) if an
+      # already-committed version's manifest would change — i.e. a published
+      # version's bytes were mutated without a version bump. It runs BEFORE the
+      # gh-pages deploy below, so a violation also stops the mutated bytes from
+      # being published. This is what would have caught the 0.8.0 divergence
+      # (R3-19/R3-21 landed on main after the v0.8.0 tag without a bump); the fix
+      # is always to bump the package version.
       - name: Commit integrity trust root + tag the release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
