@@ -33,13 +33,14 @@
     "protocolStream.js": "sha384-Gn5fqHf+BtzBRzDyUDWg8BvjBb58CXK7HGs3XcD9/Jye7ELDOyXmvSMMzoIjVjdL",
     "pushChannel.js": "sha384-r8ekmtU+QzEDkjTNmA7QWEQtBwrWlyYi3O3lyM1iQDHtc4Tl+o9ZuuYHloUcluvN",
     "routing.js": "sha384-SNtv4xlzV/5m5JRUvY5ftdrVZrxgLQ9kyFMKprKYPKGds/KicBvJvQieQGDJVHrG",
-    "runtime.js": "sha384-MIAKZDo49PJ0vABe6uMnSLldTQC13juvMEDfPg7Tt3FrEZEJ3QP9FyCUKuDJKrZ6",
+    "runtime.js": "sha384-AVegsOiqHDvfl0/FQ6Wm+RMHoIRMhpD1UqTcRRg8lgCtOSIhCmD5rzHYuoZGFuK5",
     "sandboxTypes.js": "sha384-8drn3qStSxJvVeXMLTVlLiVSo9yJXoUL6hGVAYtby3OqNM6nvBzf+pzKDbe9uz9M",
     "sandboxUtils.js": "sha384-DtzskI8A3tujA62ARQXbhmHRjeb/PB/x+mIx/RON1oD35K2FNBO4kuirlaQxrGPP",
     "secrets.js": "sha384-nG9JYnLWVgIIXlLouTL8gIDPQ0aKwzwPLc7b62OKAwynXxhT3+WvPPM7Ih50ST4z",
     "tasks.js": "sha384-ydamqDWuZr/dKsXPNDFWeF6aiT5S6/678aKWilpfwf8OyxNT9TXBmXGDVzballN1",
     "theme.js": "sha384-87OvSC0Msilr0mEK2ILf5qJ95PFY1xYCKMjCd0ldT70jZRRgPtE2t0HJUrwaR5oP",
     "urlUtils.js": "sha384-MgbAeajZm7OcCpEF+HFfj0qfDxJDcLX+3TCiPr03vt4O56XgWQQTPjm6Cm6pgvcW",
-    "manifest.json": "sha384-wnkrqjiPVFZx/KKtuGl8eBSWofYKooiWL4MTGaLvNbI0wSQbWbA5Ti21pnpHHGs6"
+    "version.js": "sha384-+60bbfVIlcyRfiAEg4isYlmPx/T/o8uTZytHIaXkhXDdvFLbSbKnLIb49iX8rTb5",
+    "manifest.json": "sha384-46J91CDESu7JUM8ZtU3sVSlLXkiqCXCXmZsEiXoNDmoLp+MU865K0RhNVfdRCEVA"
   }
 }
