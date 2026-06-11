@@ -17,5 +17,7 @@ export * from './netFetch';
 export * from './secrets';
 export * from './tasks';
 export * from './runtime';
+export * from './irMarkers';
+export * from './ready';
 export * from './protocolStream';
 export * from './sandboxTypes';
