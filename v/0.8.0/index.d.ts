@@ -9,7 +9,7 @@ export { HostTheme, getHostTheme, onHostThemeChange, setHostTheme, useHostTheme 
 export { EditorContext, getEditorContext, onEditorContextChange, useEditorContext } from './editorContext.js';
 export { EditorOpenError, EditorWriteError, createFile, createFolder, deleteEntry, openInEditor, renameEntry, uploadFile } from './editor.js';
 export { FormFactor, FormFactorClass, Orientation, getFormFactor, onFormFactorChange, useFormFactor } from './formFactor.js';
-export { GrantRecord, Member, MountQuery, ResolvedUser, Role, SandboxMount, SpaceError, SpaceInfo, createSpace, findMount, getAppMountPath, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount } from './mounts.js';
+export { GrantRecord, Member, MountQuery, MountRemoveReason, RemovedMount, ResolvedUser, Role, SandboxMount, SpaceError, SpaceInfo, createSpace, findMount, getAppMountPath, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount } from './mounts.js';
 export { ContributeMode, ContributeOptions, ContributionEvent, ContributionResult, contribute } from './contribute.js';
 export { ApiMethod, getCatalog, invoke, invokeStream, onCatalogChange, useCatalog } from './catalog.js';
 export { RegionMessage, onRegionMessage, postToRegion, useRegionMessage } from './ipc.js';

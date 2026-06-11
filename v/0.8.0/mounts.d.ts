@@ -30,6 +30,23 @@ interface SandboxMount {
      */
     mode?: "ro" | "rw";
 }
+/**
+ * Why a mounted filesystem was removed, surfaced on the removed descriptor so an
+ * app can say *why* it vanished instead of failing mutely (auth-mount §"mount-remove"
+ * / AM2-4):
+ * - `revoked` — a durable grant was revoked (revokeGrant / consent withdrawal);
+ * - `unshared` — the granting user's membership was removed (or downgraded out);
+ * - `signed-out` — sign-out tore down every mount;
+ * - `unmounted` — the app's own `unmountSpace` (or region teardown);
+ * - `deleted` — the space was soft-deleted.
+ * An older host that sends no reason is read as `'revoked'` (most conservative).
+ */
+type MountRemoveReason = "revoked" | "unshared" | "signed-out" | "unmounted" | "deleted";
+/** A descriptor delivered as REMOVED to a mounts-change listener: the mount that
+ *  went away, plus the `reason` it did. */
+interface RemovedMount extends SandboxMount {
+    reason: MountRemoveReason;
+}
 /** A predicate-style matcher for {@link findMount} / {@link waitForMount}. */
 type MountQuery = {
     type?: string;
@@ -45,9 +62,13 @@ declare const getMounts: () => SandboxMount[];
 declare const findMount: (query: MountQuery) => SandboxMount | undefined;
 /**
  * Subscribe to mount changes. The listener is invoked immediately with the
- * current mounts, then again on every change. Returns an unsubscribe fn.
+ * current mounts (and an empty `removed`), then again on every change. The second
+ * argument carries the descriptors REMOVED by that change, each with its `reason`
+ * (AM2-4) — so an app can react to *why* a mount vanished (e.g. tell the user a
+ * shared space was `unshared` vs `deleted`). It is empty on adds and on the
+ * initial replay. Returns an unsubscribe fn.
  */
-declare const onMountsChange: (listener: (mounts: SandboxMount[]) => void) => (() => void);
+declare const onMountsChange: (listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void) => (() => void);
 /**
  * Resolves once a mount matching `query` is present (immediately if it already
  * is). Handy for "use it when it appears" — e.g.
@@ -164,4 +185,4 @@ declare const listGrants: () => Promise<GrantRecord[]>;
  *  best-effort live teardown. Elevated `spaces:admin`. */
 declare const revokeGrant: (appKey: string, spaceId: string) => Promise<void>;
 
-export { type GrantRecord, type Member, type MountQuery, type ResolvedUser, type Role, type SandboxMount, type SpaceError, type SpaceInfo, createSpace, findMount, getAppMountPath, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount };
+export { type GrantRecord, type Member, type MountQuery, type MountRemoveReason, type RemovedMount, type ResolvedUser, type Role, type SandboxMount, type SpaceError, type SpaceInfo, createSpace, findMount, getAppMountPath, getMounts, getSpaceMembers, listAllSpaces, listGrants, listSpaces, lookupUser, mount, mountSpace, onMountsChange, openAppSpace, requestMount, requestSpace, revokeGrant, setSpaceRole, shareSpace, unmountSpace, unshareSpace, useMounts, waitForMount };
