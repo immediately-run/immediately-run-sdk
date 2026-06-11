@@ -36,9 +36,35 @@ export interface SandboxMount {
   mode?: "ro" | "rw";
 }
 
+/**
+ * Why a mounted filesystem was removed, surfaced on the removed descriptor so an
+ * app can say *why* it vanished instead of failing mutely (auth-mount §"mount-remove"
+ * / AM2-4):
+ * - `revoked` — a durable grant was revoked (revokeGrant / consent withdrawal);
+ * - `unshared` — the granting user's membership was removed (or downgraded out);
+ * - `signed-out` — sign-out tore down every mount;
+ * - `unmounted` — the app's own `unmountSpace` (or region teardown);
+ * - `deleted` — the space was soft-deleted.
+ * An older host that sends no reason is read as `'revoked'` (most conservative).
+ */
+export type MountRemoveReason =
+  | "revoked"
+  | "unshared"
+  | "signed-out"
+  | "unmounted"
+  | "deleted";
+
+/** A descriptor delivered as REMOVED to a mounts-change listener: the mount that
+ *  went away, plus the `reason` it did. */
+export interface RemovedMount extends SandboxMount {
+  reason: MountRemoveReason;
+}
+
 interface MountService {
   getMounts(): SandboxMount[];
-  onChange(listener: (mounts: SandboxMount[]) => void): { dispose(): void };
+  onChange(
+    listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void,
+  ): { dispose(): void };
 }
 
 // `module.evaluation.module.bundler` is the sandbox bundler injected into the
@@ -68,9 +94,15 @@ export const findMount = (query: MountQuery): SandboxMount | undefined =>
 
 /**
  * Subscribe to mount changes. The listener is invoked immediately with the
- * current mounts, then again on every change. Returns an unsubscribe fn.
+ * current mounts (and an empty `removed`), then again on every change. The second
+ * argument carries the descriptors REMOVED by that change, each with its `reason`
+ * (AM2-4) — so an app can react to *why* a mount vanished (e.g. tell the user a
+ * shared space was `unshared` vs `deleted`). It is empty on adds and on the
+ * initial replay. Returns an unsubscribe fn.
  */
-export const onMountsChange = (listener: (mounts: SandboxMount[]) => void): (() => void) => {
+export const onMountsChange = (
+  listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void,
+): (() => void) => {
   const disposable = mountService().onChange(listener);
   return () => disposable.dispose();
 };
