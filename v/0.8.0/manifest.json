@@ -35,6 +35,7 @@
     "secrets.js",
     "tasks.js",
     "theme.js",
-    "urlUtils.js"
+    "urlUtils.js",
+    "version.js"
   ]
 }

@@ -16,10 +16,11 @@ export { RegionMessage, onRegionMessage, postToRegion, useRegionMessage } from '
 export { HostFetchInit, HostFetchResponse, HostFetchStreamEvent, HostFetchStreamResult, hostFetch, hostFetchStream } from './netFetch.js';
 export { SecretError, SecretGrant, SecretHints, SecretQuery, SecretType, SecretView, getSecrets, onSecretsChange, requestAddSecret, requestSecret, revokeSecret, useSecrets } from './secrets.js';
 export { FileCap, TaskInput, cancelTask, capFile, completeTask, getTaskInput, invokeTask, useTaskInput } from './tasks.js';
-export { SDK_PROTOCOL_VERSION, SDK_VERSION, SdkHandshake, announceHandshake, sdkHandshake } from './runtime.js';
+export { SDK_PROTOCOL_VERSION, SdkHandshake, announceHandshake, sdkHandshake } from './runtime.js';
 export { StreamError, StreamFrame, StreamTransport, consumeStream, protocolStream } from './protocolStream.js';
 export { EvaluationContext, FileQueryResult, FilesMetadata, Metadata, MetadataQueryFunction, MetadataQueryResult, ModuleExports } from './sandboxTypes.js';
 export { ImmediatelyRunGlobal, getHostRuntime } from './hostRuntime.js';
+export { SDK_VERSION } from './version.js';
 import 'react';
 import './TinkerableContext.js';
 import './RoutingSpec.js';

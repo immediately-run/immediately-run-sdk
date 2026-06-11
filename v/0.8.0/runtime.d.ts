@@ -1,11 +1,10 @@
+export { SDK_VERSION } from './version.js';
 export { ImmediatelyRunGlobal, getHostRuntime } from './hostRuntime.js';
 
 /** The wire protocol (postMessage envelope / channels / methods) THIS SDK speaks.
  *  Additive-only (§9); bump only for a backwards-compatible extension. */
 declare const SDK_PROTOCOL_VERSION = "1.0.0";
-/** This SDK's package version. Kept in step with package.json (a build step can
- *  inject it later; a constant is fine while versions are still effectively fixed). */
-declare const SDK_VERSION = "0.4.0";
+
 /** This SDK's handshake payload — the version + protocol the host records + checks
  *  against `HOST_PROTOCOL_VERSION` (§6/T45). */
 interface SdkHandshake {
@@ -21,4 +20,4 @@ declare const sdkHandshake: () => SdkHandshake;
  */
 declare function announceHandshake(): () => void;
 
-export { SDK_PROTOCOL_VERSION, SDK_VERSION, type SdkHandshake, announceHandshake, sdkHandshake };
+export { SDK_PROTOCOL_VERSION, type SdkHandshake, announceHandshake, sdkHandshake };

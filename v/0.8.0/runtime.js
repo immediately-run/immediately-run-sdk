@@ -1,7 +1,7 @@
 import { sendMessage, addListener } from "./sandboxUtils";
+import { SDK_VERSION } from "./version";
 import { getHostRuntime } from "./hostRuntime";
 const SDK_PROTOCOL_VERSION = "1.0.0";
-const SDK_VERSION = "0.4.0";
 const sdkHandshake = () => ({
   sdkVersion: SDK_VERSION,
   protocolVersion: SDK_PROTOCOL_VERSION
