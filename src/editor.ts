@@ -47,6 +47,37 @@ const editorRequest = async (
 export const openInEditor = (path: string): Promise<void> => editorRequest('open', { path });
 
 // ---------------------------------------------------------------------------
+// Editor SESSION management (EDITOR_AS_APP_SPEC §5.1; editor-as-app plan Phase
+// 03). Unlike `openInEditor` (the explorer's cross-app intent, `editor:open`),
+// these drive the editor's OWN open-tab set + active file, so they are gated by
+// the editor app's `editor:document` capability — a file explorer holding only
+// `editor:open` cannot call them. The host re-validates the path against the live
+// working tree; the editor itself stays host-owned (§2 recursion boundary).
+// ---------------------------------------------------------------------------
+
+/** An error from a session intent ({@link setActiveFile} / {@link closeFile}),
+ *  carrying a machine-readable `.code`. */
+export interface EditorSessionError extends Error {
+  code:
+    | 'forbidden' // the frame lacks `editor:document`
+    | 'not-found' // no such file in the live working tree
+    | 'invalid-params' // the path was empty / contained `..` / looked like a URI
+    | 'no-target' // there is no host editor session
+    | 'unknown';
+}
+
+/** Switch the editor's active file to `path`, opening it (adding a tab) if it is
+ *  not already open — native `setActiveFile` parity. Rejects with an
+ *  {@link EditorSessionError} (`.code`) if the path is missing/invalid or this app
+ *  lacks `editor:document`. */
+export const setActiveFile = (path: string): Promise<void> =>
+  editorRequest('setActive', { path });
+
+/** Close `path`'s tab in the editor (remove it from the open set) — native
+ *  `closeFile` parity. Rejects with an {@link EditorSessionError} (`.code`). */
+export const closeFile = (path: string): Promise<void> => editorRequest('close', { path });
+
+// ---------------------------------------------------------------------------
 // Working-tree mutation (UI_AS_APPS_SPEC §4 / EDITOR_AS_APP_SPEC §5.2). The file
 // explorer NAMES a working-tree path and the HOST performs the COW write (and
 // refreshes the preview) — the app holds no write port; it asks. Gated by the
