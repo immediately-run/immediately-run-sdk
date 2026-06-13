@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { protocolRequest } from './sandboxUtils';
 import { getHostRuntime } from './hostRuntime';
+import { mountMatches } from './mountMatch';
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -34,6 +35,15 @@ export interface SandboxMount {
    * Absent on the primary repo mount (treated as read-write).
    */
   mode?: "ro" | "rw";
+  /**
+   * Human-readable label for the mount — the space's display name, or the repo
+   * label for the primary working-tree mount (R3-69). Use this to show users and
+   * agents *what* a mount is: the `path` (`/mnt/{hash}`) and `id` (the spaceId)
+   * are opaque, and space names are not unique, so neither alone tells you which
+   * filesystem you're looking at. Absent when the host can't resolve a name
+   * (older host, or a name it never learned) — fall back to `id`/`path`.
+   */
+  name?: string;
 }
 
 /**
@@ -74,17 +84,19 @@ const mountService = (): MountService => {
   return module.evaluation.module.bundler.mounts;
 };
 
-/** A predicate-style matcher for {@link findMount} / {@link waitForMount}. */
-export type MountQuery = { type?: string; id?: string; path?: string };
+/** A predicate-style matcher for {@link findMount} / {@link waitForMount}. Any
+ *  combination of coordinates; `name` matches the human-readable mount label. */
+export type MountQuery = { type?: string; id?: string; path?: string; name?: string };
 
 const matches = (mount: SandboxMount, query: MountQuery): boolean =>
-  (query.type === undefined || mount.type === query.type) &&
-  (query.id === undefined || mount.id === query.id) &&
-  (query.path === undefined || mount.path === query.path);
+  mountMatches(mount, query);
 
 /**
  * Returns the mounts currently available. Poll this whenever you need a one-off
  * read; use {@link onMountsChange} or {@link useMounts} to react to changes.
+ * Each descriptor carries its `id` (the spaceId), `path` (`/mnt/{hash}`) and —
+ * when the host can resolve it — a human-readable `name` (R3-69), so this doubles
+ * as a queryable mount→space mapping for showing or locating a mount by name.
  */
 export const getMounts = (): SandboxMount[] => mountService().getMounts();
 
