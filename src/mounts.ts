@@ -304,6 +304,14 @@ export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
   return waitForMount({ id: mount.id ?? mount.path });
 };
 
+/**
+ * List every app that has per-user settings — the elevated "file commander"
+ * enumeration. Pair with {@link openSettingsOf} to mount any of them. Rejects
+ * `forbidden` unless this app holds the first-party-only `settings:all`.
+ */
+export const listSettingsApps = (): Promise<string[]> =>
+  settingsRequest<string[]>('list');
+
 /** Create a brand-new, empty platform-hosted space. The app reaches it (or any
  *  other space) afterward through the {@link requestMount} powerbox or
  *  {@link mountSpace}; there is no implicit per-app binding. */
