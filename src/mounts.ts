@@ -16,8 +16,8 @@ export const getAppMountPath = (): string => getHostRuntime()?.appMountPath ?? '
 /**
  * A filesystem mount available to the sandbox, mirrored from the host window.
  *
- * Mounts appear on demand — call {@link openAppSpace} / {@link mountSpace} to ask
- * the host to mount a Firestore-backed "space"; it appears at `/spaces/{id}`.
+ * Mounts appear on demand — call {@link openSettings} for this app's own settings,
+ * or {@link mountSpace} / {@link requestMount} to mount a Firestore-backed "space".
  * Read or subscribe to the set, then access the files through the `fs` module at
  * the mount's `path`.
  */
@@ -200,17 +200,6 @@ const requestMountInternal = async (
 };
 
 /**
- * Open this app's workspace for the signed-in user (the zero-config path). The
- * `slot` names which workspace (default `'default'`); pass distinct slots for
- * multiple filesystems in one app. On a missing slot the host shows a
- * create-or-pick dialog in which the user makes an EXPLICIT read-only vs
- * read-write decision (no default). Rejects with a {@link SpaceError} (`.code`)
- * on cancel; observe the granted access via {@link SandboxMount.mode}.
- */
-export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
-  requestMountInternal('open', { slot });
-
-/**
  * Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) —
  * `scheme:locator`, e.g. `space:{spaceId}` or `github:owner/repo@ref`. Backend-blind:
  * the host resolves the scheme. A scheme with no resolver rejects with
@@ -315,9 +304,11 @@ export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
   return waitForMount({ id: mount.id ?? mount.path });
 };
 
-/** Create a brand-new space, optionally binding it to this app (a slot). */
+/** Create a brand-new, empty platform-hosted space. The app reaches it (or any
+ *  other space) afterward through the {@link requestMount} powerbox or
+ *  {@link mountSpace}; there is no implicit per-app binding. */
 export const createSpace = (
-  opts: { name?: string; slot?: string; bindToApp?: boolean } = {}
+  opts: { name?: string } = {}
 ): Promise<SandboxMount> => requestMountInternal('create', opts);
 
 /** List spaces you can access — all of them, or just those bound to this app. */
