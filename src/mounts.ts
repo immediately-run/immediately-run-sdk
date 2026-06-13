@@ -237,6 +237,72 @@ export const requestMount = (): Promise<SandboxMount> =>
 /** @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
 export const requestSpace = requestMount;
 
+// ---------------------------------------------------------------------------
+// Settings — the per-user "~/.config"-style space (UI_AS_APPS_SPEC §3.3/§3.5/§8.2).
+// Each app gets its OWN settings subdir, auto-provisioned and chroot'd by the host
+// (no dialog, no powerbox). Read/write it through the returned mount's filesystem
+// port — there is deliberately no key/value get/set API; settings are just files.
+// ---------------------------------------------------------------------------
+
+// Issue a `protocol-settings` request, unwrapping {ok,data} and throwing a typed
+// SpaceError on failure (mirrors `request` for the spaces surface).
+const settingsRequest = async <T = unknown>(
+  method: string,
+  query: Record<string, unknown> = {},
+): Promise<T> => {
+  const res = (await protocolRequest('settings', method, [query])) as SpaceResult;
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? 'settings request failed') as SpaceError;
+    err.code = (res?.code as SpaceError['code']) ?? 'unknown';
+    throw err;
+  }
+  return res.data as T;
+};
+
+/**
+ * Mount this app's per-user settings — a private `~/.config`-style filesystem,
+ * auto-provisioned for the signed-in user and isolated to THIS app (the host
+ * chroots it; a different app can never name it). Read/write config files through
+ * the returned mount. Rejects with a {@link SpaceError} (`auth-required`) when
+ * signed out. Capability: baseline `settings:app`.
+ */
+export const openSettings = async (): Promise<SandboxMount> => {
+  const mount = await settingsRequest<SandboxMount>('open');
+  return waitForMount({ id: mount.id ?? mount.path });
+};
+
+/**
+ * One-time SEED of this app's settings from the parent it declares as `forkOf`
+ * (its `package.json` `immediately.run.forkOf`) — so a fork inherits your
+ * preferences from the original app (UI_AS_APPS_SPEC §3.4). The host asks the user
+ * to confirm (a full consent when the apps have different owners, a light confirm
+ * when the same owner publishes both) and copies the parent's settings into this
+ * app's own subdir, skipping any file you already have. Non-throwing: resolves
+ * `{ ok:false, code }` on decline (`cancelled`), no declared parent (`forbidden`),
+ * or signed-out (`auth-required`). After `{ ok:true }`, read {@link openSettings}.
+ * Capability: baseline `settings:fork`.
+ */
+export const importSettingsFromParent = async (): Promise<
+  { ok: true; copied: number } | { ok: false; code: string }
+> => {
+  try {
+    const data = await settingsRequest<{ copied: number }>('importFromParent');
+    return { ok: true, copied: data.copied };
+  } catch (e) {
+    return { ok: false, code: (e as SpaceError).code ?? 'unknown' };
+  }
+};
+
+/**
+ * Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file
+ * commander" surface. Rejects `forbidden` unless this app holds the first-party-
+ * only `settings:all` capability. Most apps want {@link openSettings} instead.
+ */
+export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
+  const mount = await settingsRequest<SandboxMount>('openOf', { appKey });
+  return waitForMount({ id: mount.id ?? mount.path });
+};
+
 /** Create a brand-new space, optionally binding it to this app (a slot). */
 export const createSpace = (
   opts: { name?: string; slot?: string; bindToApp?: boolean } = {}
