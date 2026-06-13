@@ -34,6 +34,29 @@ export const capFile = (
   opts: { mode: 'ro' | 'rw' },
 ): FileCap => ({ $cap: 'file', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
 
+/** A delegated DIRECTORY capability marker for a task param (D2). Like {@link FileCap}
+ *  but `relPath` names a DIRECTORY: the host chroots the callee AT that directory
+ *  (the whole subtree). Used for the `pick-file` `roots` — one chroot per root. */
+export interface DirCap {
+  $cap: 'dir';
+  mountId: string;
+  relPath: string;
+  mode: 'ro' | 'rw';
+}
+
+/**
+ * Build a delegated DIRECTORY reference for a task param (the directory analogue of
+ * {@link capFile}). The host resolves it against YOUR OWN grants and mints an
+ * attenuated, task-scoped chroot of that directory for the callee — you can only
+ * delegate a directory you already hold (attenuation only, never escalation):
+ *
+ *   roots: [capDir({ mountId: 'space:abc', relPath: 'boards' }, { mode: 'rw' })]
+ */
+export const capDir = (
+  ref: { mountId: string; relPath: string },
+  opts: { mode: 'ro' | 'rw' },
+): DirCap => ({ $cap: 'dir', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
+
 /**
  * Invoke another app via a task contract and await its typed result (Recipe B).
  * Rejects with a machine `.code` on refusal: `cancelled` (user dismissed the
