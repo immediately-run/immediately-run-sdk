@@ -191,7 +191,9 @@ const requestMountInternal = async (
  * Open this app's workspace for the signed-in user (the zero-config path). The
  * `slot` names which workspace (default `'default'`); pass distinct slots for
  * multiple filesystems in one app. On a missing slot the host shows a
- * create-or-pick dialog. Rejects with a {@link SpaceError} (`.code`) on cancel.
+ * create-or-pick dialog in which the user makes an EXPLICIT read-only vs
+ * read-write decision (no default). Rejects with a {@link SpaceError} (`.code`)
+ * on cancel; observe the granted access via {@link SandboxMount.mode}.
  */
 export const openAppSpace = (slot = 'default'): Promise<SandboxMount> =>
   requestMountInternal('open', { slot });
@@ -212,11 +214,19 @@ export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
 
 /**
  * Ask the user to grant a filesystem to this app — the §8.6 powerbox. The app
- * asks; the HOST shows the user their mounts and the access choice (which mount,
- * an optional subtree, read-only vs read-write); the USER picks or declines. The
- * app never sees the list — it resolves with the single granted mount, or rejects
- * with a {@link SpaceError} (`cancelled`) if declined. The granted scope is
- * enforced host-side: the mount is chroot'd / `ro`-limited accordingly.
+ * asks; the HOST shows the user their spaces and, for the chosen one, its PROJECT
+ * FOLDERS (§8.7). The user picks ONE project — so a shared space opens scoped to
+ * just that project, never the whole space — and makes an EXPLICIT read-only vs
+ * read-write decision (there is no default). The app never sees the list; it
+ * resolves with the single granted mount, or rejects with a {@link SpaceError}
+ * (`cancelled`) if declined. The granted scope is enforced host-side: the mount
+ * is chroot'd to the project folder and `ro`-limited accordingly, so paths
+ * outside the project are unnameable and writes on a `ro` grant fail `EROFS`.
+ *
+ * A project folder is the macOS-bundle-like unit an app works in inside a space;
+ * the host records which app a folder belongs to (a `.immediately.run/` sidecar),
+ * so the picker can surface the app's own projects or let the user create a new
+ * one. Observe the granted access via {@link SandboxMount.mode}.
  *
  * Backend-general (§3.5): the picker offers whatever mounts the user has (today,
  * their spaces). Returns the granted mount by its universal id.
