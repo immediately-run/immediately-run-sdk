@@ -46,6 +46,48 @@ const editorRequest = async (
  */
 export const openInEditor = (path: string): Promise<void> => editorRequest('open', { path });
 
+/**
+ * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6
+ * Delta A). v1 supports only an optional repo-relative `path` in the CURRENT repo
+ * (self-scoped — the app you are already running; the host navigates within the
+ * current route, never to another repo). A URI or `..` path is refused
+ * `invalid-params`. Editing a file in one of your *mounts* (a space) is the
+ * `edit-file` task, not this.
+ */
+export interface EditTarget {
+  /** A repo-relative working-tree path in the current repo to focus once in edit
+   *  mode (e.g. `src/App.tsx`). Omit to edit the current route's entry. */
+  path?: string;
+}
+
+/** An error from {@link requestEdit}, carrying a machine-readable `.code`. */
+export interface RequestEditError extends Error {
+  code:
+    | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer) — HIDE the affordance
+    | 'forbidden' // the host refuses (e.g. a cross-repo / out-of-scope target)
+    | 'invalid-params' // the target was malformed (URI / `..` / a non-current repo)
+    | 'no-target' // there is no host editor session to enter
+    | 'unknown';
+}
+
+/**
+ * Ask the host to enter the **edit experience** for the app you are running —
+ * the present→edit transition (`/present/...` → `/edit/...`) an app cannot make
+ * itself. This is an INTENT (§2 recursion boundary): the app asks, the HOST
+ * performs the visible, user-observable navigation and draws all editor chrome;
+ * the app never navigates or paints chrome.
+ *
+ * Use it to offer an "edit this" affordance from a run/present-mode app that opens
+ * the app's own source in the platform editor — instead of shipping a bespoke
+ * in-app editor (EDITOR_FIRST_EDITING_SPEC §1).
+ *
+ * Resolves once the host begins the transition; rejects with a
+ * {@link RequestEditError} (`.code`). Treat `read-only`/`forbidden` as "editing is
+ * not available — hide the affordance," never as an error to surface to the user.
+ */
+export const requestEdit = (target?: EditTarget): Promise<void> =>
+  editorRequest('requestEdit', target ? { ...target } : {});
+
 // ---------------------------------------------------------------------------
 // Editor SESSION management (EDITOR_AS_APP_SPEC §5.1; editor-as-app plan Phase
 // 03). Unlike `openInEditor` (the explorer's cross-app intent, `editor:open`),
