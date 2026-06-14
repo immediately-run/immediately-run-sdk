@@ -6,6 +6,7 @@ import { FileRouter } from './components/FileRouter';
 import { MainContent } from './components/MainContent';
 import { DEFAULT_MDX_COMPONENTS } from './components/MDXComponents';
 import { getInitialContext, updateContext } from './contextUtils';
+import { getInjectedMetadataEmitter, resolveMetadataSource } from './injectedBundler';
 import { MDXProvider } from './MDXProvider';
 import { ModuleCache, ModuleCacheContextProvider } from './moduleCache';
 import { Router } from './routing';
@@ -46,6 +47,11 @@ export const TinkerableApp = ({ routingSpec }: { routingSpec: RoutingSpec }) => 
     return removeListener;
   }, [setContext]);
   useEffect(() => {
+    // Phase 5 dual-mode (SDK_PACKAGING_SPEC §4/§8): prefer the injected bundler's
+    // metadata emitter (the live path, byte-identical); when the SDK is npm-fetched
+    // with no injection, `event` is undefined so `addListener` receives
+    // 'metadata-update' over the §4 transport instead, and `enable` is a no-op.
+    const source = resolveMetadataSource(getInjectedMetadataEmitter());
     const dispose = addListener(
       'metadata-update',
       ({ update }: Record<string, any>) => {
@@ -62,11 +68,9 @@ export const TinkerableApp = ({ routingSpec }: { routingSpec: RoutingSpec }) => 
               }
         );
       },
-      // @ts-ignore
-      module.evaluation.module.bundler.onMetadataChange
+      source.event
     );
-    // @ts-ignore
-    module.evaluation.module.bundler.onMetadataChangeEmitter.enable();
+    source.enable();
     return dispose;
   }, [setContext]);
 
