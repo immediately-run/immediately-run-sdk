@@ -278,6 +278,13 @@
     "validateMarker",
     "waitForMount"
   ],
+  "injectedBundler": [
+    "EventSource",
+    "InjectedMetadataEmitter",
+    "MetadataSource",
+    "getInjectedMetadataEmitter",
+    "resolveMetadataSource"
+  ],
   "ipc": [
     "RegionMessage",
     "onRegionMessage",
