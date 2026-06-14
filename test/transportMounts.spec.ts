@@ -8,7 +8,7 @@
 // `request-mounts` + cache); the mock host lives on `globalThis`, so it survives the
 // module reset and the freshly-loaded module subscribes to it.
 
-import { createMockHost, type MockHost } from './helpers/mockHost';
+import { createMockHost, type MockHost } from '../src/testing';
 
 type MountsModule = typeof import('../src/mounts');
 const load = (): MountsModule => {

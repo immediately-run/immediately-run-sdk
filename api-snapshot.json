@@ -429,6 +429,15 @@
     "invokeTask",
     "useTaskInput"
   ],
+  "testing": [
+    "HostMessage",
+    "MockHost",
+    "MockHostGlobalExtras",
+    "ProtocolCall",
+    "ProtocolResponder",
+    "SentMessage",
+    "createMockHost"
+  ],
   "theme": [
     "HostTheme",
     "getHostTheme",

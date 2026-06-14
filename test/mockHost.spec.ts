@@ -6,7 +6,7 @@
 
 import { addListener, sendMessage, protocolRequest } from '../src/sandboxUtils';
 import { getInjectedMetadataEmitter, resolveMetadataSource } from '../src/injectedBundler';
-import { createMockHost, type MockHost } from './helpers/mockHost';
+import { createMockHost, type MockHost } from '../src/testing';
 
 describe('mock host transport harness (npm-fetched §4 path)', () => {
   let host: MockHost;

@@ -1,16 +1,22 @@
-// Mock host transport — the in-CI emulation harness from TESTING_AUTOMATION_SPEC §3
-// (docs/specs/TESTING_AUTOMATION_SPEC.md). It implements the §4 host transport
-// (`sandboxUtils`' `HostTransport`: sendMessage / protocolRequest / onMessage) and
-// installs itself at the runtime-discovery global `globalThis.__immediatelyRun__`, so
-// a test drives the SDK's REAL transport-resolution path (`sandboxUtils.transport()`
-// → the npm-fetched §4 branch) rather than mocking `./sandboxUtils` wholesale.
+// Public testing utility — `@immediately-run/sdk/testing` (TESTING_AUTOMATION_SPEC
+// §3/§7). A mock host transport so apps built on this SDK can unit-test their host
+// interaction in CI, with no live bundler/host: drive the SDK's REAL transport path
+// by installing this at the §4 discovery global, then `emit()` host→app pushes and
+// assert your app reacts.
 //
-// Higher fidelity than the per-suite `mockTransport` helpers: those mock a narrow
-// interface and bypass `transport()`; this exercises the actual resolver + the
-// `addListener` type-filter + `protocolRequest` round-trip end to end. That is what
-// lets transport-level changes (e.g. R3-51b's metadata-update-over-the-transport
-// fallback, or mounts-over-the-transport once the host emits them) be verified in CI
-// without a live bundler — the gap that forced R3-51b to ship "partially verified".
+//   import { createMockHost } from '@immediately-run/sdk/testing';
+//   const host = createMockHost();
+//   host.install();                       // SDK now resolves this transport
+//   host.stubProtocol('spaces', 'list', () => ({ ok: true, data: [] }));
+//   // …render your app / call SDK functions…
+//   host.emit({ type: 'mount-add', mount: { path: '/spaces/a', type: 'firestore', id: 'a' } });
+//   expect(host.sent).toContainEqual({ type: 'request-mounts', data: {} });
+//   host.uninstall();
+//
+// It implements the `sandboxUtils` host transport (sendMessage / protocolRequest /
+// onMessage), so tests exercise the actual `transport()` resolution, the
+// `addListener` type-filter, and `protocolRequest` round-trips — higher fidelity
+// than mocking `./sandboxUtils` wholesale.
 
 /** A message pushed host → app, as it arrives on `onMessage`. */
 export interface HostMessage {
@@ -32,7 +38,7 @@ export interface ProtocolCall {
 }
 
 /** Responder stub for a `protocolRequest(protocol, method, …)`. */
-type ProtocolResponder = (params: unknown[]) => unknown;
+export type ProtocolResponder = (params: unknown[]) => unknown;
 
 /** Extra §4 discovery-global fields to publish alongside `transport` on install. */
 export interface MockHostGlobalExtras {
