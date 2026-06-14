@@ -299,6 +299,25 @@ export const resolveContentRef = async (ref: FileCap): Promise<{ path: string }>
   return { path };
 };
 
+/**
+ * Resolve a BATCH of content references in ONE consent round (plan 12 §E). When a
+ * board opens with several embedded references, pass them all here: the host
+ * coalesces them into a SINGLE consent prompt listing every target, instead of one
+ * prompt per reference. Same relay gate and per-viewer semantics as
+ * {@link resolveContentRef} (each ref's mount must already be held), applied to the
+ * whole set — it is all-or-nothing: the user allows the batch or declines it.
+ *
+ * Resolves `{ paths }` with the STABLE absolute path of each ref, in input order.
+ * Rejects with a {@link SpaceError}: `forbidden` (a referenced mount isn't held) or
+ * `cancelled` (the viewer declined).
+ *
+ *   const { paths } = await resolveContentRefs(board.references);
+ */
+export const resolveContentRefs = async (refs: FileCap[]): Promise<{ paths: string[] }> => {
+  const paths = await request<string[]>('resolveRefs', { refs });
+  return { paths };
+};
+
 // ---------------------------------------------------------------------------
 // Settings — the per-user "~/.config"-style space (UI_AS_APPS_SPEC §3.3/§3.5/§8.2).
 // Each app gets its OWN settings subdir, auto-provisioned and chroot'd by the host
