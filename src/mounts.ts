@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { protocolRequest } from './sandboxUtils';
+import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { getHostRuntime } from './hostRuntime';
 import { mountMatches } from './mountMatch';
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
@@ -95,12 +95,96 @@ interface MountService {
   ): { dispose(): void };
 }
 
-// `module.evaluation.module.bundler` is the sandbox bundler injected into the
-// evaluation context (same path the other SDK helpers reach for `messageBus`).
-const mountService = (): MountService => {
-  // @ts-ignore - injected by the sandbox runtime
-  return module.evaluation.module.bundler.mounts;
+// The stable key of a mount: its `id` (spaceId) when present, else its `path`.
+// Matches the sandbox `MountService.mountKey` so add/replace/remove agree on both
+// sides of the wire (a role downgrade re-announces the SAME key with `mode: 'ro'`).
+const mountKey = (m: SandboxMount): string => m.id ?? m.path;
+
+const MOUNT_REMOVE_REASONS: ReadonlySet<string> = new Set<MountRemoveReason>([
+  'revoked',
+  'unshared',
+  'signed-out',
+  'unmounted',
+  'deleted',
+]);
+
+// Normalize an over-the-wire `mount-remove` reason; an absent/unknown value (older
+// host) reads as `'revoked'`, the most conservative reading (mirrors the sandbox).
+const asMountRemoveReason = (value: unknown): MountRemoveReason =>
+  typeof value === 'string' && MOUNT_REMOVE_REASONS.has(value)
+    ? (value as MountRemoveReason)
+    : 'revoked';
+
+// The injected sandbox-bundler mount service (`module.evaluation.module.bundler.mounts`),
+// or null when the SDK is npm-fetched with no injection — same dual-mode shape as
+// `sandboxUtils.transport()` and the metadata emitter (SDK_PACKAGING_SPEC §4/§8).
+const injectedMountService = (): MountService | null => {
+  try {
+    // @ts-ignore - injected by the sandbox runtime
+    const svc = module?.evaluation?.module?.bundler?.mounts;
+    return svc && typeof svc.getMounts === 'function' ? svc : null;
+  } catch {
+    return null;
+  }
 };
+
+// Transport-backed descriptor cache (R3-51b): the npm-fetched fallback that builds
+// the same `getMounts()`/`onChange()` view the injected `bundler.mounts` provides,
+// directly from the host's `mount-add`/`mount-remove` messages over the §4 transport.
+// The host already posts these (it's how the in-iframe bundler service is populated);
+// the `MessagePort` a `mount-add` transfers is consumed by the sandbox runtime to wire
+// ZenFS and is irrelevant here — the SDK only mirrors the *descriptors*. A lazy
+// singleton so `getMounts`/`onMountsChange` share one cache, one subscription, and one
+// `request-mounts` replay (the host re-announces every current mount, like a poll).
+let transportSvc: MountService | null = null;
+
+const transportMountService = (): MountService => {
+  if (transportSvc) return transportSvc;
+  let mounts: SandboxMount[] = [];
+  const listeners = new Set<(m: SandboxMount[], r: RemovedMount[]) => void>();
+  const fire = (removed: RemovedMount[]) => {
+    for (const l of [...listeners]) l(mounts, removed);
+  };
+
+  addListener('mount-add', (msg: Record<string, any>) => {
+    const mount: SandboxMount | undefined = msg.mount;
+    if (!mount) return;
+    const key = mountKey(mount);
+    mounts = [...mounts.filter((m) => mountKey(m) !== key), mount];
+    fire([]);
+  });
+  addListener('mount-remove', (msg: Record<string, any>) => {
+    const key: string | undefined = msg.id ?? msg.path;
+    if (key == null) return;
+    const reason = asMountRemoveReason(msg.reason);
+    const removed = mounts.filter((m) => mountKey(m) === key).map((m) => ({ ...m, reason }));
+    if (removed.length === 0) return;
+    mounts = mounts.filter((m) => mountKey(m) !== key);
+    fire(removed);
+  });
+
+  // Ask the host to replay the current set (the matching `mount-add`s may have been
+  // sent before this SDK subscribed). Best-effort: a transport not yet ready throws.
+  try {
+    sendMessage('request-mounts');
+  } catch {
+    /* transport not ready — the live mount-add stream still populates the cache */
+  }
+
+  transportSvc = {
+    getMounts: () => mounts,
+    onChange: (listener) => {
+      listeners.add(listener);
+      listener(mounts, []); // immediate replay to the new subscriber
+      return { dispose: () => listeners.delete(listener) };
+    },
+  };
+  return transportSvc;
+};
+
+// Phase-5 dual mode: prefer the injected bundler service (the live path, behaviour
+// byte-for-byte unchanged); fall back to the transport-built cache when npm-fetched.
+const mountService = (): MountService => injectedMountService() ?? transportMountService();
 
 /** A predicate-style matcher for {@link findMount} / {@link waitForMount}. Any
  *  combination of coordinates; `name` matches the human-readable mount label. */
