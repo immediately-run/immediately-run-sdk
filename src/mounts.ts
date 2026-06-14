@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react';
 import { protocolRequest } from './sandboxUtils';
 import { getHostRuntime } from './hostRuntime';
 import { mountMatches } from './mountMatch';
+// Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
+// FileCap SHAPE without pulling that side effect into every `mounts` importer.
+import type { FileCap } from './tasks';
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -44,6 +47,21 @@ export interface SandboxMount {
    * (older host, or a name it never learned) — fall back to `id`/`path`.
    */
   name?: string;
+  /**
+   * The granted scopes of this mount (plan 12 §8.7 / §F): each `{subtree, mode}`
+   * is a path prefix you hold and at what access, at the mount's backend-natural
+   * paths. Use it to reason about per-path writability — which subtree is `rw` —
+   * WITHOUT probing `EROFS`. A single whole-mount grant is `[{ subtree: '/', mode }]`.
+   * Absent on the primary repo mount and on an older host that doesn't report it.
+   */
+  rules?: MountRule[];
+}
+
+/** One granted scope of a mount (plan 12 §F): a backend-natural path prefix and
+ *  the access mode there. The most specific (longest) matching rule governs a path. */
+export interface MountRule {
+  subtree: string;
+  mode: 'ro' | 'rw';
 }
 
 /**
@@ -237,6 +255,49 @@ export const requestMount = (): Promise<SandboxMount> =>
 
 /** @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
 export const requestSpace = requestMount;
+
+// ── content references (plan 12 §E / FILE_SHARING §7) ────────────────────────
+
+/**
+ * Build a persisted CONTENT REFERENCE to a file in a mount — a `{mountId, relPath}`
+ * pointer your app serializes into ITS OWN content (a board's JSON, an MDX file's
+ * frontmatter, an album manifest — the platform doesn't dictate the container) so a
+ * later viewer can resolve it. It is exactly the §5.7 {@link capFile} shape: ONE
+ * capability, two delivery modes — runtime delegation (a task param, authorized by
+ * the caller) vs a durable reference (authorized per-viewer by {@link resolveContentRef}).
+ * `relPath` is BACKEND-NATURAL, so the reference resolves to the SAME path for every
+ * viewer. Cross-app/cross-project references default to `ro`.
+ *
+ *   const ref = makeContentRef({ mountId: 'space:ACME', relPath: 'office-seating/desk.mdx' }, { mode: 'ro' });
+ */
+export const makeContentRef = (
+  ref: { mountId: string; relPath: string },
+  opts: { mode: 'ro' | 'rw' },
+): FileCap => ({ $cap: 'file', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
+
+/**
+ * Resolve a content reference your app found in content it ALREADY holds (plan 12
+ * §E). This is a RELAY, not a fabrication: the host honors it ONLY when your app
+ * already holds a grant to `ref.mountId` (else `forbidden`) — apps follow
+ * writer-authored links inside granted content; they cannot name a space from
+ * nothing (T27). The host runs a per-VIEWER consent prompt (named via the owning
+ * app's project sidecar), and existence is never leaked — a decline and a
+ * non-existent path are indistinguishable.
+ *
+ * On allow, the host APPENDS a read scope for the referenced path to your grant
+ * (durable; same §8.15 lifecycle) and returns the STABLE absolute `path` the file
+ * is mounted at — identical for every viewer, so a path the author stored resolves
+ * the same for you. Read it through the `fs` module at that path. Rejects with a
+ * {@link SpaceError}: `forbidden` (you don't hold the referenced mount) or
+ * `cancelled` (the viewer declined / the path doesn't exist — no oracle).
+ *
+ *   const { path } = await resolveContentRef(ref);
+ *   const text = await fs.promises.readFile(path, 'utf8');
+ */
+export const resolveContentRef = async (ref: FileCap): Promise<{ path: string }> => {
+  const path = await request<string>('resolveRef', { ref });
+  return { path };
+};
 
 // ---------------------------------------------------------------------------
 // Settings — the per-user "~/.config"-style space (UI_AS_APPS_SPEC §3.3/§3.5/§8.2).
