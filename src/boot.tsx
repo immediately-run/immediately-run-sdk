@@ -1,5 +1,7 @@
-import { FC, StrictMode, useEffect, useState } from 'react';
+import { FC, StrictMode, useEffect, useLayoutEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+
+import { emitMarkerOnce } from './markers';
 
 import { ErrorNotFound } from './components/errors';
 import { FileRouter } from './components/FileRouter';
@@ -81,6 +83,21 @@ export const TinkerableApp = ({ routingSpec }: { routingSpec: RoutingSpec }) => 
   );
 };
 
+// Boot marker emitter (LOAD_PROFILING_SPEC §3, R3-46). Rendered at the top of the
+// app tree so its layout effect fires on the FIRST root-render commit: that instant
+// is `ir.fmp` (the content is in the DOM, about to paint) and the baseline for
+// `ir.interactive` (the host treats a forwarded `ir.interactive` as the root-commit
+// signal and resolves `max(commit, reportReady)` — LP2-3 — so this can only ever be
+// delayed by an app's `reportReady()`, never advanced). Emitted in canonical stream
+// order (fmp then interactive); idempotent per name (StrictMode-safe). Renders null.
+const BootMarkers = (): null => {
+  useLayoutEffect(() => {
+    emitMarkerOnce('ir.fmp');
+    emitMarkerOnce('ir.interactive');
+  }, []);
+  return null;
+};
+
 // from: https://stackoverflow.com/a/63838890
 const escapeForRegexp = (str: string) => str.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 
@@ -110,6 +127,7 @@ export const boot = ({
     <StrictMode>
       <ModuleCacheContextProvider moduleCache={moduleCache}>
         <MDXProvider components={mdxComponents}>
+          <BootMarkers />
           <TinkerableApp routingSpec={routingSpec} />
         </MDXProvider>
       </ModuleCacheContextProvider>
