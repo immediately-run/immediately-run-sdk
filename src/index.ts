@@ -16,6 +16,7 @@ export * from './ipc';
 export * from './dnd';
 export * from './netFetch';
 export * from './secrets';
+export * from './diagnostics';
 export * from './tasks';
 export * from './runtime';
 export * from './irMarkers';

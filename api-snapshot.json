@@ -69,6 +69,16 @@
     "ContributionResult",
     "contribute"
   ],
+  "diagnostics": [
+    "BuildError",
+    "ConsoleEntry",
+    "ConsoleLevel",
+    "Diagnostics",
+    "DiagnosticsProvenance",
+    "getDiagnostics",
+    "onDiagnosticsChange",
+    "useDiagnostics"
+  ],
   "dnd": [
     "DraggableItem",
     "DroppedItem",
@@ -122,12 +132,17 @@
     "AuthState",
     "AuthStatus",
     "BootProps",
+    "BuildError",
+    "ConsoleEntry",
+    "ConsoleLevel",
     "ContributeMode",
     "ContributeOptions",
     "ContributionEvent",
     "ContributionResult",
     "DEFAULT_MDX_COMPONENTS",
     "DEFAULT_ROUTING_SPEC",
+    "Diagnostics",
+    "DiagnosticsProvenance",
     "DirCap",
     "DraggableItem",
     "DroppedItem",
@@ -215,6 +230,7 @@
     "getAppMountPath",
     "getAuthState",
     "getCatalog",
+    "getDiagnostics",
     "getEditorContext",
     "getFormFactor",
     "getHostRuntime",
@@ -243,6 +259,7 @@
     "navigate",
     "onAuthChange",
     "onCatalogChange",
+    "onDiagnosticsChange",
     "onEditorContextChange",
     "onFormFactorChange",
     "onHostThemeChange",
@@ -279,6 +296,7 @@
     "uploadFile",
     "useAuth",
     "useCatalog",
+    "useDiagnostics",
     "useDroppedItem",
     "useEditorContext",
     "useFileMetadata",
@@ -315,6 +333,12 @@
     "isIrMarkerName",
     "resolveInteractive",
     "validateMarker"
+  ],
+  "markers": [
+    "__resetMarkers",
+    "__setMarkerDeps",
+    "emitMarker",
+    "emitMarkerOnce"
   ],
   "moduleCache": [
     "ModuleCache",
