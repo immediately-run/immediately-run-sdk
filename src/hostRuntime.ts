@@ -18,6 +18,11 @@ export interface ImmediatelyRunGlobal {
   /** Canonical `/mnt/{hash}` path of the app's own repo mount (FILE_SHARING §11.2);
    *  surfaced to apps via `getAppMountPath()`. Absent until the host reports it. */
   appMountPath?: string;
+  /** The chrome region this app instance occupies, e.g. `"panel.agent"` or
+   *  `"stage.conversation"` (UI_AS_APPS_SPEC §4.1); surfaced via `getRegion()`.
+   *  Absent for a standalone app, in local dev, or on a host that doesn't report
+   *  it. Descriptive only — it grants nothing. */
+  region?: string;
 }
 
 /**
