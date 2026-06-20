@@ -237,6 +237,7 @@
     "getHostTheme",
     "getMounts",
     "getReadyState",
+    "getRegion",
     "getSecrets",
     "getSpaceMembers",
     "getTaskInput",
@@ -305,6 +306,7 @@
     "useMDXComponents",
     "useMetadataQuery",
     "useMounts",
+    "useRegion",
     "useRegionMessage",
     "useSecrets",
     "useTaskInput",
@@ -421,6 +423,10 @@
     "getReadyState",
     "onReady",
     "reportReady"
+  ],
+  "region": [
+    "getRegion",
+    "useRegion"
   ],
   "routing": [
     "AppliedRoutingRule",
