@@ -507,7 +507,17 @@ export type Role = 'owner' | 'writer' | 'reader';
 
 /** A member of a space (for the share/manage UI). */
 export interface Member {
-  /** `user:{uid}` | `group:{gid}`. */
+  /**
+   * The **grantee** — `user:{uid}` | `group:{gid}`. This is the canonical name
+   * (core_concepts §4: "principal" is reserved for the authority context; a space
+   * member is a *grantee*). The host populates this on every member row.
+   */
+  grantee: string;
+  /**
+   * @deprecated Use {@link Member.grantee}. Kept as an alias (same value) for
+   * back-compat during the `principal`→`grantee` migration; will be removed in a
+   * future major. The host still populates both.
+   */
   principal: string;
   role: Role;
   login?: string;
