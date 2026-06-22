@@ -167,6 +167,7 @@
     "FormFactor",
     "FormFactorClass",
     "ForwardedMarker",
+    "FsChange",
     "GrantRecord",
     "HostFetchInit",
     "HostFetchResponse",
@@ -245,6 +246,7 @@
     "getDiagnostics",
     "getEditorContext",
     "getFormFactor",
+    "getFsChange",
     "getHostRuntime",
     "getHostTheme",
     "getMounts",
@@ -276,6 +278,7 @@
     "onDiagnosticsChange",
     "onEditorContextChange",
     "onFormFactorChange",
+    "onFsChange",
     "onHostThemeChange",
     "onItemDrop",
     "onMountsChange",
@@ -316,6 +319,7 @@
     "useEditorContext",
     "useFileMetadata",
     "useFormFactor",
+    "useFsChange",
     "useHostTheme",
     "useMDXComponents",
     "useMetadataQuery",
@@ -429,6 +433,12 @@
     "HostFetchStreamResult",
     "hostFetch",
     "hostFetchStream"
+  ],
+  "onFsChange": [
+    "FsChange",
+    "getFsChange",
+    "onFsChange",
+    "useFsChange"
   ],
   "pathUtils": [
     "absPath",
