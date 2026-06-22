@@ -360,8 +360,9 @@ export const makeContentRef = (
 ): FileCap => ({ $cap: 'file', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
 
 /**
- * Resolve a content reference your app found in content it ALREADY holds (plan 12
- * §E). This is a RELAY, not a fabrication: the host honors it ONLY when your app
+ * Resolve a content reference your app found in content it ALREADY holds
+ * (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E"). This is a RELAY, not a
+ * fabrication: the host honors it ONLY when your app
  * already holds a grant to `ref.mountId` (else `forbidden`) — apps follow
  * writer-authored links inside granted content; they cannot name a space from
  * nothing (T27). The host runs a per-VIEWER consent prompt (named via the owning
@@ -384,7 +385,8 @@ export const resolveContentRef = async (ref: FileCap): Promise<{ path: string }>
 };
 
 /**
- * Resolve a BATCH of content references in ONE consent round (plan 12 §E). When a
+ * Resolve a BATCH of content references in ONE consent round (FILE_SHARING §7 /
+ * UI_AS_APPS §8.7; "plan 12 §E"). When a
  * board opens with several embedded references, pass them all here: the host
  * coalesces them into a SINGLE consent prompt listing every target, instead of one
  * prompt per reference. Same relay gate and per-viewer semantics as

@@ -94,7 +94,7 @@ export interface ChatFeatures {
 export interface ChatProviderInfo {
   /** Opaque provider id, e.g. `llm.chat.anthropic` — never a vendor secret or model id. */
   providerId: string;
-  /** True for kernel-proxied providers (host-vouched, SP-9); false for app-level ones,
+  /** True for Host-proxied providers (host-vouched, SP-9); false for app-level ones,
    *  whose `features` are an untrusted claim. */
   hostVouched: boolean;
   features: ChatFeatures;
