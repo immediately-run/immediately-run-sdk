@@ -19,6 +19,7 @@ export * from './netFetch';
 export * from './secrets';
 export * from './llm';
 export * from './diagnostics';
+export * from './onFsChange';
 export * from './tasks';
 export * from './runtime';
 export * from './irMarkers';
