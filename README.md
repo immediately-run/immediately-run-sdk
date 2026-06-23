@@ -32,7 +32,12 @@ also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/
   `getMounts()` / `findMount({ type })`, subscribe with `onMountsChange(listener)` or
   the `useMounts()` hook, or `await waitForMount({ type: 'firestore' })` before using a
   mount. Access the files via the `fs` module at the mount's `path`.
-- routing helpers (`Router`, `SandboxRouter`, …).
+- routing (`routing`) — define the app-owned URL suffix. Declarative
+  `<Routes>`/`<Route path="/posts/:slug" element={…} />` (rendering a `<Route>`
+  registers it, so routes can be conditional or data-derived), or a `routingSpec`
+  passed to `boot`. `path` accepts a template (`:slug`, `*`) compiled to an
+  anchored regex, or a raw `RegExp` as an escape hatch. Read the match with
+  `useRouteParams()` / `useRoute()`. Also `Router`, `navigate`, `useTinkerableLink`.
 - `MDXProvider` — the MDX context provider used by transformed `.mdx` files.
 - `sandboxTypes` — shared TypeScript types for the sandbox runtime.
 

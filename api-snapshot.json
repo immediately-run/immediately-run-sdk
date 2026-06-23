@@ -50,6 +50,11 @@
     "MainContentInner",
     "MainContentRedirect"
   ],
+  "components/Routes": [
+    "Route",
+    "RouteProps",
+    "Routes"
+  ],
   "components/defaults": [
     "defaultErrorComponent",
     "defaultLoadingComponent"
@@ -200,7 +205,10 @@
     "RequestEditError",
     "ResolvedUser",
     "Role",
+    "Route",
+    "RouteProps",
     "Router",
+    "Routes",
     "SDK_PROTOCOL_VERSION",
     "SDK_VERSION",
     "SandboxMount",
@@ -291,6 +299,7 @@
     "postToRegion",
     "protocolStream",
     "renameEntry",
+    "renderRoute",
     "reportReady",
     "requestAddSecret",
     "requestEdit",
@@ -326,6 +335,8 @@
     "useMounts",
     "useRegion",
     "useRegionMessage",
+    "useRoute",
+    "useRouteParams",
     "useSecrets",
     "useTaskInput",
     "useTinkerableLink",
@@ -468,11 +479,19 @@
     "getRegion",
     "useRegion"
   ],
+  "routeMatch": [
+    "compileTemplate",
+    "matchRoute",
+    "toRegExp"
+  ],
   "routing": [
     "AppliedRoutingRule",
     "Router",
     "applyRoutingRule",
     "navigate",
+    "renderRoute",
+    "useRoute",
+    "useRouteParams",
     "useTinkerableLink"
   ],
   "runtime": [

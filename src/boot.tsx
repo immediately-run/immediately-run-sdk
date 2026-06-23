@@ -103,13 +103,13 @@ const escapeForRegexp = (str: string) => str.replace(/[.*+\-?^${}()|[\]\\]/g, '\
 
 export const DEFAULT_ROUTING_SPEC: RoutingSpec = {
   routes: [
-    { name: 'MainContent', pattern: /^\/$/, reactNode: <MainContent /> },
+    { name: 'MainContent', pattern: /^\/$/, element: <MainContent /> },
     {
       name: 'FileRouter',
       pattern: new RegExp(`^${escapeForRegexp(FILES_PREFIX)}(?<filename>\/.+)$`),
-      reactNode: <FileRouter />,
+      element: <FileRouter />,
     },
-    { name: 'ErrorNotFound', pattern: /^(?<path>.+)$/, reactNode: <ErrorNotFound /> },
+    { name: 'ErrorNotFound', pattern: /^(?<path>.+)$/, element: <ErrorNotFound /> },
   ],
 };
 
