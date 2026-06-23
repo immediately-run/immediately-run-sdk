@@ -14,8 +14,31 @@ export type EvaluationContext = {
   }
 }
 
+/**
+ * The parsed frontmatter of a single file. Apps can supply their own shape as the
+ * `T` type parameter on the metadata hooks for typed field access; it defaults to
+ * an open record.
+ */
 export type Metadata = Record<string, any>;
-export type FilesMetadata = Record<string, Metadata>;
+
+/** The whole metadata store: a map from repo-relative file path to its frontmatter. */
+export type FilesMetadata<T = Metadata> = Record<string, T>;
+
+/** The paths a {@link MetadataQueryFunction} selected. */
 export type FileQueryResult = string[]
-export type MetadataQueryFunction = (filesMetadata:FilesMetadata) => FileQueryResult;
-export type MetadataQueryResult = {result: FileQueryResult} | {error: any}
+
+/**
+ * A query over the metadata store: receive every file's frontmatter keyed by path
+ * and return the paths that match. Plain JS — `Object.entries(...).filter(...)` —
+ * no query language to learn.
+ */
+export type MetadataQueryFunction<T = Metadata> = (filesMetadata: FilesMetadata<T>) => FileQueryResult;
+
+/** One match from {@link MetadataQueryFunction}: the file path paired with its frontmatter. */
+export type MetadataQueryEntry<T = Metadata> = { path: string; meta: T };
+
+/**
+ * The result of running a metadata query: the matched entries (path + frontmatter),
+ * or the error a throwing query produced.
+ */
+export type MetadataQueryResult<T = Metadata> = MetadataQueryEntry<T>[] | { error: unknown }

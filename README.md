@@ -21,7 +21,11 @@ also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/
 - `boot` — entry point that mounts an immediately.run app into the sandbox.
 - `Include` (`components/Include`) — render another file's exported component inline.
 - `MDXComponents` (`Link`, …) — MDX component overrides.
-- `useMetadataQuery`, `useFileMetadata` (`hooks`) — query files by frontmatter metadata.
+- `useMetadataQuery`, `useFileMetadata`, `useAllMetadata` (`hooks`) — query files by
+  MDX frontmatter metadata. `useMetadataQuery(fn)` runs a plain JS query and returns
+  the matching `{ path, meta }` entries; `useFileMetadata(path)` reads one file's
+  frontmatter; `useAllMetadata()` returns the raw reactive map. All take an optional
+  type parameter for typed frontmatter access.
 - `getAuthState`, `onAuthChange`, `useAuth` (`auth`) — read or subscribe to the user's
   login / account state (`{ status, user: { login } }`). Poll with `getAuthState()`,
   subscribe with `onAuthChange(listener)` (the listener is called immediately with the
