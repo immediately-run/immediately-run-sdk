@@ -44,6 +44,8 @@ export interface ContributionResult {
   mode: 'direct-commit' | 'new-branch-pr' | 'extend-existing';
 }
 
+/** Options for a contribution: the commit message, save {@link ContributeMode},
+ *  and (PR mode) an optional branch name. */
 export interface ContributeOptions {
   /** The commit message / PR title. */
   commitMessage: string;

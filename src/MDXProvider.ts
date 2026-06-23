@@ -6,6 +6,8 @@ const emptyComponents = {}
 
 const MDXContext = createContext(emptyComponents);
 
+/** Merge the caller's MDX component overrides with those from the surrounding
+ *  {@link MDXProvider} context (a function arg receives the parent set to merge). */
 export function useMDXComponents(components:any) {
   const contextComponents = useContext(MDXContext)
 
@@ -23,6 +25,8 @@ export function useMDXComponents(components:any) {
   )
 }
 
+/** Provide MDX component overrides (e.g. a custom `a`/`h1`) to the rendered
+ *  subtree; transformed `.mdx` modules pick them up. */
 export function MDXProvider(properties:any) {
 
   let allComponents: any

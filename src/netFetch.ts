@@ -9,6 +9,7 @@
 import { protocolRequest } from './sandboxUtils';
 import { protocolStream } from './protocolStream';
 
+/** Request options for {@link hostFetch}: method, headers, and a string body. */
 export interface HostFetchInit {
   method?: string;
   headers?: Record<string, string>;
@@ -16,6 +17,7 @@ export interface HostFetchInit {
   body?: string;
 }
 
+/** The serialized response from {@link hostFetch} (no live stream crosses the boundary). */
 export interface HostFetchResponse {
   status: number;
   statusText: string;

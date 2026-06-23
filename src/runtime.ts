@@ -38,6 +38,7 @@ export interface SdkHandshake {
   sdkVersion: string;
   protocolVersion: string;
 }
+/** Build this SDK's handshake payload (version + protocol) for the host to record. */
 export const sdkHandshake = (): SdkHandshake => ({
   sdkVersion: SDK_VERSION,
   protocolVersion: SDK_PROTOCOL_VERSION,

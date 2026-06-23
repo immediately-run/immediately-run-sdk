@@ -1,6 +1,9 @@
+/** The exports object of an evaluated sandbox module (untyped — shape depends on the module). */
 export type ModuleExports = any
 
-// The real type is EvaluationContext from src/bundler/module/Evaluation.ts:6
+/** The sandbox runtime's per-module evaluation context: a module's exports plus the
+ *  helpers to dynamically import, resolve, and re-evaluate other modules.
+ *  (The real type is `EvaluationContext` from `src/bundler/module/Evaluation.ts`.) */
 export type EvaluationContext = {
   exports: ModuleExports;
   dynamicImport: (moduleToImport: string, symbolToImport:string) => Promise<ModuleExports>;

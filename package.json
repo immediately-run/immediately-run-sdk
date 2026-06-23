@@ -32,7 +32,7 @@
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "docs": "typedoc",
+    "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check"
   },
   "peerDependencies": {

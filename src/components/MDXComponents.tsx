@@ -3,6 +3,8 @@ import { navigate } from '../routing';
 import { TinkerableContext } from '../TinkerableContext';
 import { constructOuterUrl, constructUrl, isInternalHref, repositoryPrefixURL } from '../urlUtils';
 
+/** An `<a>` that performs in-sandbox navigation on click (prevents the default
+ *  full-page load and routes via {@link navigate}). */
 export const InternalLink = ({
   href,
   children,
@@ -24,6 +26,8 @@ export const InternalLink = ({
   );
 };
 
+/** A link that routes same-app hrefs through the sandbox router (as an
+ *  {@link InternalLink}) and renders external hrefs as a plain `<a>`. */
 export const Link = ({
   href,
   children,
@@ -43,6 +47,8 @@ export const Link = ({
   }
 };
 
+/** Default MDX component overrides: routes `<a>` through {@link Link} so links in
+ *  MDX prose navigate within the app. Passed to {@link MDXProvider} by `boot`. */
 export const DEFAULT_MDX_COMPONENTS = {
   a({
     href,

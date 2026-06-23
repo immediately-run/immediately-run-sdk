@@ -6,6 +6,7 @@ import type { RouteComponent, RoutingRule } from '../RoutingSpec';
 import { matchRoute } from '../routeMatch';
 import { renderRoute } from '../routing';
 
+/** Props for a {@link Route} declared inside {@link Routes}. */
 export type RouteProps = {
   /** A path template (`/posts/:slug`, `/files/*`, `/`) or a raw RegExp. */
   path: string | RegExp;

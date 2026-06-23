@@ -337,7 +337,8 @@ export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
 export const requestMount = (): Promise<SandboxMount> =>
   requestMountInternal('request', {});
 
-/** @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
+/** Prompt the user to grant a mount, returning the granted {@link SandboxMount}.
+ *  @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
 export const requestSpace = requestMount;
 
 // ── content references (plan 12 §E / FILE_SHARING §7) ────────────────────────
@@ -503,6 +504,7 @@ export const unmountSpace = async (query: { spaceId: string }): Promise<void> =>
 // crosses to the app.
 // ---------------------------------------------------------------------------
 
+/** A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`. */
 export type Role = 'owner' | 'writer' | 'reader';
 
 /** A member of a space (for the share/manage UI). */

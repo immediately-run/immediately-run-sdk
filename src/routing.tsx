@@ -8,11 +8,14 @@ import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 
+/** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
 export type AppliedRoutingRule = {
   routingRule: RoutingRule,
   pathParameters?: Record<string, string>;
 }
 
+/** Build the full outer href for an in-app target (absolute `sandboxPath` or a
+ *  path relative to the current route), e.g. for an `href` attribute. */
 export const useTinkerableLink = (newSandboxLocation: string) => {
   const { outerHref, navigationState: navigation } = use(TinkerableContext);
   let newNavigationState = parseTarget(newSandboxLocation, navigation);
@@ -24,6 +27,8 @@ export const useTinkerableLink = (newSandboxLocation: string) => {
   return constructUrl(outerHref, newNavigationState);
 }
 
+/** Find the first rule in `routingSpec` whose pattern matches the current
+ *  `sandboxPath`, returning it with the captured params (or `undefined`). */
 export const applyRoutingRule = (routingSpec:RoutingSpec, navigationState: NavigationState): AppliedRoutingRule | undefined => {
   const { sandboxPath } = navigationState;
   for (const routingRule of routingSpec.routes) {
@@ -44,6 +49,7 @@ export const renderRoute = (routingRule: RoutingRule, params: RouteParams): Reac
   return routingRule.element ?? routingRule.reactNode ?? null;
 };
 
+/** Render the route matched for the current location (set up by `boot`'s route table). */
 export const Router = () => {
   const context = useContext(TinkerableContext);
   const {navigationState: {routingRule, pathParameters}} = context;
@@ -80,9 +86,10 @@ export const useRoute = () => {
 };
 
 
-// Perform in-site navigation.
-// Top level frame is messaged to updated URL, after which a message will be
-// sent wit the new href, triggering the actual navigation.
+/**
+ * Navigate within the app. Messages the host to update the URL; the host then
+ * pushes the new href back, which drives the actual route change.
+ */
 export const navigate = (target: string) => {
   console.log(`[Sandbox] Navigating to ${target}`)
   sendMessage('urlchange', {

@@ -16,6 +16,7 @@
 import { invokeStream } from './catalog';
 import { createPushChannel } from './pushChannel';
 
+/** Who authored a {@link ChatMessage}. */
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
 /** A part of a message. `image` is only honored when the resolved provider
@@ -24,6 +25,7 @@ export type ContentPart =
   | { type: 'text'; text: string }
   | { type: 'image'; mimeType: string; data: string }; // data: base64, no data: URL prefix
 
+/** One message in a {@link ChatRequest}: a role plus its content parts. */
 export interface ChatMessage {
   role: ChatRole;
   content: ContentPart[];
@@ -37,6 +39,8 @@ export interface ToolDef {
   inputSchema: Record<string, unknown>;
 }
 
+/** A host-brokered chat completion request: the messages plus optional tools,
+ *  response format, and model hint (each honored per the provider's features). */
 export interface ChatRequest {
   messages: ChatMessage[];
   /** Honored only when the resolved provider advertises `features.tools`. */
@@ -55,6 +59,7 @@ export type ChatDelta =
   | { type: 'tool-call'; id: string; name: string; input: unknown }
   | { type: 'usage'; inputTokens: number; outputTokens: number };
 
+/** Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`. */
 export type ChatStopReason = 'end' | 'length' | 'tool' | 'filtered';
 
 /** The terminal value of the {@link chat} stream. */
