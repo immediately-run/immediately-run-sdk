@@ -1,0 +1,394 @@
+# @immediately-run/sdk
+
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.16.0)
+
+Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
+
+## Resources
+
+- [README & guide](https://immediately-run.github.io/immediately-run-sdk/): narrative docs and the design rules.
+- [Full typed API (machine-readable JSON)](https://immediately-run.github.io/immediately-run-sdk/api.json): every symbol with exact signatures, parameters, and types — parse this when you need more than the one-liners below.
+- [API reference (HTML)](https://immediately-run.github.io/immediately-run-sdk/modules.html): the human-browsable TypeDoc.
+- npm: `npm install @immediately-run/sdk` — the installed package ships `.d.ts` with the same JSDoc, readable inline by your tools.
+
+## boot
+
+Import: `@immediately-run/sdk/boot`
+
+- `boot` (function) — Mount an immediately.run app into the sandbox `#root`.
+- `BootProps` (type) — Options for boot: MDX overrides, a route table, or an app root.
+- `CATCH_ALL_ROUTING_SPEC` (const) — Matches any `sandboxPath` so navigation context can be built without a route table.
+- `DEFAULT_ROUTING_SPEC` (const) — The default route table when `boot` is called with no `routingSpec`/`children`: `/` → main content, `/files/<path>` → the file router, else not-found.
+- `TinkerableApp` (function) — The app shell boot renders: holds navigation state, subscribes to host URL + metadata pushes, and renders `children` or the route `<Router />`.
+
+## hooks
+
+Import: `@immediately-run/sdk/hooks`
+
+- `useAllMetadata` (function) — The raw, reactive metadata store: a map from file path to frontmatter.
+- `useFileMetadata` (function) — Read one file's metadata (MDX frontmatter) by repo-relative path.
+- `useMetadataQuery` (function) — Query the file metadata store (MDX frontmatter) with a plain JS function.
+
+## routing
+
+Import: `@immediately-run/sdk/routing`
+
+- `AppliedRoutingRule` (type) — The result of matching a path: the winning RoutingRule plus its captured params.
+- `applyRoutingRule` (function) — Find the first rule in `routingSpec` whose pattern matches the current `sandboxPath`, returning it with the captured params (or `undefined`).
+- `navigate` (function) — Navigate within the app.
+- `renderRoute` (function) — Render a matched rule, passing params to a `component` and falling back to `element`/`reactNode`.
+- `Router` (function) — Render the route matched for the current location (set up by `boot`'s route table).
+- `useRoute` (function) — Read the current route: the matched rule's `name`, its `params`, the app-owned `sandboxPath`, and the read-only platform prefix fields (`mode`, `provider`, `namespace`, `repository`, `ref`) — e.g.
+- `useRouteParams` (function) — Read the current route's matched params (`:name` segments and the `*` wildcard).
+- `useTinkerableLink` (function) — Build the full outer href for an in-app target (absolute `sandboxPath` or a path relative to the current route), e.g.
+
+## components/Routes
+
+Import: `@immediately-run/sdk/components/Routes`
+
+- `Route` (function) — Declares a route.
+- `RouteProps` (type) — Props for a Route declared inside Routes.
+- `Routes` (function) — Resolves the active `sandboxPath` against its mounted `<Route>` children, first-match-wins in render order, and renders the winner (or `fallback`).
+
+## components/Include
+
+Import: `@immediately-run/sdk/components/Include`
+
+- `Include` (function) — Render another repo file's exported component inline, resolving + evaluating it through the module cache (with Suspense + an error boundary).
+- `RenderExportedComponent` (function) — Low-level: render one export of an already-resolving module evaluation.
+- `RenderExportedComponentContext` (function) — Context carrying the included module's EvaluationContext to its subtree.
+- `RenderFileContextType` (type) — The value exposed on RenderExportedComponentContext: the evaluation context of the module Include resolved.
+
+## components/MDXComponents
+
+Import: `@immediately-run/sdk/components/MDXComponents`
+
+- `DEFAULT_MDX_COMPONENTS` (const) — Default MDX component overrides: routes `<a>` through Link so links in MDX prose navigate within the app.
+- `InternalLink` (function) — An `<a>` that performs in-sandbox navigation on click (prevents the default full-page load and routes via navigate).
+- `Link` (function) — A link that routes same-app hrefs through the sandbox router (as an InternalLink) and renders external hrefs as a plain `<a>`.
+
+## MDXProvider
+
+Import: `@immediately-run/sdk/MDXProvider`
+
+- `MDXProvider` (function) — Provide MDX component overrides (e.g.
+- `useMDXComponents` (function) — Merge the caller's MDX component overrides with those from the surrounding MDXProvider context (a function arg receives the parent set to merge).
+
+## auth
+
+Import: `@immediately-run/sdk/auth`
+
+- `AuthState` (interface) — The user's login / account state: a `status` plus the `user` when signed in.
+- `AuthStatus` (type) — Login / account state of the immediately.run user, mirrored from the host window into the sandbox.
+- `getAuthState` (function) — Returns the current login / account state.
+- `onAuthChange` (function) — Subscribe to login / logout changes.
+- `SandboxUser` (interface) — The signed-in immediately.run user, as seen by the sandbox (no token, ever).
+- `useAuth` (function) — React hook returning the current login / account state, re-rendering on login / logout.
+
+## mounts
+
+Import: `@immediately-run/sdk/mounts`
+
+- `createSpace` (function) — Create a brand-new, empty platform-hosted space.
+- `findMount` (function) — Returns the first mount matching `query`, or `undefined`.
+- `getAppMountPath` (function) — The absolute path where this app's own repository filesystem is mounted (FILE_SHARING_SPEC §11.2).
+- `getMounts` (function) — Returns the mounts currently available.
+- `getSpaceMembers` (function) — Read a space's members one-shot — `spaces:admin`.
+- `GrantRecord` (interface) — One durable grant an app holds, for the §8.11 capability audit view.
+- `importSettingsFromParent` (function) — One-time SEED of this app's settings from the parent it declares as `forkOf` (its `package.json` `immediately.run.forkOf`) — so a fork inherits your preferences from the original app (UI_AS_APPS_SPEC §3.4).
+- `listAllSpaces` (function) — Enumerate ALL the user's spaces (not just this app's) — `spaces:user`.
+- `listGrants` (function) — Enumerate every (app, mount) grant the user holds — the audit view (§8.11).
+- `listSettingsApps` (function) — List every app that has per-user settings — the elevated "file commander" enumeration.
+- `listSpaces` (function) — List spaces you can access — all of them, or just those bound to this app.
+- `lookupUser` (function) — Resolve a provider handle to a principal (for the invite flow) — `spaces:admin`, rate-limited host-side.
+- `makeContentRef` (function) — Build a persisted CONTENT REFERENCE to a file in a mount — a `{mountId, relPath}` pointer your app serializes into ITS OWN content (a board's JSON, an MDX file's frontmatter, an album manifest — the platform doesn't dictate the container) so a later viewer can resolve it.
+- `Member` (interface) — A member of a space (for the share/manage UI).
+- `mount` (function) — Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) — `scheme:locator`, e.g.
+- `MountQuery` (type) — A predicate-style matcher for findMount / waitForMount.
+- `MountRemoveReason` (type) — Why a mounted filesystem was removed, surfaced on the removed descriptor so an app can say *why* it vanished instead of failing mutely (auth-mount §"mount-remove" / AM2-4): - `revoked` — a durable grant was revoked (revokeGrant / consent withdrawal); - `unshared` — the granting user's membership was removed (or downgraded out); - `signed-out` — sign-out tore down every mount; - `unmounted` — the app's own `unmountSpace` (or region teardown); - `deleted` — the space was soft-deleted.
+- `MountRule` (interface) — One granted scope of a mount (plan 12 §F): a backend-natural path prefix and the access mode there.
+- `mountSpace` (function) — Mount a specific space by id (e.g.
+- `onMountsChange` (function) — Subscribe to mount changes.
+- `openSettings` (function) — Mount this app's per-user settings — a private `~/.config`-style filesystem, auto-provisioned for the signed-in user and isolated to THIS app (the host chroots it; a different app can never name it).
+- `openSettingsOf` (function) — Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file commander" surface.
+- `RemovedMount` (interface) — A descriptor delivered as REMOVED to a mounts-change listener: the mount that went away, plus the `reason` it did.
+- `requestMount` (function) — Ask the user to grant a filesystem to this app — the §8.6 powerbox.
+- `requestSpace` (function) — Prompt the user to grant a mount, returning the granted SandboxMount.
+- `resolveContentRef` (function) — Resolve a content reference your app found in content it ALREADY holds (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
+- `resolveContentRefs` (function) — Resolve a BATCH of content references in ONE consent round (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
+- `ResolvedUser` (interface) — A handle resolved to a principal (handle → who).
+- `revokeGrant` (function) — Revoke one app's grant on a space — durable (the app can't re-mount) plus a best-effort live teardown.
+- `Role` (type) — A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.
+- `SandboxMount` (interface) — A filesystem mount available to the sandbox, mirrored from the host window.
+- `setSpaceRole` (function) — Change a member's role — `spaces:admin`.
+- `shareSpace` (function) — Invite a user (by provider handle) to a space at a role — `spaces:admin`.
+- `SpaceError` (interface) — An error from a space operation, carrying a machine-readable `code`.
+- `SpaceInfo` (interface) — Summary of a space, as returned by listSpaces.
+- `unmountSpace` (function) — Release a mounted space (stops its listener on the host).
+- `unshareSpace` (function) — Remove a member from a space — `spaces:admin`.
+- `useMounts` (function) — React hook returning the mounts currently available, re-rendering on change.
+- `waitForMount` (function) — Resolves once a mount matching `query` is present (immediately if it already is).
+
+## tasks
+
+Import: `@immediately-run/sdk/tasks`
+
+- `cancelTask` (function) — Abort the task; the caller's `invokeTask` rejects with `cancelled`.
+- `capDir` (function) — Build a delegated DIRECTORY reference for a task param (the directory analogue of capFile).
+- `capFile` (function) — Build a delegated file reference for a task param.
+- `completeTask` (function) — Finish the task, returning a result to the caller.
+- `DirCap` (interface) — A delegated DIRECTORY capability marker for a task param (D2).
+- `FileCap` (interface) — A delegated FILE capability marker for a task param (§5.7).
+- `getTaskInput` (function) — The task params this app was invoked with, or null if it isn't a task callee.
+- `invokeTask` (function) — Invoke another app via a task contract and await its typed result (Recipe B).
+- `TaskInput` (interface) — The params this app was invoked with as a task callee.
+- `useTaskInput` (function) — React hook: the task input for this callee, re-rendering when it arrives.
+
+## catalog
+
+Import: `@immediately-run/sdk/catalog`
+
+- `ApiMethod` (interface) — One advertised method, as the host generated it from its gate table.
+- `getCatalog` (function) — The methods this app may call (grant-filtered, §5.5).
+- `invoke` (function) — Call a catalog method by name — `invoke('spaces:share', { spaceId, login, role })`.
+- `invokeStream` (function) — Call a STREAMING catalog method by name, yielding its events.
+- `onCatalogChange` (function) — Subscribe to catalog changes (e.g.
+- `useCatalog` (function) — React hook returning this app's method catalog, re-rendering on change.
+
+## theme
+
+Import: `@immediately-run/sdk/theme`
+
+- `getHostTheme` (function) — Returns the current host theme.
+- `HostTheme` (type) — The host UI theme, mirrored from the immediately.run host window into the sandbox.
+- `onHostThemeChange` (function) — Subscribe to host theme changes.
+- `setHostTheme` (function) — Set the host UI theme — the ELEVATED `theme:set` action (§8.5).
+- `useHostTheme` (function) — React hook returning the current host theme, re-rendering when it changes.
+
+## region
+
+Import: `@immediately-run/sdk/region`
+
+- `getRegion` (function) — The chrome region this app instance is mounted in (e.g.
+- `useRegion` (function) — React hook form of getRegion.
+
+## formFactor
+
+Import: `@immediately-run/sdk/formFactor`
+
+- `FormFactor` (interface) — The host-reported size class, orientation, and pixel box of your app's surface.
+- `FormFactorClass` (type) — The form factor of the surface your app is rendered into, mirrored from the immediately.run host (UI_AS_APPS_SPEC §5.4.1).
+- `getFormFactor` (function) — Returns the current form factor.
+- `onFormFactorChange` (function) — Subscribe to form-factor changes.
+- `Orientation` (type) — Whether the rendered surface is taller than wide (`portrait`) or wider (`landscape`).
+- `useFormFactor` (function) — React hook returning the current form factor, re-rendering on change.
+
+## editor
+
+Import: `@immediately-run/sdk/editor`
+
+- `closeFile` (function) — Close `path`'s tab in the editor (remove it from the open set) — native `closeFile` parity.
+- `createFile` (function) — Create an empty working-tree file at `path` and open it.
+- `createFolder` (function) — Create a working-tree folder at `path` (materialised with a `.gitkeep`).
+- `deleteEntry` (function) — Delete a working-tree file, or a folder and everything under it.
+- `EditorOpenError` (interface) — An error from openInEditor, carrying a machine-readable `.code`.
+- `EditorSessionError` (interface) — An error from a session intent (setActiveFile / closeFile), carrying a machine-readable `.code`.
+- `EditorWriteError` (interface) — An error from a working-tree mutation, carrying a machine-readable `.code`.
+- `EditTarget` (interface) — Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6 Delta A).
+- `openInEditor` (function) — Ask the host to open `path` (a repo-relative working-tree path, e.g.
+- `renameEntry` (function) — Rename/move a working-tree file from `from` to `to`.
+- `requestEdit` (function) — Ask the host to enter the **edit experience** for the app you are running — the present→edit transition (`/present/...` → `/edit/...`) an app cannot make itself.
+- `RequestEditError` (interface) — An error from requestEdit, carrying a machine-readable `.code`.
+- `setActiveFile` (function) — Switch the editor's active file to `path`, opening it (adding a tab) if it is not already open — native `setActiveFile` parity.
+- `uploadFile` (function) — Upload binary/text `bytes` to a working-tree file at `path`.
+
+## secrets
+
+Import: `@immediately-run/sdk/secrets`
+
+- `getSecrets` (function) — The metadata of the user's stored secrets (never values), `secrets:list`.
+- `onSecretsChange` (function) — Subscribe to secret-metadata changes (added/revoked).
+- `requestAddSecret` (function) — Ask the user to store a new secret (SECRETS_SPEC §4 `secrets:add`).
+- `requestSecret` (function) — Ask the user to bind one of their stored secrets to this app (SECRETS_SPEC §5, the powerbox flow — modeled on `requestSpace()`).
+- `revokeSecret` (function) — Delete a stored secret and tombstone every dependent per-app use grant (SECRETS_SPEC §4 `secrets:revoke`, §8.15 cascade).
+- `SecretError` (interface) — An error from a secret operation, carrying a machine-readable `code`.
+- `SecretGrant` (interface) — The result of a granted `requestSecret()` — a durable `(appKey, secretId)` use grant plus the secret's metadata.
+- `SecretHints` (interface) — Hints for the host's "add secret" modal (SECRETS_SPEC §4 `secrets:add`).
+- `SecretQuery` (interface) — What `requestSecret()` matches against in the powerbox picker (SECRETS_SPEC §5).
+- `SecretType` (type) — The closed secret-type vocabulary (SECRETS_SPEC §2).
+- `SecretView` (interface) — The metadata-only projection of a stored secret (SECRETS_SPEC §2/§4) — exactly what `secrets:list` and the powerbox return.
+- `useSecrets` (function) — React hook returning the user's secret metadata (never values), re-rendering on change.
+
+## llm
+
+Import: `@immediately-run/sdk/llm`
+
+- `chat` (function) — Stream a chat completion from whichever provider the user has configured.
+- `ChatDelta` (type) — One streamed chunk.
+- `ChatFeatures` (interface) — The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read to branch/degrade (offer image upload only when `vision`).
+- `ChatMessage` (interface) — One message in a ChatRequest: a role plus its content parts.
+- `ChatProviderInfo` (interface) — Info about the provider the host resolved for this app.
+- `ChatRequest` (interface) — A host-brokered chat completion request: the messages plus optional tools, response format, and model hint (each honored per the provider's features).
+- `ChatResult` (interface) — The terminal value of the chat stream.
+- `ChatRole` (type) — Who authored a ChatMessage.
+- `ChatStopReason` (type) — Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`.
+- `ContentPart` (type) — A part of a message.
+- `describeChat` (function) — The provider the host resolved for this app (or `null` if none bound).
+- `onChatProviderChange` (function) — Subscribe to provider changes (key added/revoked, preference changed).
+- `ToolDef` (interface) — A tool the model may call — honored only when `features.tools`.
+- `useChatProvider` (function) — React hook returning the resolved chat provider (or `null`), re-rendering on change — gate the summarize affordance on `provider !== null`.
+
+## netFetch
+
+Import: `@immediately-run/sdk/netFetch`
+
+- `hostFetch` (function) — Fetch through the host's parent-fetch proxy (§5.11).
+- `HostFetchInit` (interface) — Request options for hostFetch: method, headers, and a string body.
+- `HostFetchResponse` (interface) — The serialized response from hostFetch (no live stream crosses the boundary).
+- `hostFetchStream` (function) — Stream a response through the host's parent-fetch proxy (§5.11 streaming; `LLM_AND_AGENTS_SPEC §2.2`) — the streaming counterpart of hostFetch, for SSE / LLM token streaming.
+- `HostFetchStreamEvent` (interface) — One streamed slice of the response body (a chunk as it arrives from the host).
+- `HostFetchStreamResult` (interface) — The terminal value of a hostFetchStream run — the response metadata, delivered once after the last body chunk.
+
+## contribute
+
+Import: `@immediately-run/sdk/contribute`
+
+- `contribute` (function) — Save the current working tree, streaming each stage.
+- `ContributeMode` (type) — The save strategy.
+- `ContributeOptions` (interface) — Options for a contribution: the commit message, save ContributeMode, and (PR mode) an optional branch name.
+- `ContributionEvent` (type) — A stage emitted as the contribution runs.
+- `ContributionResult` (interface) — The settled outcome (the stream's return value).
+
+## dnd
+
+Import: `@immediately-run/sdk/dnd`
+
+- `cancelItemDrag` (function) — Abort an in-progress host-mediated drag this app started (e.g.
+- `DraggableItem` (interface) — A file/dir being dragged out of an app.
+- `DroppedItem` (interface) — An item dropped onto THIS app by a host-mediated cross-app drag.
+- `ItemDragError` (interface) — An error from startItemDrag, carrying a machine-readable `.code`.
+- `onItemDrop` (function) — Subscribe to items dropped onto this app by a host-mediated cross-app drag.
+- `startItemDrag` (function) — Begin a host-mediated drag of `item` out of this app.
+- `useDroppedItem` (function) — React hook: the most recently dropped item (or `null`).
+
+## onFsChange
+
+Import: `@immediately-run/sdk/onFsChange`
+
+- `FsChange` (interface) — One working-tree change batch the host pushes: the changed paths plus an epoch.
+- `getFsChange` (function) — The most recent working-tree change batch (the empty initial until the first).
+- `onFsChange` (function) — Subscribe to working-tree changes.
+- `useFsChange` (function) — React hook: the current working-tree change batch, re-rendering on every push.
+
+## diagnostics
+
+Import: `@immediately-run/sdk/diagnostics`
+
+- `BuildError` (interface) — One build/transpile error from the sandbox bundler's compile of the previewed app.
+- `ConsoleEntry` (interface) — One captured `console.*` entry from the previewed app.
+- `ConsoleLevel` (type) — The `console.*` method a captured entry came from.
+- `Diagnostics` (interface) — A snapshot of the previewed app's diagnostics: its build errors, captured console output, and the DiagnosticsProvenance of the compile.
+- `DiagnosticsProvenance` (interface) — Provenance (D4 / EDITOR_AS_APP_SPEC §12.3): WHICH previewed app + compile this snapshot describes, so a consumer can tell stale output from fresh and never conflates two apps' diagnostics.
+- `getDiagnostics` (function) — One-off read of the previewed app's current diagnostics.
+- `onDiagnosticsChange` (function) — Subscribe to diagnostics.
+- `useDiagnostics` (function) — React hook: the current diagnostics, re-rendering on every change.
+
+## ready
+
+Import: `@immediately-run/sdk/ready`
+
+- `__resetReady` (function) — Test seam: reset module state between cases.
+- `__setReadyDeps` (function) — Test seam: override the transport/clock.
+- `getReadyState` (function) — Pollable snapshot of the report state.
+- `onReady` (function) — Subscribe to the ready signal.
+- `ReadyState` (interface) — The app's `reportReady()` state, mirrored by onReady/getReadyState.
+- `reportReady` (function) — Signal that the app is usefully interactive (e.g.
+
+## editorContext
+
+Import: `@immediately-run/sdk/editorContext`
+
+- `EditorContext` (interface) — The editor "dirty set" mirrored from the immediately.run host into the sandbox (UI_AS_APPS_SPEC §5.3): which files the user has changed but not yet saved.
+- `getEditorContext` (function) — Returns the current editor context (dirty set).
+- `onEditorContextChange` (function) — Subscribe to editor-context changes.
+- `useEditorContext` (function) — React hook returning the current editor context (dirty set), re-rendering when it changes.
+
+## hostRuntime
+
+Import: `@immediately-run/sdk/hostRuntime`
+
+- `getHostRuntime` (function) — Read the sandbox runtime's discovery global (§4), or null when absent — in which case the SDK uses the current INJECTED path (`module.evaluation.*`).
+- `ImmediatelyRunGlobal` (interface) — The sandbox runtime's pre-evaluation discovery global (§4).
+
+## ipc
+
+Import: `@immediately-run/sdk/ipc`
+
+- `onRegionMessage` (function) — Subscribe to inbound region messages.
+- `postToRegion` (function) — Send a message to another region.
+- `RegionMessage` (interface) — A message delivered to this region.
+- `useRegionMessage` (function) — React hook: the most recent inbound region message (or `null`).
+
+## irMarkers
+
+Import: `@immediately-run/sdk/irMarkers`
+
+- `ForwardedMarker` (interface) — A marker forwarded across the origin boundary (§3.2): a name, the sandbox-side `performance.now()` timestamp, and the optional attribute payload.
+- `IR_MARKERS` (const) — Each `ir.*` marker name → the attribute keys its payload may carry (the §3 table).
+- `IrMarkerName` (type) — A canonical `ir.*` load-profiling marker name (a key of IR_MARKERS).
+- `isAllowedMarkerName` (function) — Is `name` an accepted marker name — a defined top-level marker OR a recognized per-module/per-dep sub-mark?
+- `isIrMarkerName` (function) — Is `name` a defined top-level `ir.*` marker (not a sub-mark)?
+- `resolveInteractive` (function) — `ir.interactive = max(rootRenderCommit, reportReady)` (LP2-3).
+- `validateMarker` (function) — The LP-5 vocabulary allowlist (pure).
+
+## loading
+
+Import: `@immediately-run/sdk/loading`
+
+- `LOADING_TIMINGS` (const) — Loading timing constants, matching the host (LOADING_UX_SPEC §3, the 2026-06-22 design bundle).
+- `LoadingRegion` (function) — Wrap an in-app region whose content is still loading: shows a centered spinner (past the 150 ms floor) with `aria-busy`, then reveals `children`.
+- `Skeleton` (function) — A shaped, in-app skeleton matching the host archetypes — for an app's own lazy region (e.g.
+- `SkeletonArchetype` (type) — The in-app skeleton archetypes (the same shapes as the host §4.1 catalog).
+- `SkeletonRow` (function) — A single placeholder bar — compose these into a custom skeleton shape.
+- `Spinner` (function) — An indeterminate spinner for waits where a shaped skeleton doesn't fit (a pending button, a small inline fetch).
+
+## protocolStream
+
+Import: `@immediately-run/sdk/protocolStream`
+
+- `consumeStream` (function) — Drive one streamed request to completion over an injected transport.
+- `protocolStream` (function) — Consume an elevated streaming protocol method from app code.
+- `StreamError` (class) — Thrown when a stream ends in an `error` frame; carries the host's `code`.
+- `StreamFrame` (type) — One frame of a host stream: an `event` value, the terminal `done` value, or an `error`.
+- `StreamTransport` (interface) — The send/subscribe transport consumeStream drives (injected so it can be faked in tests).
+
+## runtime
+
+Import: `@immediately-run/sdk/runtime`
+
+- `announceHandshake` (function) — Announce this SDK's version to the host (§6).
+- `SDK_PROTOCOL_VERSION` (const) — The wire protocol (postMessage envelope / channels / methods) THIS SDK speaks.
+- `sdkHandshake` (function) — Build this SDK's handshake payload (version + protocol) for the host to record.
+- `SdkHandshake` (interface) — This SDK's handshake payload — the version + protocol the host records + checks against `HOST_PROTOCOL_VERSION` (§6/T45).
+
+## sandboxTypes
+
+Import: `@immediately-run/sdk/sandboxTypes`
+
+- `EvaluationContext` (type) — The sandbox runtime's per-module evaluation context: a module's exports plus the helpers to dynamically import, resolve, and re-evaluate other modules.
+- `FileQueryResult` (type) — The paths a MetadataQueryFunction selected.
+- `FilesMetadata` (type) — The whole metadata store: a map from repo-relative file path to its frontmatter.
+- `Metadata` (type) — The parsed frontmatter of a single file.
+- `MetadataQueryEntry` (type) — One match from MetadataQueryFunction: the file path paired with its frontmatter.
+- `MetadataQueryFunction` (type) — A query over the metadata store: receive every file's frontmatter keyed by path and return the paths that match.
+- `MetadataQueryResult` (type) — The result of running a metadata query: the matched entries (path + frontmatter), or the error a throwing query produced.
+- `ModuleExports` (type) — The exports object of an evaluated sandbox module (untyped — shape depends on the module).
+
+## version
+
+Import: `@immediately-run/sdk/version`
+
+- `SDK_VERSION` (const) — This SDK's package version, baked from package.json at build (SP2-6).
+
+---
+_Generated from the typed API by `scripts/gen-llms.mjs`._
