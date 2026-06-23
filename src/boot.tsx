@@ -1,4 +1,4 @@
-import { FC, StrictMode, useEffect, useLayoutEffect, useState } from 'react';
+import { FC, ReactNode, StrictMode, useEffect, useLayoutEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { emitMarkerOnce } from './markers';
@@ -21,6 +21,13 @@ import { FILES_PREFIX } from './urlUtils';
 export type BootProps = {
   mdxComponents?: Record<string, FC>;
   routingSpec?: RoutingSpec;
+  /**
+   * App root rendered directly inside the providers (with full navigation
+   * context), instead of dispatching through a `routingSpec`. Render
+   * `<Routes>`/`<Route>` here for fully dynamic routing — no catch-all rule
+   * boilerplate. Takes precedence over `routingSpec` for what is rendered.
+   */
+  children?: ReactNode;
 };
 
 const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadata) => {
@@ -32,7 +39,13 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
   return true;
 };
 
-export const TinkerableApp = ({ routingSpec }: { routingSpec: RoutingSpec }) => {
+export const TinkerableApp = ({
+  routingSpec,
+  children,
+}: {
+  routingSpec: RoutingSpec;
+  children?: ReactNode;
+}) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
     const removeListener = addListener('urlchange', ({ url }) => {
@@ -78,7 +91,7 @@ export const TinkerableApp = ({ routingSpec }: { routingSpec: RoutingSpec }) => 
 
   return (
     <TinkerableContext value={context}>
-      <Router />
+      {children ?? <Router />}
     </TinkerableContext>
   );
 };
@@ -103,24 +116,35 @@ const escapeForRegexp = (str: string) => str.replace(/[.*+\-?^${}()|[\]\\]/g, '\
 
 export const DEFAULT_ROUTING_SPEC: RoutingSpec = {
   routes: [
-    { name: 'MainContent', pattern: /^\/$/, reactNode: <MainContent /> },
+    { name: 'MainContent', pattern: /^\/$/, element: <MainContent /> },
     {
       name: 'FileRouter',
       pattern: new RegExp(`^${escapeForRegexp(FILES_PREFIX)}(?<filename>\/.+)$`),
-      reactNode: <FileRouter />,
+      element: <FileRouter />,
     },
-    { name: 'ErrorNotFound', pattern: /^(?<path>.+)$/, reactNode: <ErrorNotFound /> },
+    { name: 'ErrorNotFound', pattern: /^(?<path>.+)$/, element: <ErrorNotFound /> },
   ],
+};
+
+// Matches any sandboxPath so navigation context can be built without a route
+// table. Used when `boot` is given `children` (the app owns dispatch via
+// `<Routes>`); the catch-all's `element` is never rendered (children are).
+export const CATCH_ALL_ROUTING_SPEC: RoutingSpec = {
+  routes: [{ name: 'AppRoot', pattern: /^.*$/, element: null }],
 };
 
 export const boot = ({
   mdxComponents = DEFAULT_MDX_COMPONENTS,
-  routingSpec = DEFAULT_ROUTING_SPEC,
+  routingSpec,
+  children,
 }: BootProps = {}) => {
   const rootElement = document.getElementById('root');
   if (!rootElement) {
     throw new Error('boot requires root HTML element to exist');
   }
+  // `children` own dispatch, so a catch-all keeps navigation working without a
+  // table; otherwise fall back to the default file/main-content routes.
+  const spec = routingSpec ?? (children ? CATCH_ALL_ROUTING_SPEC : DEFAULT_ROUTING_SPEC);
   const moduleCache = new ModuleCache();
   const root = createRoot(rootElement);
   root.render(
@@ -128,7 +152,7 @@ export const boot = ({
       <ModuleCacheContextProvider moduleCache={moduleCache}>
         <MDXProvider components={mdxComponents}>
           <BootMarkers />
-          <TinkerableApp routingSpec={routingSpec} />
+          <TinkerableApp routingSpec={spec}>{children}</TinkerableApp>
         </MDXProvider>
       </ModuleCacheContextProvider>
     </StrictMode>

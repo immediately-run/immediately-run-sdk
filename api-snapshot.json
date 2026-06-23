@@ -19,6 +19,7 @@
   ],
   "boot": [
     "BootProps",
+    "CATCH_ALL_ROUTING_SPEC",
     "DEFAULT_ROUTING_SPEC",
     "TinkerableApp",
     "boot"
@@ -49,6 +50,11 @@
     "MainContent",
     "MainContentInner",
     "MainContentRedirect"
+  ],
+  "components/Routes": [
+    "Route",
+    "RouteProps",
+    "Routes"
   ],
   "components/defaults": [
     "defaultErrorComponent",
@@ -134,6 +140,7 @@
     "AuthStatus",
     "BootProps",
     "BuildError",
+    "CATCH_ALL_ROUTING_SPEC",
     "ChatDelta",
     "ChatFeatures",
     "ChatMessage",
@@ -202,7 +209,10 @@
     "RequestEditError",
     "ResolvedUser",
     "Role",
+    "Route",
+    "RouteProps",
     "Router",
+    "Routes",
     "SDK_PROTOCOL_VERSION",
     "SDK_VERSION",
     "SandboxMount",
@@ -293,6 +303,7 @@
     "postToRegion",
     "protocolStream",
     "renameEntry",
+    "renderRoute",
     "reportReady",
     "requestAddSecret",
     "requestEdit",
@@ -329,6 +340,8 @@
     "useMounts",
     "useRegion",
     "useRegionMessage",
+    "useRoute",
+    "useRouteParams",
     "useSecrets",
     "useTaskInput",
     "useTinkerableLink",
@@ -471,11 +484,19 @@
     "getRegion",
     "useRegion"
   ],
+  "routeMatch": [
+    "compileTemplate",
+    "matchRoute",
+    "toRegExp"
+  ],
   "routing": [
     "AppliedRoutingRule",
     "Router",
     "applyRoutingRule",
     "navigate",
+    "renderRoute",
+    "useRoute",
+    "useRouteParams",
     "useTinkerableLink"
   ],
   "runtime": [

@@ -3,6 +3,7 @@ export * from "./routing";
 export * from "./boot";
 export * from './components/Include';
 export * from './components/MDXComponents';
+export * from './components/Routes';
 export * from './hooks'
 export * from './auth';
 export * from './theme';

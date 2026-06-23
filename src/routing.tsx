@@ -1,8 +1,10 @@
+import type { ReactNode } from 'react';
 import { use, useContext } from 'react';
 
 import { sendMessage } from './sandboxUtils';
 import { NavigationState, TinkerableContext } from './TinkerableContext';
-import { RoutingRule, RoutingSpec } from './RoutingSpec';
+import { RouteParams, RoutingRule, RoutingSpec } from './RoutingSpec';
+import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 
@@ -25,32 +27,56 @@ export const useTinkerableLink = (newSandboxLocation: string) => {
 export const applyRoutingRule = (routingSpec:RoutingSpec, navigationState: NavigationState): AppliedRoutingRule | undefined => {
   const { sandboxPath } = navigationState;
   for (const routingRule of routingSpec.routes) {
-    if (typeof routingRule.pattern === 'string') {
-      if (routingRule.pattern === sandboxPath) {
-        return {routingRule};
-      }
-    } else {
-      const match = sandboxPath.match(routingRule.pattern);
-      if (routingRule.pattern.test(sandboxPath)) {
-        return {
-          routingRule,
-          pathParameters: match?.groups
-        }
-      }
+    const pathParameters = matchRoute(routingRule.pattern, sandboxPath);
+    if (pathParameters) {
+      return { routingRule, pathParameters };
     }
   }
   return undefined;
 }
 
+/** Render a matched rule, passing params to a `component` and falling back to `element`/`reactNode`. */
+export const renderRoute = (routingRule: RoutingRule, params: RouteParams): ReactNode => {
+  if (routingRule.component) {
+    const Component = routingRule.component;
+    return <Component params={params} />;
+  }
+  return routingRule.element ?? routingRule.reactNode ?? null;
+};
+
 export const Router = () => {
   const context = useContext(TinkerableContext);
-  const {navigationState: {routingRule}} = context;
+  const {navigationState: {routingRule, pathParameters}} = context;
   if (!routingRule) {
     // TODO: better error
     throw new Error(`No route registered for path ${context.navigationState.sandboxPath}!`);
   }
 
-  return routingRule.reactNode;
+  return renderRoute(routingRule, pathParameters ?? {});
+};
+
+/** Read the current route's matched params (`:name` segments and the `*` wildcard). */
+export const useRouteParams = <T extends RouteParams = RouteParams>(): T =>
+  (use(TinkerableContext).navigationState.pathParameters ?? {}) as T;
+
+/**
+ * Read the current route: the matched rule's `name`, its `params`, the app-owned
+ * `sandboxPath`, and the read-only platform prefix fields (`mode`, `provider`,
+ * `namespace`, `repository`, `ref`) — e.g. to tell `/edit` from `/present`.
+ */
+export const useRoute = () => {
+  const { navigationState } = use(TinkerableContext);
+  const { routingRule, pathParameters, sandboxPath, mode, provider, namespace, repository, ref } = navigationState;
+  return {
+    name: routingRule?.name,
+    params: (pathParameters ?? {}) as RouteParams,
+    sandboxPath,
+    mode,
+    provider,
+    namespace,
+    repository,
+    ref,
+  };
 };
 
 
