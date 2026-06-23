@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.16.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.17.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -303,6 +303,16 @@ Import: `@immediately-run/sdk/ready`
 - `onReady` (function) — Subscribe to the ready signal.
 - `ReadyState` (interface) — The app's `reportReady()` state, mirrored by onReady/getReadyState.
 - `reportReady` (function) — Signal that the app is usefully interactive (e.g.
+
+## debug
+
+Import: `@immediately-run/sdk/debug`
+
+- `debug` (const) — The dev-only debug surface.
+- `DebugLevel` (type) — Severity of a debug.log entry.
+- `isDebugEnabled` (function) — Is the host dev-debug surface active for this session?
+- `log` (function) — Emit a structured debug entry to the host dev surface.
+- `useDebugEnabled` (function) — React hook: whether the host dev-debug surface is active (re-renders on change).
 
 ## editorContext
 
