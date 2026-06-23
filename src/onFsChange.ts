@@ -14,6 +14,7 @@
 // what you last wrote; if they match, it is your echo, not an external change.
 import { createPushChannel } from './pushChannel';
 
+/** One working-tree change batch the host pushes: the changed paths plus an epoch. */
 export interface FsChange {
   /** Repo-relative paths (leading slash, e.g. `/src/App.tsx`) that just changed. */
   paths: string[];

@@ -18,6 +18,7 @@ import { addListener } from './sandboxUtils';
 import { TinkerableContext, TinkerableState } from './TinkerableContext';
 import { FILES_PREFIX } from './urlUtils';
 
+/** Options for {@link boot}: MDX overrides, a route table, or an app root. */
 export type BootProps = {
   mdxComponents?: Record<string, FC>;
   routingSpec?: RoutingSpec;
@@ -39,6 +40,8 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
   return true;
 };
 
+/** The app shell {@link boot} renders: holds navigation state, subscribes to host
+ *  URL + metadata pushes, and renders `children` or the route `<Router />`. */
 export const TinkerableApp = ({
   routingSpec,
   children,
@@ -114,6 +117,8 @@ const BootMarkers = (): null => {
 // from: https://stackoverflow.com/a/63838890
 const escapeForRegexp = (str: string) => str.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
 
+/** The default route table when `boot` is called with no `routingSpec`/`children`:
+ *  `/` → main content, `/files/<path>` → the file router, else not-found. */
 export const DEFAULT_ROUTING_SPEC: RoutingSpec = {
   routes: [
     { name: 'MainContent', pattern: /^\/$/, element: <MainContent /> },
@@ -126,13 +131,20 @@ export const DEFAULT_ROUTING_SPEC: RoutingSpec = {
   ],
 };
 
-// Matches any sandboxPath so navigation context can be built without a route
-// table. Used when `boot` is given `children` (the app owns dispatch via
-// `<Routes>`); the catch-all's `element` is never rendered (children are).
+/**
+ * Matches any `sandboxPath` so navigation context can be built without a route
+ * table. Used when {@link boot} is given `children` (the app owns dispatch via
+ * `<Routes>`); the catch-all's `element` is never rendered (children are).
+ */
 export const CATCH_ALL_ROUTING_SPEC: RoutingSpec = {
   routes: [{ name: 'AppRoot', pattern: /^.*$/, element: null }],
 };
 
+/**
+ * Mount an immediately.run app into the sandbox `#root`. The entry point every
+ * app calls from `index.tsx`: wires the MDX, module-cache, and navigation
+ * providers, then renders the route table (`routingSpec`) or your `children`.
+ */
 export const boot = ({
   mdxComponents = DEFAULT_MDX_COMPONENTS,
   routingSpec,

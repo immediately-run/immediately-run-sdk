@@ -13,6 +13,7 @@
 
 import { sendMessage as defaultSend } from "./sandboxUtils";
 
+/** The app's `reportReady()` state, mirrored by {@link onReady}/{@link getReadyState}. */
 export interface ReadyState {
   /** Whether the app has called `reportReady()`. */
   reported: boolean;

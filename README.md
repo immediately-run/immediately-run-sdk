@@ -47,8 +47,23 @@ also reachable via subpaths (`@immediately-run/sdk/boot`, `@immediately-run/sdk/
 
 ## API documentation
 
-Full API reference is published to GitHub Pages:
+Full API reference (TypeDoc, human-browsable) is published to GitHub Pages:
 <https://immediately-run.github.io/immediately-run-sdk/>
+
+### For coding agents / LLMs
+
+Two machine-readable surfaces are published next to the HTML, each fetchable in a
+single request:
+
+- **`llms.txt`** — <https://immediately-run.github.io/immediately-run-sdk/llms.txt> —
+  a concise, plain-Markdown map of every export grouped by module, with its kind,
+  import path, and a one-line description (the llmstxt.org convention). Start here.
+- **`api.json`** — <https://immediately-run.github.io/immediately-run-sdk/api.json> —
+  the complete TypeDoc model (exact signatures, parameters, types, and JSDoc) for
+  when you need more than the one-liners.
+
+The installed npm package also ships `.d.ts` carrying the same JSDoc, so your
+editor/agent tooling can read the typed API inline without any network access.
 
 ## License
 

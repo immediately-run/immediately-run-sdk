@@ -5,12 +5,17 @@ import { ModuleCacheContext } from '../moduleCache';
 import { EvaluationContext } from '../sandboxTypes';
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 
+/** The value exposed on {@link RenderExportedComponentContext}: the evaluation
+ *  context of the module {@link Include} resolved. */
 export type RenderFileContextType = {
   evaluationContext: EvaluationContext;
 };
 
+/** Context carrying the included module's {@link EvaluationContext} to its subtree. */
 export const RenderExportedComponentContext = createContext<RenderFileContextType | null>(null);
 
+/** Low-level: render one export of an already-resolving module evaluation. Most
+ *  code should use {@link Include}, which resolves the module and adds Suspense. */
 export const RenderExportedComponent = ({
   evaluationContextPromise,
   exportedSymbol = 'default',
@@ -28,6 +33,8 @@ export const RenderExportedComponent = ({
   );
 };
 
+/** Render another repo file's exported component inline, resolving + evaluating it
+ *  through the module cache (with Suspense + an error boundary). */
 export const Include = ({
   filename,
   exportedSymbol = 'default',

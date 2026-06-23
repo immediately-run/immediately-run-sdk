@@ -10,11 +10,13 @@
 // the real sandbox messageBus via sandboxUtils.
 import { addListener, sendMessage } from './sandboxUtils';
 
+/** One frame of a host stream: an `event` value, the terminal `done` value, or an `error`. */
 export type StreamFrame =
   | { kind: 'event'; value: unknown }
   | { kind: 'done'; value: unknown }
   | { kind: 'error'; code: string; message: string };
 
+/** The send/subscribe transport {@link consumeStream} drives (injected so it can be faked in tests). */
 export interface StreamTransport {
   // Fire the request that starts the stream. The host replies with frames tagged
   // by the same `msgId`.
@@ -26,6 +28,7 @@ export interface StreamTransport {
   ) => () => void;
 }
 
+/** Thrown when a stream ends in an `error` frame; carries the host's `code`. */
 export class StreamError extends Error {
   code: string;
   constructor(code: string, message: string) {

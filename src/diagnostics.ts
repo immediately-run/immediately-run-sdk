@@ -25,6 +25,7 @@ export interface BuildError {
   column?: number;
 }
 
+/** The `console.*` method a captured entry came from. */
 export type ConsoleLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 
 /** One captured `console.*` entry from the previewed app. The host renders the
@@ -47,6 +48,8 @@ export interface DiagnosticsProvenance {
   compileId?: string;
 }
 
+/** A snapshot of the previewed app's diagnostics: its build errors, captured
+ *  console output, and the {@link DiagnosticsProvenance} of the compile. */
 export interface Diagnostics {
   buildErrors: BuildError[];
   consoleEntries: ConsoleEntry[];

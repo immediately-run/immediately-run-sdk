@@ -11,8 +11,10 @@ import { createPushChannel } from './pushChannel';
  * Baseline capability `formFactor:read` — every app may read it.
  */
 export type FormFactorClass = 'mobile' | 'tablet' | 'desktop';
+/** Whether the rendered surface is taller than wide (`portrait`) or wider (`landscape`). */
 export type Orientation = 'portrait' | 'landscape';
 
+/** The host-reported size class, orientation, and pixel box of your app's surface. */
 export interface FormFactor {
   class: FormFactorClass;
   orientation: Orientation;

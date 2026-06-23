@@ -9,11 +9,13 @@ import { createPushChannel } from './pushChannel';
  */
 export type AuthStatus = 'unknown' | 'signed-in' | 'signed-out';
 
+/** The signed-in immediately.run user, as seen by the sandbox (no token, ever). */
 export interface SandboxUser {
   /** GitHub login (handle) of the signed-in user. */
   login: string;
 }
 
+/** The user's login / account state: a `status` plus the `user` when signed in. */
 export interface AuthState {
   status: AuthStatus;
   user: SandboxUser | null;

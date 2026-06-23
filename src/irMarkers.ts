@@ -28,6 +28,7 @@ export const IR_MARKERS = {
   "ir.refresh": ["bytes"],
 } as const;
 
+/** A canonical `ir.*` load-profiling marker name (a key of {@link IR_MARKERS}). */
 export type IrMarkerName = keyof typeof IR_MARKERS;
 
 // Per-module / per-dep sub-marks (§3): a defined aggregate plus a `[…]` selector,
