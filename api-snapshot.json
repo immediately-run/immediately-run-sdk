@@ -19,6 +19,7 @@
   ],
   "boot": [
     "BootProps",
+    "CATCH_ALL_ROUTING_SPEC",
     "DEFAULT_ROUTING_SPEC",
     "TinkerableApp",
     "boot"
@@ -138,6 +139,7 @@
     "AuthStatus",
     "BootProps",
     "BuildError",
+    "CATCH_ALL_ROUTING_SPEC",
     "ChatDelta",
     "ChatFeatures",
     "ChatMessage",
