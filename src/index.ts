@@ -25,5 +25,6 @@ export * from './tasks';
 export * from './runtime';
 export * from './irMarkers';
 export * from './ready';
+export * from './loading';
 export * from './protocolStream';
 export * from './sandboxTypes';

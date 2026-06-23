@@ -188,7 +188,9 @@
     "InternalLink",
     "IrMarkerName",
     "ItemDragError",
+    "LOADING_TIMINGS",
     "Link",
+    "LoadingRegion",
     "MDXProvider",
     "Member",
     "Metadata",
@@ -224,8 +226,12 @@
     "SecretQuery",
     "SecretType",
     "SecretView",
+    "Skeleton",
+    "SkeletonArchetype",
+    "SkeletonRow",
     "SpaceError",
     "SpaceInfo",
+    "Spinner",
     "StreamError",
     "StreamFrame",
     "StreamTransport",
@@ -385,6 +391,14 @@
     "describeChat",
     "onChatProviderChange",
     "useChatProvider"
+  ],
+  "loading": [
+    "LOADING_TIMINGS",
+    "LoadingRegion",
+    "Skeleton",
+    "SkeletonArchetype",
+    "SkeletonRow",
+    "Spinner"
   ],
   "markers": [
     "__resetMarkers",

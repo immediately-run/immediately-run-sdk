@@ -42,6 +42,12 @@ const listeners = new Set<(s: ReadyState) => void>();
  * report to the runtime (`ir-report-ready`) so the host can resolve
  * `ir.interactive = max(rootRenderCommit, reportedAt)` (LP2-3) — calling it before
  * the root render commits can only delay the signal, never advance it.
+ *
+ * UX contract (LOADING_UX_SPEC §9.1): calling this tells the host *"keep your
+ * loading skeleton up; I am not done yet"* — the host holds the §3 reveal until
+ * this call (or the load budget). Call it ONCE, when the first USEFULLY-interactive
+ * frame is on screen — not at mount, and not after every async settle. An app that
+ * never calls it reveals automatically at the root-render commit (the default path).
  */
 export function reportReady(): void {
   if (state.reported) return;
