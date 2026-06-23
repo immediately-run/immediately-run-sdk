@@ -119,6 +119,7 @@
     "useFormFactor"
   ],
   "hooks": [
+    "useAllMetadata",
     "useFileMetadata",
     "useMetadataQuery"
   ],
@@ -184,6 +185,7 @@
     "MDXProvider",
     "Member",
     "Metadata",
+    "MetadataQueryEntry",
     "MetadataQueryFunction",
     "MetadataQueryResult",
     "ModuleExports",
@@ -311,6 +313,7 @@
     "unmountSpace",
     "unshareSpace",
     "uploadFile",
+    "useAllMetadata",
     "useAuth",
     "useCatalog",
     "useChatProvider",
