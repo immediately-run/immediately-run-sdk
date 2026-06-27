@@ -114,19 +114,15 @@ const BootMarkers = (): null => {
   return null;
 };
 
-// from: https://stackoverflow.com/a/63838890
-const escapeForRegexp = (str: string) => str.replace(/[.*+\-?^${}()|[\]\\]/g, '\\$&');
-
 /** The default route table when `boot` is called with no `routingSpec`/`children`:
- *  `/` → main content, `/files/<path>` → the file router, else not-found. */
+ *  `/` → main content, `/files/<path>` → the file router, else not-found.
+ *  Re-expressed with path templates (SANDBOX_ROUTING_SPEC §7); the file path
+ *  surfaces under the `*` wildcard. The catch-all stays a raw RegExp — the
+ *  escape hatch — so it anchors `.+` (a non-empty path) exactly as before. */
 export const DEFAULT_ROUTING_SPEC: RoutingSpec = {
   routes: [
-    { name: 'MainContent', pattern: /^\/$/, element: <MainContent /> },
-    {
-      name: 'FileRouter',
-      pattern: new RegExp(`^${escapeForRegexp(FILES_PREFIX)}(?<filename>\/.+)$`),
-      element: <FileRouter />,
-    },
+    { name: 'MainContent', pattern: '/', element: <MainContent /> },
+    { name: 'FileRouter', pattern: `${FILES_PREFIX}/*`, element: <FileRouter /> },
     { name: 'ErrorNotFound', pattern: /^(?<path>.+)$/, element: <ErrorNotFound /> },
   ],
 };
