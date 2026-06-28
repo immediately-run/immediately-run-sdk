@@ -1,0 +1,6 @@
+## streams — Streaming host methods — contribute (UI_AS_APPS §5.1) and llm:chat (SERVICE_PROVIDERS).
+
+| function | catalog name | capability | kind | params | yields → returns |
+|---|---|---|---|---|---|
+| `contribute` | `contribute:run` | `contribute:self` | stream | commitMessage, mode, branchName | `ContributionEvent → ContributionResult` |
+| `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |

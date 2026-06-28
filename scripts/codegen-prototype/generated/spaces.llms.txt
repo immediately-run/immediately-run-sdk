@@ -1,0 +1,13 @@
+## spaces — Space management (the space-manager app) — UI_AS_APPS_SPEC §5.2. ELEVATED: enumerating all the user's spaces is `spaces:user`; mutating membership and resolving handles is `spaces:admin`.
+
+| function | catalog name | capability | kind | params | yields → returns |
+|---|---|---|---|---|---|
+| `listSpaces` | `spaces:list` | `spaces:app` | request | app | `Array<SpaceInfo>` |
+| `listAllSpaces` | `spaces:listAll` | `spaces:user` | request | — | `Array<SpaceInfo>` |
+| `getSpaceMembers` | `spaces:members` | `spaces:admin` | request | spaceId | `Array<Member>` |
+| `shareSpace` | `spaces:share` | `spaces:admin` | request | spaceId, login, role | `void` |
+| `unshareSpace` | `spaces:unshare` | `spaces:admin` | request | spaceId, uid | `void` |
+| `setSpaceRole` | `spaces:setRole` | `spaces:admin` | request | spaceId, uid, role | `void` |
+| `lookupUser` | `spaces:lookupUser` | `spaces:admin` | request | login | `ResolvedUser` |
+| `listGrants` | `spaces:grants` | `spaces:admin` | request | — | `Array<GrantRecord>` |
+| `revokeGrant` | `spaces:revokeGrant` | `spaces:admin` | request | appKey, spaceId | `void` |

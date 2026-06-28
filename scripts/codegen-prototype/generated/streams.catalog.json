@@ -1,0 +1,12 @@
+[
+  {
+    "name": "contribute:run",
+    "capability": "contribute:self",
+    "stream": true
+  },
+  {
+    "name": "llm:chat",
+    "capability": "llm:chat",
+    "stream": true
+  }
+]

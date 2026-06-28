@@ -1,0 +1,335 @@
+// Typed, discoverable filesystem access — the app-facing surface for the ZenFS
+// mount ports (SDK_FS_SURFACE_SPEC; FILESYSTEM_SPEC §2 the ZenFS-shaped contract).
+//
+// The single most important thing an app does — read/write files in its mounts —
+// previously had NO SDK surface: apps reached an ambient `globalThis.__sandpackSharedFs`
+// by hand-rolling the same accessor (editor/file-explorer `src/fs/mountFs.ts`, "keep the
+// two in sync"), with a documented footgun (`module.evaluation.module.bundler.fs` is the
+// WRONG object — it has no `promises`/`stat`). This module is that accessor's ONE home,
+// typed and documented.
+//
+// It adds NO authority: the ZenFS port is already minted and chroot/`ro`-enforced
+// host-side (FILESYSTEM_SPEC §2, UI_AS_APPS §8.7). This is typing + discoverability +
+// de-duplication only. `fs` is a Resource PORT (a byte channel), not a host-brokered RPC,
+// so — unlike the `invoke()` catalog surface — it is hand-written, not gate-table-derived.
+import type { SandboxMount, MountRule } from './mounts';
+import { getAppMountPath } from './mounts';
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** The node-compatible promises surface the sandbox ZenFS exposes (the subset we use). */
+interface NodeFsPromises {
+  readFile(path: string, encoding?: any): Promise<string | Uint8Array>;
+  writeFile(path: string, data: string | Uint8Array): Promise<void>;
+  readdir(path: string, opts?: any): Promise<any[]>;
+  stat(path: string): Promise<any>;
+  mkdir(path: string, opts?: any): Promise<unknown>;
+  rm(path: string, opts?: any): Promise<void>;
+  rename(from: string, to: string): Promise<void>;
+}
+
+/** The resolved sandbox ZenFS handle (node-compatible, `/`-rooted). Opaque to apps —
+ *  reach it through {@link openFs}; the raw handle is the {@link sandboxFs} escape hatch. */
+export interface SandboxFsPort {
+  promises?: NodeFsPromises;
+  readFile?: NodeFsPromises['readFile'];
+}
+
+const hasFs = (fs: any): boolean =>
+  typeof fs?.promises?.readFile === 'function' || typeof fs?.readFile === 'function';
+
+/**
+ * The resolved sandbox ZenFS, or `null` when unavailable. The ONE home for the
+ * resolution order previously duplicated in every app's `mountFs.ts`:
+ *
+ * 1. `globalThis.__sandpackSharedFs` — the `/`-rooted bound ZenFS the sandbox publishes.
+ * 2. fallback: the first `module.evaluation.module.bundler.fs.layers[].boundContext.fs`
+ *    whose surface has `readFile` (the bundler ZenFS-layer bound context).
+ * 3. else `null` (local `vite dev` / before boot).
+ *
+ * Prefer {@link openFs}; reach for this only when a system app spans mounts in absolute
+ * `/mnt/{hash}` paths (the file explorer / editor).
+ */
+export function sandboxFs(): SandboxFsPort | null {
+  try {
+    const shared = (globalThis as any).__sandpackSharedFs;
+    if (hasFs(shared)) return shared as SandboxFsPort;
+  } catch {
+    /* not in the sandbox */
+  }
+  try {
+    // @ts-ignore - `module` is injected by the sandbox runtime (see sandboxUtils transport).
+    const layers = module?.evaluation?.module?.bundler?.fs?.layers;
+    if (Array.isArray(layers)) {
+      for (const layer of layers) {
+        const fs = layer?.boundContext?.fs;
+        if (hasFs(fs)) return fs as SandboxFsPort;
+      }
+    }
+  } catch {
+    /* not in the sandbox */
+  }
+  return null;
+}
+
+/** Is the sandbox filesystem reachable at all? `false` in local `vite dev` and before
+ *  boot — gate file affordances on it so an app degrades instead of throwing. */
+export function fsAvailable(): boolean {
+  return sandboxFs() != null;
+}
+
+/** A directory entry from {@link MountFs.readdir}. */
+export interface DirEntry {
+  name: string;
+  kind: 'file' | 'dir';
+}
+
+/** A stat result from {@link MountFs.stat}. */
+export interface FileStat {
+  kind: 'file' | 'dir';
+  size: number;
+  mtimeMs?: number;
+}
+
+/** An error from a {@link MountFs} operation, carrying a machine-readable `.code`
+ *  (mapped from the ZenFS errno) so an app branches on `.code`, never on a message. */
+export interface FsError extends Error {
+  code:
+    | 'not-found' // ENOENT
+    | 'read-only' // EROFS — a `ro` mount / downgraded role; NEVER surface as UX (gate with canWrite)
+    | 'not-permitted' // EACCES
+    | 'exists' // EEXIST
+    | 'not-empty' // ENOTEMPTY
+    | 'invalid-path' // a `..` segment / absolute escape was passed as a relPath
+    | 'unavailable' // no sandbox fs (local dev / pre-boot)
+    | 'unknown';
+}
+
+const ERRNO: Record<string, FsError['code']> = {
+  ENOENT: 'not-found',
+  EROFS: 'read-only',
+  EACCES: 'not-permitted',
+  EPERM: 'not-permitted',
+  EEXIST: 'exists',
+  ENOTEMPTY: 'not-empty',
+};
+
+const fsError = (code: FsError['code'], message: string): FsError => {
+  const err = new Error(message) as FsError;
+  err.code = code;
+  return err;
+};
+
+const mapError = (e: unknown): FsError => {
+  const errno = (e as { code?: string } | null)?.code;
+  const code: FsError['code'] = (errno ? ERRNO[errno] : undefined) ?? 'unknown';
+  const err = new Error((e as Error)?.message ?? 'fs operation failed') as FsError;
+  err.code = code;
+  return err;
+};
+
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+
+// Join a mount-RELATIVE path under the mount root, rejecting `..` escapes and absolute
+// paths (CLAUDE.md security rule 3 — don't probe for escapes). The host chroot is the
+// real enforcer; this keeps an honest app from accidentally naming outside its grant.
+const resolveUnder = (root: string, relPath: string): string => {
+  if (relPath.startsWith('/')) {
+    throw fsError('invalid-path', `expected a mount-relative path, got absolute "${relPath}"`);
+  }
+  const parts: string[] = [];
+  for (const seg of relPath.split('/')) {
+    if (seg === '' || seg === '.') continue;
+    if (seg === '..') {
+      throw fsError('invalid-path', `"${relPath}" escapes the mount root`);
+    }
+    parts.push(seg);
+  }
+  const base = root.endsWith('/') ? root.slice(0, -1) : root;
+  return parts.length ? `${base}/${parts.join('/')}` : base;
+};
+
+// The longest matching `rules` subtree governs a path (mounts.ts MountRule); fall back to
+// the whole-mount `mode`. A CLIENT-SIDE hint mirroring the host rule — EROFS stays
+// authoritative (the host re-checks live policy on every write).
+const writableAt = (mount: SandboxMount, relPath: string): boolean => {
+  const path = '/' + relPath.split('/').filter((s) => s && s !== '.').join('/');
+  const rules: MountRule[] | undefined = mount.rules;
+  if (rules && rules.length) {
+    let best: MountRule | undefined;
+    for (const r of rules) {
+      const sub = r.subtree.endsWith('/') ? r.subtree : r.subtree + '/';
+      if (path === r.subtree || path.startsWith(sub) || r.subtree === '/') {
+        if (!best || r.subtree.length > best.subtree.length) best = r;
+      }
+    }
+    if (best) return best.mode === 'rw';
+  }
+  return (mount.mode ?? 'rw') === 'rw';
+};
+
+/** A mount-anchored, typed filesystem view. All paths are RELATIVE to the mount root;
+ *  the accessor resolves them under `mount.path`. Async-only (ZenFS rides a MessagePort).
+ *  Obtain one with {@link openFs}. */
+export interface MountFs {
+  /** The mount this view is anchored to (read `mode`/`rules` for writability). */
+  readonly mount: SandboxMount;
+  /** Read a file as UTF-8 text (`encoding: 'utf8'`) or raw bytes (omit encoding). */
+  readFile(relPath: string, encoding: 'utf8'): Promise<string>;
+  readFile(relPath: string): Promise<Uint8Array>;
+  /** Write text or bytes, creating or truncating the file. Throws `read-only` on a `ro` mount. */
+  writeFile(relPath: string, data: string | Uint8Array): Promise<void>;
+  /** List a directory (the mount root when `relPath` is omitted). */
+  readdir(relPath?: string): Promise<DirEntry[]>;
+  /** Stat a path. Throws `not-found` if absent. */
+  stat(relPath: string): Promise<FileStat>;
+  /** Does `relPath` exist? Never throws on absence. */
+  exists(relPath: string): Promise<boolean>;
+  /** Create a directory (pass `{ recursive: true }` to make parents). */
+  mkdir(relPath: string, opts?: { recursive?: boolean }): Promise<void>;
+  /** Remove a file, or a directory with `{ recursive: true }`. */
+  rm(relPath: string, opts?: { recursive?: boolean }): Promise<void>;
+  /** Rename/move within the mount. */
+  rename(fromRel: string, toRel: string): Promise<void>;
+  /** Client-side writability hint for `relPath` (mount `mode` ∩ longest-matching `rule`),
+   *  so an app can hide an "edit" affordance instead of catching `read-only`
+   *  (EDITOR_FIRST_EDITING_SPEC §3). Re-evaluate on `onMountsChange` — a role downgrade
+   *  flips it. EROFS from the host stays authoritative. */
+  canWrite(relPath?: string): boolean;
+}
+
+const promisesOf = (port: SandboxFsPort): NodeFsPromises =>
+  (port.promises ?? (port as unknown as NodeFsPromises));
+
+/**
+ * Open a typed, mount-anchored filesystem view (SDK_FS_SURFACE_SPEC §2.1). Pure-client:
+ * resolves the ambient ZenFS once ({@link sandboxFs}) and binds it to `mount.path`, so you
+ * read/write with paths RELATIVE to the mount root — you cannot accidentally name a path
+ * outside your grant (a `..`/absolute path throws `invalid-path`; the host chroot is the
+ * real enforcer).
+ *
+ * ```ts
+ * import { mountSpace } from '@immediately-run/sdk';
+ * import { openFs } from '@immediately-run/sdk/fs';
+ * const fs = openFs(await mountSpace({ spaceId }));
+ * const text = await fs.readFile('notes/idea.mdx', 'utf8');
+ * if (fs.canWrite('notes/idea.mdx')) await fs.writeFile('notes/idea.mdx', text);
+ * ```
+ *
+ * Throws {@link FsError} `unavailable` if the sandbox fs is not present (local `vite dev`
+ * / before boot — gate with {@link fsAvailable}). Per-op failures throw {@link FsError}
+ * with a mapped `.code` (`not-found`, `read-only`, …).
+ */
+export function openFs(mount: SandboxMount): MountFs {
+  const root = mount.path;
+
+  const port = (): NodeFsPromises => {
+    const p = sandboxFs();
+    if (!p) throw fsError('unavailable', 'immediately.run: sandbox filesystem unavailable');
+    return promisesOf(p);
+  };
+
+  const api: MountFs = {
+    mount,
+    async readFile(relPath: string, encoding?: 'utf8'): Promise<any> {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        const data = await p.readFile(abs);
+        const bytes =
+          typeof data === 'string' ? encoder.encode(data) : (data as Uint8Array);
+        return encoding === 'utf8' ? decoder.decode(bytes) : bytes;
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async writeFile(relPath, data) {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        await p.writeFile(abs, typeof data === 'string' ? encoder.encode(data) : data);
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async readdir(relPath = '') {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        const entries = await p.readdir(abs, { withFileTypes: true });
+        return entries.map((d: any) =>
+          typeof d === 'string'
+            ? ({ name: d, kind: 'file' } as DirEntry)
+            : ({ name: d.name, kind: d.isDirectory?.() ? 'dir' : 'file' } as DirEntry),
+        );
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async stat(relPath) {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        const s: any = await p.stat(abs);
+        return {
+          kind: s.isDirectory?.() ? 'dir' : 'file',
+          size: typeof s.size === 'number' ? s.size : 0,
+          mtimeMs: typeof s.mtimeMs === 'number' ? s.mtimeMs : undefined,
+        };
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async exists(relPath) {
+      try {
+        await api.stat(relPath);
+        return true;
+      } catch (e) {
+        if ((e as FsError).code === 'not-found') return false;
+        if ((e as FsError).code === 'unavailable' || (e as FsError).code === 'invalid-path') {
+          throw e;
+        }
+        return false;
+      }
+    },
+    async mkdir(relPath, opts) {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        await p.mkdir(abs, { recursive: opts?.recursive ?? false });
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async rm(relPath, opts) {
+      const p = port();
+      const abs = resolveUnder(root, relPath);
+      try {
+        await p.rm(abs, { recursive: opts?.recursive ?? false });
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    async rename(fromRel, toRel) {
+      const p = port();
+      const from = resolveUnder(root, fromRel);
+      const to = resolveUnder(root, toRel);
+      try {
+        await p.rename(from, to);
+      } catch (e) {
+        throw mapError(e);
+      }
+    },
+    canWrite(relPath = '') {
+      return writableAt(mount, relPath);
+    },
+  };
+  return api;
+}
+
+/** Open a mount-anchored view of this app's OWN repository working tree — a convenience
+ *  over {@link openFs} using `getAppMountPath()` (FILE_SHARING_SPEC §11.2). */
+export function openAppFs(): MountFs {
+  return openFs({ path: getAppMountPath(), type: 'repo' } as SandboxMount);
+}
