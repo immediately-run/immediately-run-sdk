@@ -6,7 +6,7 @@ import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
-import { CATCH_ALL_ROUTING_SPEC, TinkerableApp } from './boot';
+import { CATCH_ALL_ROUTING_SPEC, DEFAULT_ROUTING_SPEC, TinkerableApp } from './boot';
 import { Route, Routes } from './components/Routes';
 import { matchRoute } from './routeMatch';
 import { createMockHost } from './testing';
@@ -32,6 +32,27 @@ const renderApp = (ui: ReactNode) => {
 describe('CATCH_ALL_ROUTING_SPEC', () => {
   it('matches any sandboxPath so context builds without a table', () => {
     expect(matchRoute(CATCH_ALL_ROUTING_SPEC.routes[0].pattern, '/anything/at/all')).toEqual({});
+  });
+});
+
+describe('DEFAULT_ROUTING_SPEC (re-expressed with templates, §7)', () => {
+  const ruleFor = (path: string) =>
+    DEFAULT_ROUTING_SPEC.routes.find((r) => matchRoute(r.pattern, path));
+
+  it('routes `/` to MainContent with no params', () => {
+    const rule = ruleFor('/');
+    expect(rule?.name).toBe('MainContent');
+    expect(matchRoute(rule!.pattern, '/')).toEqual({});
+  });
+
+  it('routes `/files/<path>` to FileRouter, surfacing the path under `*`', () => {
+    const rule = ruleFor('/files/a/b.mdx');
+    expect(rule?.name).toBe('FileRouter');
+    expect(matchRoute(rule!.pattern, '/files/a/b.mdx')).toEqual({ '*': 'a/b.mdx' });
+  });
+
+  it('falls through to ErrorNotFound for an unknown path', () => {
+    expect(ruleFor('/nope')?.name).toBe('ErrorNotFound');
   });
 });
 

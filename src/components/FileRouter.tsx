@@ -14,7 +14,9 @@ export const FileRouter: FC = ({
   ErrorComponent?: typeof defaultErrorComponent;
 } = {}) => {
   const { navigationState: { pathParameters, sandboxPath } } = useContext(TinkerableContext);
-  const filename = pathParameters?.filename;
+  // The default table matches `/files/*`, surfacing the file path under the `*`
+  // wildcard (SANDBOX_ROUTING_SPEC §4.1/§7).
+  const filename = pathParameters?.['*'];
   if (!filename) {
     return <ErrorComponent error={new Error(`No filename could be extracted from ${sandboxPath}`)} resetErrorBoundary={() => {}}/>;
   }
