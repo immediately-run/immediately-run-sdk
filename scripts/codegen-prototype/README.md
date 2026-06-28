@@ -2,23 +2,31 @@
 
 Proof-of-concept for `docs/specs/SDK_SIMPLIFICATION_SPEC.md`: derive the typed SDK
 surface from one capability-descriptor set instead of hand-maintaining the typed
-wrappers, the catalog, and the docs in parallel. Scoped to the `spaces:*` family.
+wrappers, the catalog, and the docs in parallel. Covers both a **request** family
+(`spaces:*`) and a **stream** family (`contribute:run`, `llm:chat`).
 
 ## Files
 
 | File | Role (spec §) |
 |---|---|
-| `descriptors.spaces.mjs` | The **single source** — the §2 `CapabilityDescriptor` set for `spaces:*`, transcribed from `src/catalog.ts` + `src/mounts.ts` + `CAPABILITY_REFERENCE.md`. |
-| `generate.mjs` | The generator — emits the §3 projections (wrappers, types, error unions, llms.txt, catalog manifest). Dependency-free; ships a tiny json-schema→TS (real impl uses `json-schema-to-typescript`). |
-| `verify.mjs` | The §7 acceptance test — proves the generated path ≡ the hand-written `src/mounts.ts` path (identical wire call + identical thrown `.code`) for all 9 methods. |
-| `generated/` | Output. `spaces.generated.ts` (wrappers+types), `spaces.llms.txt` (docs), `spaces.catalog.json` (catalog twin). |
+| `descriptors.spaces.mjs` | The **single source** for the request family — the §2 `CapabilityDescriptor` set for `spaces:*`, transcribed from `src/catalog.ts` + `src/mounts.ts` + `CAPABILITY_REFERENCE.md`. |
+| `descriptors.streams.mjs` | The single source for the **stream** family — `contribute:run` + `llm:chat`, transcribed from `src/contribute.ts` + `src/llm.ts`. Proves the `kind:'stream'` → `AsyncGenerator<Event, Result>` projection (incl. discriminated-union events via `oneOf`/`const`). |
+| `generate.mjs` | The generator — emits the §3 projections (wrappers, types, error unions, llms.txt, catalog manifest). Dependency-free; ships a tiny json-schema→TS (object/enum/const/array/record/unknown/$ref/oneOf/void). Real impl uses `json-schema-to-typescript`. |
+| `verify.mjs` | §7 acceptance test (request) — generated path ≡ hand-written `src/mounts.ts` path (identical wire call + thrown `.code`), all 9 methods. |
+| `verify.streams.mjs` | §7 acceptance test (stream) — generated path ≡ hand-written `src/contribute.ts`/`src/llm.ts` path (identical request envelope + yielded events + return value + thrown `.code`), both methods. |
+| `generated/` | Output: `<family>.generated.ts` (wrappers+types), `<family>.llms.txt` (docs), `<family>.catalog.json` (catalog twin). |
 
 ## Run
 
 ```sh
-node scripts/codegen-prototype/generate.mjs   # 1 source → 3 projections
-node scripts/codegen-prototype/verify.mjs     # 9/9 methods: generated ≡ hand-written
+node scripts/codegen-prototype/generate.mjs ./descriptors.spaces.mjs    # 1 source → 3 projections
+node scripts/codegen-prototype/generate.mjs ./descriptors.streams.mjs
+node scripts/codegen-prototype/verify.mjs           # 9/9 request methods: generated ≡ hand-written
+node scripts/codegen-prototype/verify.streams.mjs   # 2/2 stream methods:  generated ≡ hand-written
 ```
+
+Both generated `.ts` files type-check under `--strict`, including discriminated-union
+narrowing on the streamed events (`ev.stage === 'done'`, `delta.type === 'text-delta'`).
 
 The generated `spaces.generated.ts` type-checks under `--strict` and its public
 signatures (`shareSpace(spaceId, login, role)`, the `Role`/`Member`/`GrantRecord`

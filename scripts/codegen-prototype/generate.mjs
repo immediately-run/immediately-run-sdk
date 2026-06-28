@@ -1,59 +1,58 @@
 // PROTOTYPE generator — one capability-descriptor set → three projections.
 //
 // Demonstrates §3 of docs/specs/SDK_SIMPLIFICATION_SPEC.md: from the SINGLE source
-// (descriptors.spaces.mjs) we emit
+// we emit
 //   (1) the typed wrappers .ts (the human / authoring-agent surface)
 //   (2) the generated error-code unions + named types (from json-schema)
 //   (3) the llms.txt fragment (the doc surface)
-// The catalog (the embedded-agent surface) is already host-derived from the same
-// names, so it is shown as a manifest rather than re-emitted.
+// The catalog (the embedded-agent surface) is host-derived from the same names, so
+// it is shown as a manifest rather than re-emitted.
 //
-// Run: node scripts/codegen-prototype/generate.mjs
+// Run:  node scripts/codegen-prototype/generate.mjs [./descriptors.<family>.mjs]
+//   (default ./descriptors.spaces.mjs; also ./descriptors.streams.mjs)
 //
-// Deliberately dependency-free: it ships a tiny json-schema→TS good enough for the
-// shapes the spaces family uses (object/enum/string/number/boolean/array/$ref/void).
+// Dependency-free: ships a tiny json-schema→TS for the shapes the families use
+// (object/enum/const/string/number/boolean/array/record/unknown/$ref/oneOf/void).
 // In the real impl this step is `json-schema-to-typescript`.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { family } from './descriptors.spaces.mjs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, 'generated');
+const descPath = process.argv[2] ?? './descriptors.spaces.mjs';
+const { family } = await import(pathToFileURL(resolve(here, descPath)).href);
 
 // ── tiny json-schema → TS type ────────────────────────────────────────────────
 function tsType(schema) {
   if (!schema) return 'void';
   if (schema.$ref) return schema.$ref;
+  if (schema.const !== undefined) return JSON.stringify(schema.const);
+  if (Array.isArray(schema.oneOf)) return schema.oneOf.map(tsType).join(' | ');
   switch (schema.type) {
-    case 'void':
-      return 'void';
+    case 'void': return 'void';
+    case 'unknown': return 'unknown';
+    case 'record': return 'Record<string, unknown>';
     case 'string':
       return Array.isArray(schema.enum)
         ? schema.enum.map((v) => JSON.stringify(v)).join(' | ')
         : 'string';
-    case 'number':
-      return 'number';
-    case 'boolean':
-      return 'boolean';
-    case 'array':
-      return `${tsType(schema.items)}[]`;
+    case 'number': return 'number';
+    case 'boolean': return 'boolean';
+    case 'array': return `Array<${tsType(schema.items)}>`;
     case 'object': {
       const props = schema.properties ?? {};
       const required = new Set(schema.required ?? []);
-      const lines = Object.entries(props).map(([k, v]) => {
-        const opt = required.has(k) ? '' : '?';
-        return `  ${k}${opt}: ${tsType(v)};`;
-      });
-      return lines.length ? `{\n${lines.join('\n')}\n}` : 'Record<string, never>';
+      const lines = Object.entries(props).map(
+        ([k, v]) => `${k}${required.has(k) ? '' : '?'}: ${tsType(v)}`,
+      );
+      return lines.length ? `{ ${lines.join('; ')} }` : 'Record<string, never>';
     }
-    default:
-      return 'unknown';
+    default: return 'unknown';
   }
 }
 
-// A named-interface emission (for the shared `types` table).
 function emitNamedType(name, def) {
   const { schema, description } = def;
   const doc = description ? `/** ${description} */\n` : '';
@@ -61,83 +60,85 @@ function emitNamedType(name, def) {
     const props = schema.properties ?? {};
     const required = new Set(schema.required ?? []);
     const lines = Object.entries(props).map(([k, v]) => {
-      const opt = required.has(k) ? '' : '?';
       const fieldDoc = v.description ? `  /** ${v.description} */\n` : '';
-      return `${fieldDoc}  ${k}${opt}: ${tsType(v)};`;
+      return `${fieldDoc}  ${k}${required.has(k) ? '' : '?'}: ${tsType(v)};`;
     });
     return `${doc}export interface ${name} {\n${lines.join('\n')}\n}`;
   }
-  // alias type (e.g. Role)
-  return `${doc}export type ${name} = ${tsType(schema)};`;
+  // oneOf unions / enums / aliases
+  const u = tsType(schema);
+  return `${doc}export type ${name} =\n  | ${u.split(' | ').join('\n  | ')};`;
 }
 
-const errUnionName = (m) =>
-  m.alias.fn.replace(/^(\w)/, (c) => c.toUpperCase()) + 'Error';
-
-// JSDoc block for a method.
-function jsdoc(m) {
-  const lines = [];
-  lines.push('/**');
-  for (const l of wrap(m.doc, 74)) lines.push(` * ${l}`);
-  lines.push(' *');
-  lines.push(` * Capability: \`${m.capability}\`. Catalog name: \`${m.name}\`.`);
-  lines.push(
-    ` * @throws \`Error & { code: ${errUnionName(m)} }\` on host refusal.`,
-  );
-  lines.push(' */');
-  return lines.join('\n');
-}
+const cap1 = (s) => s.replace(/^(\w)/, (c) => c.toUpperCase());
+const errUnionName = (m) => cap1(m.alias.fn) + 'Error';
 
 function wrap(text, width) {
   const words = text.split(/\s+/);
   const out = [];
   let line = '';
   for (const w of words) {
-    if ((line + ' ' + w).trim().length > width) {
-      out.push(line.trim());
-      line = w;
-    } else {
-      line += ' ' + w;
-    }
+    if ((line + ' ' + w).trim().length > width) { out.push(line.trim()); line = w; }
+    else line += ' ' + w;
   }
   if (line.trim()) out.push(line.trim());
   return out;
+}
+
+function jsdoc(m) {
+  const lines = ['/**'];
+  for (const l of wrap(m.doc, 74)) lines.push(` * ${l}`);
+  lines.push(' *');
+  lines.push(` * Capability: \`${m.capability}\`. Catalog name: \`${m.name}\`.`);
+  if (m.kind === 'stream') {
+    lines.push(` * @throws \`StreamError & { code: ${errUnionName(m)} }\` if the host rejects the stream.`);
+  } else {
+    lines.push(` * @throws \`Error & { code: ${errUnionName(m)} }\` on host refusal.`);
+  }
+  lines.push(' */');
+  return lines.join('\n');
 }
 
 // ── (1)+(2) the typed wrappers + types ────────────────────────────────────────
 function emitWrappers() {
   const out = [];
   out.push('// GENERATED by scripts/codegen-prototype/generate.mjs — DO NOT EDIT.');
-  out.push('// Source of truth: scripts/codegen-prototype/descriptors.spaces.mjs');
+  out.push(`// Source of truth: descriptors.${family.scheme}.mjs`);
   out.push(`// Family: ${family.scheme} — ${family.doc.split('.')[0]}.`);
   out.push('');
-  out.push("import { invoke } from '../../../src/catalog';");
+  const anyStream = family.methods.some((m) => m.kind === 'stream');
+  const anyReq = family.methods.some((m) => m.kind !== 'stream');
+  const imports = [anyReq && 'invoke', anyStream && 'invokeStream'].filter(Boolean).join(', ');
+  out.push(`import { ${imports} } from '../../../src/catalog';`);
+  if (anyStream) out.push("import type { StreamError } from '../../../src/protocolStream';");
   out.push('');
 
-  // shared named types
-  for (const [name, def] of Object.entries(family.types)) {
-    out.push(emitNamedType(name, def));
-    out.push('');
-  }
+  for (const [name, def] of Object.entries(family.types)) { out.push(emitNamedType(name, def)); out.push(''); }
 
   for (const m of family.methods) {
     out.push(`export type ${errUnionName(m)} =`);
     out.push('  ' + m.errors.map((e) => JSON.stringify(e)).join(' | ') + ';');
     out.push('');
+    out.push(jsdoc(m));
 
-    const paramsType = tsType(m.params);
     const resultType = tsType(m.result);
-    const hasParams = m.params.type === 'object' && Object.keys(m.params.properties ?? {}).length > 0;
     const fn = m.alias.fn;
     const positional = m.alias.positional ?? [];
 
-    out.push(jsdoc(m));
+    if (m.kind === 'stream') {
+      const eventType = tsType(m.event);
+      const paramsType = tsType(m.params);
+      out.push(
+        `export function ${fn}(req: ${paramsType}): AsyncGenerator<${eventType}, ${resultType}, void> {`,
+      );
+      out.push(`  return invokeStream<${eventType}, ${resultType}>(${JSON.stringify(m.name)}, req);`);
+      out.push('}');
+      out.push('');
+      continue;
+    }
 
-    // Positional alias form (preserves the existing hand-written signature exactly).
     if (positional.length && positional[0] !== 'opts') {
-      const sigParams = positional
-        .map((p) => `${p}: ${tsType(m.params.properties[p])}`)
-        .join(', ');
+      const sigParams = positional.map((p) => `${p}: ${tsType(m.params.properties[p])}`).join(', ');
       const objLit = `{ ${positional.join(', ')} }`;
       const call = `invoke<${resultType === 'void' ? 'void' : resultType}>(${JSON.stringify(m.name)}, ${objLit})`;
       out.push(
@@ -146,15 +147,10 @@ function emitWrappers() {
           : `export const ${fn} = (${sigParams}): Promise<${resultType}> =>\n  ${call};`,
       );
     } else if (positional[0] === 'opts') {
-      // single optional opts object (listSpaces)
-      const call = `invoke<${resultType}>(${JSON.stringify(m.name)}, opts)`;
-      out.push(
-        `export const ${fn} = (opts: ${paramsType} = {}): Promise<${resultType}> =>\n  ${call};`,
-      );
+      const paramsType = tsType(m.params);
+      out.push(`export const ${fn} = (opts: ${paramsType} = {}): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(m.name)}, opts);`);
     } else {
-      // no params (listAllSpaces, listGrants)
-      const call = `invoke<${resultType}>(${JSON.stringify(m.name)}, {})`;
-      out.push(`export const ${fn} = (): Promise<${resultType}> =>\n  ${call};`);
+      out.push(`export const ${fn} = (): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(m.name)}, {});`);
     }
     out.push('');
   }
@@ -163,44 +159,33 @@ function emitWrappers() {
 
 // ── (3) llms.txt fragment ─────────────────────────────────────────────────────
 function emitLlmsTxt() {
-  const out = [];
-  out.push(`## spaces — ${family.doc}`);
-  out.push('');
-  out.push('| function | catalog name | capability | params | returns |');
-  out.push('|---|---|---|---|---|');
+  const out = [`## ${family.scheme} — ${family.doc}`, ''];
+  out.push('| function | catalog name | capability | kind | params | yields → returns |');
+  out.push('|---|---|---|---|---|---|');
   for (const m of family.methods) {
-    const params = m.params.properties
-      ? Object.keys(m.params.properties).join(', ') || '—'
-      : '—';
-    const ret = tsType(m.result).replace(/\n/g, ' ').replace(/\s+/g, ' ');
-    out.push(
-      `| \`${m.alias.fn}\` | \`${m.name}\` | \`${m.capability}\` | ${params} | \`${ret}\` |`,
-    );
+    const params = m.params.properties ? Object.keys(m.params.properties).join(', ') || '—' : '—';
+    const ret = m.kind === 'stream'
+      ? `${m.event.$ref ?? 'event'} → ${m.result.$ref ?? tsType(m.result)}`
+      : tsType(m.result).replace(/\s+/g, ' ');
+    out.push(`| \`${m.alias.fn}\` | \`${m.name}\` | \`${m.capability}\` | ${m.kind} | ${params} | \`${ret}\` |`);
   }
-  out.push('');
-  return out.join('\n');
+  return out.join('\n') + '\n';
 }
 
-// ── (catalog manifest, already host-derived) ──────────────────────────────────
 function emitCatalogManifest() {
   return JSON.stringify(
-    family.methods.map((m) => ({
-      name: m.name,
-      capability: m.capability,
-      stream: m.kind === 'stream' ? true : undefined,
-    })),
-    null,
-    2,
+    family.methods.map((m) => ({ name: m.name, capability: m.capability, stream: m.kind === 'stream' ? true : undefined })),
+    null, 2,
   );
 }
 
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, 'spaces.generated.ts'), emitWrappers() + '\n');
-writeFileSync(join(outDir, 'spaces.llms.txt'), emitLlmsTxt() + '\n');
-writeFileSync(join(outDir, 'spaces.catalog.json'), emitCatalogManifest() + '\n');
+writeFileSync(join(outDir, `${family.scheme}.generated.ts`), emitWrappers() + '\n');
+writeFileSync(join(outDir, `${family.scheme}.llms.txt`), emitLlmsTxt());
+writeFileSync(join(outDir, `${family.scheme}.catalog.json`), emitCatalogManifest() + '\n');
 
-console.log('Generated from 1 descriptor set:');
-console.log('  generated/spaces.generated.ts   (typed wrappers + types + error unions)');
-console.log('  generated/spaces.llms.txt       (doc projection)');
-console.log('  generated/spaces.catalog.json   (catalog manifest — host-derived twin)');
+console.log(`Generated ${family.scheme} from 1 descriptor set:`);
+console.log(`  generated/${family.scheme}.generated.ts   (typed wrappers + types + error unions)`);
+console.log(`  generated/${family.scheme}.llms.txt       (doc projection)`);
+console.log(`  generated/${family.scheme}.catalog.json   (catalog manifest — host-derived twin)`);
 console.log(`\n${family.methods.length} methods, ${Object.keys(family.types).length} shared types — one edit each.`);
