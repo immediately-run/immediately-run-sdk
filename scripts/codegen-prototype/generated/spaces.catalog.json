@@ -1,0 +1,38 @@
+[
+  {
+    "name": "spaces:list",
+    "capability": "spaces:app"
+  },
+  {
+    "name": "spaces:listAll",
+    "capability": "spaces:user"
+  },
+  {
+    "name": "spaces:members",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:share",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:unshare",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:setRole",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:lookupUser",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:grants",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:revokeGrant",
+    "capability": "spaces:admin"
+  }
+]
