@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.17.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.18.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -322,6 +322,20 @@ Import: `@immediately-run/sdk/editorContext`
 - `getEditorContext` (function) — Returns the current editor context (dirty set).
 - `onEditorContextChange` (function) — Subscribe to editor-context changes.
 - `useEditorContext` (function) — React hook returning the current editor context (dirty set), re-rendering when it changes.
+
+## fs
+
+Import: `@immediately-run/sdk/fs`
+
+- `DirEntry` (interface) — A directory entry from MountFs.readdir.
+- `FileStat` (interface) — A stat result from MountFs.stat.
+- `fsAvailable` (function) — Is the sandbox filesystem reachable at all?
+- `FsError` (interface) — An error from a MountFs operation, carrying a machine-readable `.code` (mapped from the ZenFS errno) so an app branches on `.code`, never on a message.
+- `MountFs` (interface) — A mount-anchored, typed filesystem view.
+- `openAppFs` (function) — Open a mount-anchored view of this app's OWN repository working tree — a convenience over openFs using `getAppMountPath()` (FILE_SHARING_SPEC §11.2).
+- `openFs` (function) — Open a typed, mount-anchored filesystem view (SDK_FS_SURFACE_SPEC §2.1).
+- `sandboxFs` (function) — The resolved sandbox ZenFS, or `null` when unavailable.
+- `SandboxFsPort` (interface) — The resolved sandbox ZenFS handle (node-compatible, `/`-rooted).
 
 ## hostRuntime
 
