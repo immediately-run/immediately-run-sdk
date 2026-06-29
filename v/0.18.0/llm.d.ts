@@ -1,7 +1,8 @@
 /** Who authored a {@link ChatMessage}. */
 type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 /** A part of a message. `image` is only honored when the resolved provider
- *  advertises `features.vision` (§2.5) — branch on {@link describeChat} first. */
+ *  advertises `features.vision` (§2.5); `tool-use`/`tool-result` only when it
+ *  advertises `features.tools` — branch on {@link describeChat} first. */
 type ContentPart = {
     type: 'text';
     text: string;
@@ -9,6 +10,16 @@ type ContentPart = {
     type: 'image';
     mimeType: string;
     data: string;
+} | {
+    type: 'tool-use';
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+} | {
+    type: 'tool-result';
+    toolCallId: string;
+    content: string;
+    isError?: boolean;
 };
 /** One message in a {@link ChatRequest}: a role plus its content parts. */
 interface ChatMessage {
