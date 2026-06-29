@@ -20,10 +20,18 @@ import { createPushChannel } from './pushChannel';
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
 
 /** A part of a message. `image` is only honored when the resolved provider
- *  advertises `features.vision` (§2.5) — branch on {@link describeChat} first. */
+ *  advertises `features.vision` (§2.5); `tool-use`/`tool-result` only when it
+ *  advertises `features.tools` — branch on {@link describeChat} first. */
 export type ContentPart =
   | { type: 'text'; text: string }
-  | { type: 'image'; mimeType: string; data: string }; // data: base64, no data: URL prefix
+  | { type: 'image'; mimeType: string; data: string } // data: base64, no data: URL prefix
+  // A tool call the model emitted on a prior `assistant` turn — replay it in the
+  // conversation so a follow-up request carries the agentic history. Pairs with the
+  // streamed `tool-call` {@link ChatDelta} that first surfaced it.
+  | { type: 'tool-use'; id: string; name: string; input: Record<string, unknown> }
+  // The result of executing a `tool-use`, fed back so the model can continue. Carried
+  // on a `user`/`tool`-role message; `toolCallId` matches the `tool-use` `id`.
+  | { type: 'tool-result'; toolCallId: string; content: string; isError?: boolean };
 
 /** One message in a {@link ChatRequest}: a role plus its content parts. */
 export interface ChatMessage {
