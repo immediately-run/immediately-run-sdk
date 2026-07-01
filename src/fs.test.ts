@@ -6,6 +6,7 @@
 import {
   openFs,
   fsAvailable,
+  mimeTypeFor,
   sandboxFs,
   type FsError,
   type SandboxFsPort,
@@ -128,6 +129,67 @@ describe('readdir', () => {
       { name: 'a.txt', kind: 'file' },
       { name: 'sub', kind: 'dir' },
     ]);
+  });
+});
+
+describe('mimeTypeFor', () => {
+  it('maps known image extensions, case-insensitively', () => {
+    expect(mimeTypeFor('a/b/cat.png')).toBe('image/png');
+    expect(mimeTypeFor('CAT.JPG')).toBe('image/jpeg');
+    expect(mimeTypeFor('logo.svg')).toBe('image/svg+xml');
+    expect(mimeTypeFor('x.webp')).toBe('image/webp');
+  });
+  it('returns undefined for unknown or extension-less names', () => {
+    expect(mimeTypeFor('README')).toBeUndefined();
+    expect(mimeTypeFor('data.bin')).toBeUndefined();
+  });
+});
+
+describe('readBlob', () => {
+  it('wraps bytes in a Blob typed from the extension', async () => {
+    const f = fakePort({ '/mnt/abc/cat.png': 'PNGDATA' });
+    install(f.port);
+    const blob = await openFs(mount()).readBlob('cat.png');
+    expect(blob.type).toBe('image/png');
+    expect(blob.size).toBe('PNGDATA'.length);
+  });
+  it('honors an explicit type override and falls back to octet-stream', async () => {
+    const f = fakePort({ '/mnt/abc/note': 'hi', '/mnt/abc/x.png': 'p' });
+    install(f.port);
+    const fs = openFs(mount());
+    expect((await fs.readBlob('note')).type).toBe('application/octet-stream');
+    expect((await fs.readBlob('x.png', { type: 'image/custom' })).type).toBe('image/custom');
+  });
+  it('propagates typed fs errors (not-found)', async () => {
+    install(fakePort({}).port);
+    await expect(openFs(mount()).readBlob('missing.png')).rejects.toMatchObject({ code: 'not-found' });
+  });
+});
+
+describe('readObjectUrl', () => {
+  const realCreate = URL.createObjectURL;
+  const realRevoke = URL.revokeObjectURL;
+  afterEach(() => {
+    URL.createObjectURL = realCreate;
+    URL.revokeObjectURL = realRevoke;
+  });
+  it('creates a URL from the blob and revokes on demand', async () => {
+    const created: Blob[] = [];
+    const revoked: string[] = [];
+    URL.createObjectURL = ((b: Blob) => {
+      created.push(b);
+      return `blob:mock/${created.length}`;
+    }) as typeof URL.createObjectURL;
+    URL.revokeObjectURL = ((u: string) => {
+      revoked.push(u);
+    }) as typeof URL.revokeObjectURL;
+
+    install(fakePort({ '/mnt/abc/cat.png': 'PNG' }).port);
+    const { url, revoke } = await openFs(mount()).readObjectUrl('cat.png');
+    expect(url).toBe('blob:mock/1');
+    expect(created[0].type).toBe('image/png');
+    revoke();
+    expect(revoked).toEqual(['blob:mock/1']);
   });
 });
 

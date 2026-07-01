@@ -128,8 +128,42 @@ const mapError = (e: unknown): FsError => {
   return err;
 };
 
-const decoder = new TextDecoder();
-const encoder = new TextEncoder();
+// Lazily constructed so merely *importing* this module doesn't touch the
+// TextEncoder/TextDecoder globals — some non-DOM test/build environments only
+// provide them on demand, and no image/URL path needs them at all.
+let _decoder: TextDecoder | undefined;
+let _encoder: TextEncoder | undefined;
+const decoder = (): TextDecoder => (_decoder ??= new TextDecoder());
+const encoder = (): TextEncoder => (_encoder ??= new TextEncoder());
+
+// Extension → MIME type for the kinds an app displays inline. Images first (the
+// common case — `<img src>` off a mount), plus a couple of adjacent binary kinds.
+// Deliberately small: `mimeTypeFor` returns undefined for anything not here and
+// callers fall back to `application/octet-stream`.
+const MIME_BY_EXT: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  avif: 'image/avif',
+  svg: 'image/svg+xml',
+  bmp: 'image/bmp',
+  ico: 'image/x-icon',
+};
+
+/**
+ * Best-effort MIME type from a filename's extension — mainly image kinds
+ * (png/jpg/jpeg/gif/webp/avif/svg/bmp/ico). Returns `undefined` when the
+ * extension isn't recognized (the caller falls back to `application/octet-stream`).
+ * Used by {@link MountFs.readBlob} / {@link MountFs.readObjectUrl}; exported so an
+ * app can label a Blob it builds itself.
+ */
+export function mimeTypeFor(path: string): string | undefined {
+  const dot = path.lastIndexOf('.');
+  if (dot < 0) return undefined;
+  return MIME_BY_EXT[path.slice(dot + 1).toLowerCase()];
+}
 
 // Join a mount-RELATIVE path under the mount root, rejecting `..` escapes and absolute
 // paths (CLAUDE.md security rule 3 — don't probe for escapes). The host chroot is the
@@ -178,6 +212,19 @@ export interface MountFs {
   /** Read a file as UTF-8 text (`encoding: 'utf8'`) or raw bytes (omit encoding). */
   readFile(relPath: string, encoding: 'utf8'): Promise<string>;
   readFile(relPath: string): Promise<Uint8Array>;
+  /** Read a file's bytes as a `Blob`, tagged with a MIME `type` inferred from the
+   *  extension ({@link mimeTypeFor}) or `opts.type` when given (falls back to
+   *  `application/octet-stream`). The building block for downloads and object URLs. */
+  readBlob(relPath: string, opts?: { type?: string }): Promise<Blob>;
+  /** Read a file into an **object URL** suitable for `<img src>` / `<a href>` — the
+   *  fix for "an opaque-origin iframe can't fetch a mount path". Returns the `url`
+   *  and a `revoke()` you MUST call when done (typically on unmount) or the URL
+   *  leaks. Prefer the `useObjectUrl` hook / `MountImage` component, which revoke
+   *  for you; reach for this directly only outside React. */
+  readObjectUrl(
+    relPath: string,
+    opts?: { type?: string },
+  ): Promise<{ url: string; revoke: () => void }>;
   /** Write text or bytes, creating or truncating the file. Throws `read-only` on a `ro` mount. */
   writeFile(relPath: string, data: string | Uint8Array): Promise<void>;
   /** List a directory (the mount root when `relPath` is omitted). */
@@ -238,17 +285,27 @@ export function openFs(mount: SandboxMount): MountFs {
       try {
         const data = await p.readFile(abs);
         const bytes =
-          typeof data === 'string' ? encoder.encode(data) : (data as Uint8Array);
-        return encoding === 'utf8' ? decoder.decode(bytes) : bytes;
+          typeof data === 'string' ? encoder().encode(data) : (data as Uint8Array);
+        return encoding === 'utf8' ? decoder().decode(bytes) : bytes;
       } catch (e) {
         throw mapError(e);
       }
+    },
+    async readBlob(relPath, opts) {
+      const bytes = await api.readFile(relPath);
+      const type = opts?.type ?? mimeTypeFor(relPath) ?? 'application/octet-stream';
+      return new Blob([bytes as BlobPart], { type });
+    },
+    async readObjectUrl(relPath, opts) {
+      const blob = await api.readBlob(relPath, opts);
+      const url = URL.createObjectURL(blob);
+      return { url, revoke: () => URL.revokeObjectURL(url) };
     },
     async writeFile(relPath, data) {
       const p = port();
       const abs = resolveUnder(root, relPath);
       try {
-        await p.writeFile(abs, typeof data === 'string' ? encoder.encode(data) : data);
+        await p.writeFile(abs, typeof data === 'string' ? encoder().encode(data) : data);
       } catch (e) {
         throw mapError(e);
       }
