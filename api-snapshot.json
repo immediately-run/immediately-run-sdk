@@ -51,6 +51,10 @@
     "MainContentInner",
     "MainContentRedirect"
   ],
+  "components/MountImage": [
+    "MountImage",
+    "MountImageProps"
+  ],
   "components/Routes": [
     "Route",
     "RouteProps",
@@ -138,14 +142,17 @@
     "MountFs",
     "SandboxFsPort",
     "fsAvailable",
+    "mimeTypeFor",
     "openAppFs",
     "openFs",
     "sandboxFs"
   ],
   "hooks": [
+    "ObjectUrlState",
     "useAllMetadata",
     "useFileMetadata",
-    "useMetadataQuery"
+    "useMetadataQuery",
+    "useObjectUrl"
   ],
   "hostRuntime": [
     "ImmediatelyRunGlobal",
@@ -221,9 +228,12 @@
     "MetadataQueryResult",
     "ModuleExports",
     "MountFs",
+    "MountImage",
+    "MountImageProps",
     "MountQuery",
     "MountRemoveReason",
     "MountRule",
+    "ObjectUrlState",
     "Orientation",
     "ReadyState",
     "RegionMessage",
@@ -315,6 +325,7 @@
     "log",
     "lookupUser",
     "makeContentRef",
+    "mimeTypeFor",
     "mount",
     "mountSpace",
     "navigate",
@@ -376,6 +387,7 @@
     "useMDXComponents",
     "useMetadataQuery",
     "useMounts",
+    "useObjectUrl",
     "useRegion",
     "useRegionMessage",
     "useRoute",

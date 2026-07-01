@@ -1,5 +1,7 @@
-import { use, useMemo, useRef } from 'react';
+import { use, useEffect, useMemo, useRef, useState } from 'react';
 import { TinkerableContext } from './TinkerableContext';
+import { openFs, type FsError } from './fs';
+import type { SandboxMount } from './mounts';
 import {
   FilesMetadata,
   Metadata,
@@ -89,4 +91,77 @@ export const useFileMetadata = <T = Metadata>(path: string): T | undefined => {
 export const useAllMetadata = <T = Metadata>(): FilesMetadata<T> => {
   const { filesMetadata } = use(TinkerableContext);
   return (filesMetadata ?? {}) as FilesMetadata<T>;
+};
+
+/** The reactive state returned by {@link useObjectUrl}. */
+export interface ObjectUrlState {
+  /** The object URL once the bytes have loaded; `null` while loading or on error. */
+  url: string | null;
+  /** True while the file is being read. */
+  loading: boolean;
+  /** The {@link FsError} if the read failed (`not-found`, `unavailable`, …), else `null`. */
+  error: FsError | null;
+}
+
+/**
+ * Read a file from a mount into an **object URL** for `<img src>`, revoking it
+ * automatically on unmount or when `mount`/`relPath` changes. This is the React
+ * answer to "an opaque-origin iframe can't fetch a mount path": it reads the bytes
+ * off the sandbox ZenFS ({@link openFs}) and hands you a URL to drop into an
+ * `<img>`, and it owns the create/revoke lifecycle so you never leak a URL.
+ *
+ * Pass `null`/`undefined` for `mount` or `relPath` to mean "nothing to load yet"
+ * (idle state, no read). For a ready-made element use `MountImage`.
+ *
+ * ```tsx
+ * const { url, loading, error } = useObjectUrl(mount, 'photos/cat.png');
+ * if (loading) return <Spinner />;
+ * if (error || !url) return <span>missing</span>;
+ * return <img src={url} alt="cat" />;
+ * ```
+ */
+export const useObjectUrl = (
+  mount: SandboxMount | null | undefined,
+  relPath: string | null | undefined,
+  opts?: { type?: string },
+): ObjectUrlState => {
+  const [state, setState] = useState<ObjectUrlState>({
+    url: null,
+    loading: Boolean(mount && relPath),
+    error: null,
+  });
+  const type = opts?.type;
+  // Key the effect on the mount's stable `path` (its object identity churns as the
+  // mount set re-announces) plus the relPath and the optional type override.
+  const mountPath = mount?.path;
+  useEffect(() => {
+    if (!mount || !relPath) {
+      setState({ url: null, loading: false, error: null });
+      return;
+    }
+    let alive = true;
+    let revoke: (() => void) | null = null;
+    setState({ url: null, loading: true, error: null });
+    openFs(mount)
+      .readObjectUrl(relPath, type ? { type } : undefined)
+      .then((res) => {
+        // Lost the race (unmounted / prop changed): revoke immediately, don't set.
+        if (!alive) {
+          res.revoke();
+          return;
+        }
+        revoke = res.revoke;
+        setState({ url: res.url, loading: false, error: null });
+      })
+      .catch((e) => {
+        if (alive) setState({ url: null, loading: false, error: e as FsError });
+      });
+    return () => {
+      alive = false;
+      if (revoke) revoke();
+    };
+    // `mount` is intentionally tracked via its stable `mountPath`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mountPath, relPath, type]);
+  return state;
 };
