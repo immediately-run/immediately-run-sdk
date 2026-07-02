@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { createPushChannel } from './pushChannel';
 import { getHostRuntime } from './hostRuntime';
 import { mountMatches } from './mountMatch';
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
@@ -593,6 +594,30 @@ export const acceptInvite = async (spaceId: string): Promise<void> => {
 export const declineInvite = async (spaceId: string): Promise<void> => {
   await request('declineInvite', { spaceId });
 };
+
+// The live invitations inbox (FILE_SHARING §6.4/§9.8): the host pushes the caller's
+// current invitations on change and replays on register-frame; gated `spaces:user`.
+// So an invite that arrives (or an accepted/declined one leaving) reflects within one
+// snapshot — no poll. Mirrors the host's `invitations`/`request-invitations` wiring.
+const invitesChannel = createPushChannel<Invite[]>({
+  pushType: 'invitations',
+  requestType: 'request-invitations',
+  initial: [],
+  parse: (msg) => (Array.isArray(msg.invites) ? (msg.invites as Invite[]) : undefined),
+});
+
+/** The caller's current invitations (`spaces:user`). One-off read; use
+ *  {@link onInvitesChange}/{@link useInvites} to react live. */
+export const getInvites = (): Invite[] => invitesChannel.get();
+
+/** Subscribe to invitation-inbox changes (arrived / accepted / declined). Invoked
+ *  immediately with the current list, then on every change. Returns an unsubscribe. */
+export const onInvitesChange = (listener: (invites: Invite[]) => void): (() => void) =>
+  invitesChannel.onChange(listener);
+
+/** React hook returning the caller's live invitation inbox, re-rendering on change
+ *  (the space-manager Invitations inbox, §9.8). */
+export const useInvites = (): Invite[] => invitesChannel.use();
 
 /**
  * Invite a user (by provider handle) to a space at a role — `spaces:admin`.
