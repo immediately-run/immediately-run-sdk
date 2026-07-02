@@ -1,6 +1,7 @@
 import { ReactNode, use } from 'react';
 import { Link } from './Link';
-import { TinkerableContext } from '../TinkerableContext';
+import { TinkerableContext, type NavigationState } from '../TinkerableContext';
+import { underAppRoot } from '../urlUtils';
 
 /** Derive a human label from a target path: basename without the extension. */
 const labelFromTarget = (target: string): string => {
@@ -8,21 +9,10 @@ const labelFromTarget = (target: string): string => {
   return base.replace(/\.mdx?$/i, '') || target;
 };
 
-/**
- * Resolve a wiki-link target to an absolute sandbox path. An **absolute** target
- * (`/…`) is taken verbatim; a **relative** target is resolved against the
- * compiling file's directory (`dirname(from)`). Pure path arithmetic — `.`/`..`
- * segments are collapsed — so it depends only on `target` + `from`, never on the
- * filesystem or any other file (the byte-identity split, MARKDOWN_SYNTAX_SPEC §13.2).
- */
-const resolveWikiTarget = (target: string, from?: string): string => {
-  const baseDir = target.startsWith('/')
-    ? ''
-    : from
-      ? from.slice(0, from.lastIndexOf('/'))
-      : '';
+/** Collapse `.`/`..`/empty segments into a clean absolute path. */
+const normalize = (path: string): string => {
   const out: string[] = [];
-  for (const seg of `${baseDir}/${target}`.split('/')) {
+  for (const seg of path.split('/')) {
     if (seg === '' || seg === '.') continue;
     if (seg === '..') out.pop();
     else out.push(seg);
@@ -31,16 +21,45 @@ const resolveWikiTarget = (target: string, from?: string): string => {
 };
 
 /**
+ * The current file's absolute `/app/…` path, from the routing context. The default
+ * `DEFAULT_ROUTING_SPEC` routes `/files/*` to `FileRouter`, which renders
+ * `underAppRoot(pathParameters['*'])` — so the routed file's fs path is exactly
+ * that. Returns `undefined` for a route that is not the default `/files/*` file
+ * route (e.g. an app's bespoke route), in which case a relative target cannot be
+ * resolved by the default and routes optimistically.
+ */
+const currentFilePath = (navigationState?: NavigationState): string | undefined => {
+  const rel = navigationState?.pathParameters?.['*'];
+  return typeof rel === 'string' && rel ? underAppRoot(rel) : undefined;
+};
+
+/**
+ * Resolve a wiki-link target to an absolute sandbox path, or `undefined` when it
+ * cannot be resolved (a relative target with no known current file). An
+ * **absolute** target (`/…`) is taken verbatim; a **relative** target resolves
+ * against the current file's directory. Pure path arithmetic (MARKDOWN_SYNTAX_SPEC
+ * §13.2) — it never touches the filesystem or any other file.
+ */
+const resolveWikiTarget = (target: string, currentFile?: string): string | undefined => {
+  if (target.startsWith('/')) return normalize(target);
+  if (!currentFile) return undefined;
+  const dir = currentFile.slice(0, currentFile.lastIndexOf('/'));
+  return normalize(`${dir}/${target}`);
+};
+
+/**
  * Default MDX `WikiLink` component — the render target for the `[[target]]` /
  * `[[label|target]]` wiki-link syntax. The transpiler remark plugin (R3-153)
- * compiles that syntax to `<WikiLink target="…" label="…" from="…">`, carrying the
- * raw target/label verbatim plus `from` — the authoring file's own path (a
- * byte-local value); **resolution lives here** (MARKDOWN_SYNTAX_SPEC §13.2).
+ * compiles that syntax to `<WikiLink target="…" label="…">`, carrying the raw
+ * target/label verbatim; **resolution lives here** (MARKDOWN_SYNTAX_SPEC §13.2).
  *
  * Registered in {@link DEFAULT_MDX_COMPONENTS} so wiki-links render even in a
  * plain-markdown repo (§11.2 phantom defaults). Targets are **paths only** —
- * relative (resolved against `dirname(from)`) or absolute — with **no implicit
- * search path** (§13.3, a deliberate departure from Obsidian).
+ * relative (resolved against the current file's directory) or absolute — with
+ * **no implicit search path** (§13.3, a deliberate departure from Obsidian). The
+ * current file is derived from the routing context (the default `/files/*` →
+ * `FileRouter` bridge, `underAppRoot(pathParameters['*'])`), so no compile-time
+ * per-node help is needed.
  *
  * The resolved path is checked for **existence** against the live metadata store
  * (keyed by absolute `/app/…` paths) for the three states (§13.3):
@@ -51,23 +70,21 @@ const resolveWikiTarget = (target: string, from?: string): string => {
  *   href, a plain `<a>` otherwise).
  *
  * The check is **optimistic until the metadata store loads** (an empty store never
- * flashes "broken"). Precise app-specific route→file mapping is an **override**
- * concern (§11) — an app with a bespoke router replaces this component.
+ * flashes "broken"), and a relative target with no derivable current file (a
+ * bespoke, non-`/files/*` route) routes optimistically. An app with such routing
+ * overrides this component (§11) for precise resolution.
  */
 export const WikiLink = ({
   target,
   label,
-  from,
   children,
   ...rest
 }: {
   target?: string;
   label?: ReactNode;
-  /** The authoring file's path, emitted by the kernel plugin (§13.2). */
-  from?: string;
   children?: ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>): ReactNode => {
-  const { filesMetadata } = use(TinkerableContext);
+  const { navigationState, filesMetadata } = use(TinkerableContext);
   const rawTarget = target ?? '';
   const text = children ?? label ?? (rawTarget ? labelFromTarget(rawTarget) : '');
 
@@ -81,30 +98,34 @@ export const WikiLink = ({
     );
   }
 
-  const resolved = resolveWikiTarget(rawTarget, from);
+  const current = currentFilePath(navigationState);
+  const resolved = resolveWikiTarget(rawTarget, current);
   const files = filesMetadata ?? {};
   const loaded = Object.keys(files).length > 0;
-  const isSelf = !!from && resolved === resolveWikiTarget(from);
-  const exists = !loaded || resolved in files; // optimistic until loaded
 
-  if (isSelf) {
-    return (
-      <span className="ir-wikilink ir-wikilink-self" data-state="self" {...rest}>
-        {text}
-      </span>
-    );
-  }
-  if (!exists) {
-    return (
-      <span
-        className="ir-wikilink ir-wikilink-broken"
-        data-state="broken"
-        title={`No file at ${resolved}`}
-        {...rest}
-      >
-        {text}
-      </span>
-    );
+  // `resolved === undefined` ⇒ a relative target with no known base: route it
+  // optimistically (can't check existence or self-ness generically).
+  if (resolved !== undefined) {
+    if (current && resolved === current) {
+      return (
+        <span className="ir-wikilink ir-wikilink-self" data-state="self" {...rest}>
+          {text}
+        </span>
+      );
+    }
+    const exists = !loaded || resolved in files; // optimistic until loaded
+    if (!exists) {
+      return (
+        <span
+          className="ir-wikilink ir-wikilink-broken"
+          data-state="broken"
+          title={`No file at ${resolved}`}
+          {...rest}
+        >
+          {text}
+        </span>
+      );
+    }
   }
   return (
     <Link href={rawTarget} className="ir-wikilink" data-state="resolved" {...rest}>

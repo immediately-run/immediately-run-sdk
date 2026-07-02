@@ -94,15 +94,25 @@ describe('default Admonition (§12.3)', () => {
 });
 
 describe('default WikiLink (§13) — resolve at runtime', () => {
-  // A context whose metadata store holds two files, so the existence check is
-  // non-vacuous (a loaded store distinguishes resolved from broken).
-  const withFiles = (extra?: Partial<TinkerableState>): TinkerableState => ({
+  const FILES = {
+    '/app/content/guide/setup.mdx': { title: 'Setup' },
+    '/app/content/intro.mdx': { title: 'Intro' },
+  } as TinkerableState['filesMetadata'];
+
+  // A context routed AT `currentRel` (the repo-relative path FileRouter surfaces
+  // under `pathParameters['*']`, i.e. under `/files/<currentRel>`), with the
+  // metadata store `files`. This mirrors the default `/files/*` → FileRouter
+  // bridge the component reads to learn the current file.
+  const ctxAt = (
+    currentRel: string | undefined,
+    files: TinkerableState['filesMetadata'] = FILES,
+  ): TinkerableState => ({
     ...ctx,
-    filesMetadata: {
-      '/app/content/guide/setup.mdx': { title: 'Setup' },
-      '/app/content/intro.mdx': { title: 'Intro' },
-    } as TinkerableState['filesMetadata'],
-    ...extra,
+    navigationState: {
+      ...ctx.navigationState,
+      pathParameters: currentRel ? { '*': currentRel } : undefined,
+    },
+    filesMetadata: files,
   });
 
   it('renders a link, deriving a label from the target when none is given', () => {
@@ -127,11 +137,11 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
     unmount();
   });
 
-  it('resolves a RELATIVE target against dirname(from) and links when it exists', () => {
+  it('resolves a RELATIVE target against the current file dir and links when it exists', () => {
+    // routed at content/guide/index.mdx; `../intro.mdx` → /app/content/intro.mdx
     const { container, unmount } = render(
-      <TinkerableContext value={withFiles()}>
-        {/* from /app/content/guide/index.mdx, `../intro.mdx` → /app/content/intro.mdx */}
-        <WikiLink target="../intro.mdx" from="/app/content/guide/index.mdx" />
+      <TinkerableContext value={ctxAt('content/guide/index.mdx')}>
+        <WikiLink target="../intro.mdx" />
       </TinkerableContext>,
     );
     const a = container.querySelector('a.ir-wikilink');
@@ -142,8 +152,8 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
 
   it('resolves an ABSOLUTE target verbatim and links when it exists', () => {
     const { container, unmount } = render(
-      <TinkerableContext value={withFiles()}>
-        <WikiLink target="/app/content/guide/setup.mdx" from="/app/content/intro.mdx" />
+      <TinkerableContext value={ctxAt('content/intro.mdx')}>
+        <WikiLink target="/app/content/guide/setup.mdx" />
       </TinkerableContext>,
     );
     expect(container.querySelector('a.ir-wikilink[data-state="resolved"]')).not.toBeNull();
@@ -152,8 +162,8 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
 
   it('renders the BROKEN state (marked text, no link, no throw) for a missing path', () => {
     const { container, unmount } = render(
-      <TinkerableContext value={withFiles()}>
-        <WikiLink target="does/not/exist.mdx" from="/app/content/intro.mdx" />
+      <TinkerableContext value={ctxAt('content/intro.mdx')}>
+        <WikiLink target="does/not/exist.mdx" />
       </TinkerableContext>,
     );
     expect(container.querySelector('a')).toBeNull(); // not a link
@@ -165,8 +175,8 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
 
   it('renders the SELF state (inert text) when the target resolves to the current file', () => {
     const { container, unmount } = render(
-      <TinkerableContext value={withFiles()}>
-        <WikiLink target="intro.mdx" from="/app/content/intro.mdx" />
+      <TinkerableContext value={ctxAt('content/intro.mdx')}>
+        <WikiLink target="intro.mdx" />
       </TinkerableContext>,
     );
     expect(container.querySelector('a')).toBeNull();
@@ -178,8 +188,20 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
 
   it('is optimistic until the metadata store loads (an empty store never flashes broken)', () => {
     const { container, unmount } = render(
-      <TinkerableContext value={ctx /* filesMetadata: {} */}>
-        <WikiLink target="whatever.mdx" from="/app/content/intro.mdx" />
+      <TinkerableContext value={ctxAt('content/intro.mdx', {})}>
+        <WikiLink target="whatever.mdx" />
+      </TinkerableContext>,
+    );
+    expect(container.querySelector('span.ir-wikilink-broken')).toBeNull();
+    expect(container.querySelector('a.ir-wikilink')).not.toBeNull();
+    unmount();
+  });
+
+  it('a relative target with no derivable current file routes optimistically (bespoke route)', () => {
+    // No `pathParameters['*']` (an app route that is not the default `/files/*`).
+    const { container, unmount } = render(
+      <TinkerableContext value={ctxAt(undefined)}>
+        <WikiLink target="sibling.mdx" />
       </TinkerableContext>,
     );
     expect(container.querySelector('span.ir-wikilink-broken')).toBeNull();
