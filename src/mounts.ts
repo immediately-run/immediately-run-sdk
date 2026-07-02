@@ -533,6 +533,21 @@ export interface ResolvedUser {
   avatarUrl?: string;
 }
 
+/** A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
+ *  It grants NO access until accepted — the recipient accepts it from their inbox
+ *  ({@link listMyInvites} → {@link acceptInvite}), materializing membership. The
+ *  display fields (`name`/`login`/`avatarUrl`) are untrusted for rendering. */
+export interface Invite {
+  spaceId: string;
+  role: Role;
+  owner: string;
+  name?: string;
+  invitedBy: string;
+  invitedAt: number;
+  login?: string;
+  avatarUrl?: string;
+}
+
 /** Enumerate ALL the user's spaces (not just this app's) — `spaces:user`. */
 export const listAllSpaces = (): Promise<SpaceInfo[]> => request<SpaceInfo[]>('listAll', {});
 
@@ -541,10 +556,50 @@ export const getSpaceMembers = (spaceId: string): Promise<Member[]> =>
   request<Member[]>('members', { spaceId });
 
 /** Invite a user (by provider handle) to a space at a role — `spaces:admin`. The
- *  host resolves the handle, so the app never sees other users' uids except the
- *  one it invited. */
+ *  host resolves the handle, so the app never sees other users' uids except the one
+ *  it invited. Pull-based (FILE_SHARING_SPEC §6.4): this writes an INVITATION, not
+ *  membership — the recipient must {@link acceptInvite}. Re-inviting an already-
+ *  invited/member user is idempotent. */
+export const inviteToSpace = async (spaceId: string, login: string, role: Role): Promise<void> => {
+  await request('invite', { spaceId, login, role });
+};
+
+/** The owner's outstanding invitations for a space — `spaces:admin`. */
+export const listPendingInvites = (spaceId: string): Promise<Invite[]> =>
+  request<Invite[]>('pendingInvites', { spaceId });
+
+/** Withdraw a pending invitation (distinct from {@link unshareSpace}, which removes
+ *  an ACCEPTED member) — `spaces:admin`. */
+export const revokeInvite = async (spaceId: string, uid: string): Promise<void> => {
+  await request('revokeInvite', { spaceId, uid });
+};
+
+/** The caller's OWN invitation inbox — `spaces:user`. */
+export const listMyInvites = (): Promise<Invite[]> => request<Invite[]>('listInvites', {});
+
+/** Accept an invitation: materialize your membership at the invited role and clear
+ *  the invite — `spaces:user`. An invitation the caller doesn't hold rejects with
+ *  `forbidden` (indistinguishable from a nonexistent space; no existence oracle). */
+export const acceptInvite = async (spaceId: string): Promise<void> => {
+  await request('acceptInvite', { spaceId });
+};
+
+/** Decline (dismiss) an invitation from your inbox; writes no membership —
+ *  `spaces:user`. */
+export const declineInvite = async (spaceId: string): Promise<void> => {
+  await request('declineInvite', { spaceId });
+};
+
+/**
+ * Invite a user (by provider handle) to a space at a role — `spaces:admin`.
+ *
+ * @deprecated Use {@link inviteToSpace}. As of FILE_SHARING_SPEC §6.4 this no longer
+ * writes membership directly — it creates an invitation the recipient must accept
+ * (it now routes to the same `invite` verb). Kept for back-compat; removed in a
+ * future major.
+ */
 export const shareSpace = async (spaceId: string, login: string, role: Role): Promise<void> => {
-  await request('share', { spaceId, login, role });
+  await request('invite', { spaceId, login, role });
 };
 
 /** Remove a member from a space — `spaces:admin`. Refused if it would orphan the
