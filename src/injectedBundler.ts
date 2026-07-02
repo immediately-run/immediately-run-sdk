@@ -44,6 +44,23 @@ export const getInjectedMetadataEmitter = (): InjectedMetadataEmitter | null => 
   return null;
 };
 
+/**
+ * The injected bundler's synchronous metadata snapshot for the boot seed
+ * (MDX_CONTENT_COLLECTIONS_SPEC §1.4). Returns the full `/app`-keyed collection the
+ * bundler seeded (from the frontmatter sidecar) so the app's first render already
+ * holds it — the SDK-side counterpart of the bundler seeding. Null when npm-fetched
+ * (no in-realm bundler) → the SDK degrades to event-fill over the §4 transport, no
+ * first-paint guarantee. The returned VALUE refs are the same objects the emitter
+ * replays, so the `enable()` replay is a no-op (the §1.4 identity contract).
+ */
+export const getInjectedMetadataSnapshot = (): Record<string, Record<string, any>> | null => {
+  const b = injectedBundler();
+  if (b && typeof b.getMetadataSnapshot === 'function') {
+    return b.getMetadataSnapshot();
+  }
+  return null;
+};
+
 /** What `boot` needs to subscribe to metadata updates: the `event` source to hand
  *  `addListener` (the injected emitter, or `undefined` → listen over the transport)
  *  and an `enable` to start the injected DelayedEmitter (a no-op off-injection). */
