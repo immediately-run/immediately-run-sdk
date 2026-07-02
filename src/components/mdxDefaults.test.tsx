@@ -93,7 +93,18 @@ describe('default Admonition (§12.3)', () => {
   });
 });
 
-describe('default WikiLink (§13) — path-only routing baseline', () => {
+describe('default WikiLink (§13) — resolve at runtime', () => {
+  // A context whose metadata store holds two files, so the existence check is
+  // non-vacuous (a loaded store distinguishes resolved from broken).
+  const withFiles = (extra?: Partial<TinkerableState>): TinkerableState => ({
+    ...ctx,
+    filesMetadata: {
+      '/app/content/guide/setup.mdx': { title: 'Setup' },
+      '/app/content/intro.mdx': { title: 'Intro' },
+    } as TinkerableState['filesMetadata'],
+    ...extra,
+  });
+
   it('renders a link, deriving a label from the target when none is given', () => {
     const { container, unmount } = render(
       <TinkerableContext value={ctx}>
@@ -113,6 +124,66 @@ describe('default WikiLink (§13) — path-only routing baseline', () => {
       </TinkerableContext>,
     );
     expect(container.querySelector('a.ir-wikilink')!.textContent).toBe('Set it up');
+    unmount();
+  });
+
+  it('resolves a RELATIVE target against dirname(from) and links when it exists', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={withFiles()}>
+        {/* from /app/content/guide/index.mdx, `../intro.mdx` → /app/content/intro.mdx */}
+        <WikiLink target="../intro.mdx" from="/app/content/guide/index.mdx" />
+      </TinkerableContext>,
+    );
+    const a = container.querySelector('a.ir-wikilink');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('resolves an ABSOLUTE target verbatim and links when it exists', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={withFiles()}>
+        <WikiLink target="/app/content/guide/setup.mdx" from="/app/content/intro.mdx" />
+      </TinkerableContext>,
+    );
+    expect(container.querySelector('a.ir-wikilink[data-state="resolved"]')).not.toBeNull();
+    unmount();
+  });
+
+  it('renders the BROKEN state (marked text, no link, no throw) for a missing path', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={withFiles()}>
+        <WikiLink target="does/not/exist.mdx" from="/app/content/intro.mdx" />
+      </TinkerableContext>,
+    );
+    expect(container.querySelector('a')).toBeNull(); // not a link
+    const span = container.querySelector('span.ir-wikilink-broken');
+    expect(span).not.toBeNull();
+    expect(span!.getAttribute('data-state')).toBe('broken');
+    unmount();
+  });
+
+  it('renders the SELF state (inert text) when the target resolves to the current file', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={withFiles()}>
+        <WikiLink target="intro.mdx" from="/app/content/intro.mdx" />
+      </TinkerableContext>,
+    );
+    expect(container.querySelector('a')).toBeNull();
+    const span = container.querySelector('span.ir-wikilink-self');
+    expect(span).not.toBeNull();
+    expect(span!.getAttribute('data-state')).toBe('self');
+    unmount();
+  });
+
+  it('is optimistic until the metadata store loads (an empty store never flashes broken)', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={ctx /* filesMetadata: {} */}>
+        <WikiLink target="whatever.mdx" from="/app/content/intro.mdx" />
+      </TinkerableContext>,
+    );
+    expect(container.querySelector('span.ir-wikilink-broken')).toBeNull();
+    expect(container.querySelector('a.ir-wikilink')).not.toBeNull();
     unmount();
   });
 });
