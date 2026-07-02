@@ -18,9 +18,38 @@ import { addListener } from './sandboxUtils';
 import { TinkerableContext, TinkerableState } from './TinkerableContext';
 import { FILES_PREFIX } from './urlUtils';
 
+/** A map of MDX component overrides, or a function that receives the platform
+ *  {@link DEFAULT_MDX_COMPONENTS} and returns the full map to use. */
+export type MdxComponents =
+  | Record<string, FC>
+  | ((defaults: Record<string, FC>) => Record<string, FC>);
+
+/**
+ * Resolve the effective MDX component map from a {@link BootProps.mdxComponents}
+ * value (MARKDOWN_SYNTAX_SPEC §11.3):
+ * - `undefined` → the platform {@link DEFAULT_MDX_COMPONENTS} (same reference).
+ * - a **function** → the full-replace escape hatch, handed the defaults.
+ * - a **map** → merged *over* the defaults (`{ ...defaults, ...map }`), so
+ *   overriding one component keeps the rest — the phantom-defaults invariant
+ *   (§11.2) that stops the MDX missing-reference guard from firing.
+ */
+export const resolveMdxComponents = (mdxComponents?: MdxComponents): Record<string, FC> =>
+  mdxComponents === undefined
+    ? (DEFAULT_MDX_COMPONENTS as Record<string, FC>)
+    : typeof mdxComponents === 'function'
+      ? mdxComponents(DEFAULT_MDX_COMPONENTS as Record<string, FC>)
+      : { ...(DEFAULT_MDX_COMPONENTS as Record<string, FC>), ...mdxComponents };
+
 /** Options for {@link boot}: MDX overrides, a route table, or an app root. */
 export type BootProps = {
-  mdxComponents?: Record<string, FC>;
+  /**
+   * MDX component overrides. A **map** is *merged over* the platform defaults
+   * ({@link DEFAULT_MDX_COMPONENTS}) — so overriding `WikiLink` alone keeps the
+   * default `a` and `Admonition` (MARKDOWN_SYNTAX_SPEC §11.3). Pass a **function**
+   * `(defaults) => map` as the full-replace escape hatch when you want complete
+   * control over the set.
+   */
+  mdxComponents?: MdxComponents;
   routingSpec?: RoutingSpec;
   /**
    * App root rendered directly inside the providers (with full navigation
@@ -142,7 +171,7 @@ export const CATCH_ALL_ROUTING_SPEC: RoutingSpec = {
  * providers, then renders the route table (`routingSpec`) or your `children`.
  */
 export const boot = ({
-  mdxComponents = DEFAULT_MDX_COMPONENTS,
+  mdxComponents,
   routingSpec,
   children,
 }: BootProps = {}) => {
@@ -150,6 +179,7 @@ export const boot = ({
   if (!rootElement) {
     throw new Error('boot requires root HTML element to exist');
   }
+  const resolvedComponents = resolveMdxComponents(mdxComponents);
   // `children` own dispatch, so a catch-all keeps navigation working without a
   // table; otherwise fall back to the default file/main-content routes.
   const spec = routingSpec ?? (children ? CATCH_ALL_ROUTING_SPEC : DEFAULT_ROUTING_SPEC);
@@ -158,7 +188,7 @@ export const boot = ({
   root.render(
     <StrictMode>
       <ModuleCacheContextProvider moduleCache={moduleCache}>
-        <MDXProvider components={mdxComponents}>
+        <MDXProvider components={resolvedComponents}>
           <BootMarkers />
           <TinkerableApp routingSpec={spec}>{children}</TinkerableApp>
         </MDXProvider>
