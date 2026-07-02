@@ -39,6 +39,7 @@ const fail = (code: string, message = code) => ({ ok: false, code, message });
 
 const invite: Invite = {
   spaceId: 'space-1',
+  uid: 'uid-of-bob',
   role: 'writer',
   owner: 'u-owner',
   invitedBy: 'u-owner',

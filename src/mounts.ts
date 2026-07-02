@@ -539,11 +539,15 @@ export interface ResolvedUser {
  *  display fields (`name`/`login`/`avatarUrl`) are untrusted for rendering. */
 export interface Invite {
   spaceId: string;
+  /** The invitee's uid — carried so the owner's pending list can
+   *  {@link revokeInvite}(spaceId, uid). */
+  uid: string;
   role: Role;
   owner: string;
   name?: string;
   invitedBy: string;
-  invitedAt: number;
+  /** epoch ms (server-stamped); absent until the write settles. */
+  invitedAt?: number;
   login?: string;
   avatarUrl?: string;
 }
