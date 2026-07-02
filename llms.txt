@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.22.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.23.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -19,6 +19,8 @@ Import: `@immediately-run/sdk/boot`
 - `BootProps` (type) — Options for boot: MDX overrides, a route table, or an app root.
 - `CATCH_ALL_ROUTING_SPEC` (const) — Matches any `sandboxPath` so navigation context can be built without a route table.
 - `DEFAULT_ROUTING_SPEC` (const) — The default route table when `boot` is called with no `routingSpec`/`children`: `/` → main content, `/files/<path>` → the file router, else not-found.
+- `MdxComponents` (type) — A map of MDX component overrides, or a function that receives the platform DEFAULT_MDX_COMPONENTS and returns the full map to use.
+- `resolveMdxComponents` (function) — Resolve the effective MDX component map from a BootProps.mdxComponents value (MARKDOWN_SYNTAX_SPEC §11.3): - `undefined` → the platform DEFAULT_MDX_COMPONENTS (same reference).
 - `TinkerableApp` (function) — The app shell boot renders: holds navigation state, subscribes to host URL + metadata pushes, and renders `children` or the route `<Router />`.
 
 ## hooks
@@ -65,9 +67,7 @@ Import: `@immediately-run/sdk/components/Include`
 
 Import: `@immediately-run/sdk/components/MDXComponents`
 
-- `DEFAULT_MDX_COMPONENTS` (const) — Default MDX component overrides: routes `<a>` through Link so links in MDX prose navigate within the app.
-- `InternalLink` (function) — An `<a>` that performs in-sandbox navigation on click (prevents the default full-page load and routes via navigate).
-- `Link` (function) — A link that routes same-app hrefs through the sandbox router (as an InternalLink) and renders external hrefs as a plain `<a>`.
+- `DEFAULT_MDX_COMPONENTS` (const) — Default MDX component overrides passed to MDXProvider by `boot`.
 
 ## MDXProvider
 
@@ -316,12 +316,32 @@ Import: `@immediately-run/sdk/ready`
 - `ReadyState` (interface) — The app's `reportReady()` state, mirrored by onReady/getReadyState.
 - `reportReady` (function) — Signal that the app is usefully interactive (e.g.
 
+## components/Admonition
+
+Import: `@immediately-run/sdk/components/Admonition`
+
+- `Admonition` (function) — Default MDX `Admonition` component — the render target for the GitHub-style `> [!NOTE]` blockquote-alert syntax (the transpiler remark plugin, R3-152, compiles that syntax to `<Admonition type="note">…</Admonition>`).
+- `AdmonitionType` (type) — The GitHub admonition kinds the transpiler's `> [!TYPE]` plugin emits (R3-152).
+
+## components/Link
+
+Import: `@immediately-run/sdk/components/Link`
+
+- `InternalLink` (function) — An `<a>` that performs in-sandbox navigation on click (prevents the default full-page load and routes via navigate).
+- `Link` (function) — A link that routes same-app hrefs through the sandbox router (as an InternalLink) and renders external hrefs as a plain `<a>`.
+
 ## components/MountImage
 
 Import: `@immediately-run/sdk/components/MountImage`
 
 - `MountImage` (function) — Display an image file from a mount.
 - `MountImageProps` (interface) — Props for MountImage.
+
+## components/WikiLink
+
+Import: `@immediately-run/sdk/components/WikiLink`
+
+- `WikiLink` (function) — Default MDX `WikiLink` component — the render target for the `[[target]]` / `[[label|target]]` wiki-link syntax (the transpiler remark plugin, R3-153, compiles that syntax to `<WikiLink target="…" label="…">`, carrying the raw target verbatim; resolution lives here in the component, MARKDOWN_SYNTAX_SPEC §13.2).
 
 ## debug
 
