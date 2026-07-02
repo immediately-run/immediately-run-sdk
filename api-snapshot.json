@@ -391,6 +391,7 @@
     "InjectedMetadataEmitter",
     "MetadataSource",
     "getInjectedMetadataEmitter",
+    "getInjectedMetadataSnapshot",
     "resolveMetadataSource"
   ],
   "ipc": [
