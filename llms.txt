@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.21.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.22.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -96,6 +96,7 @@ Import: `@immediately-run/sdk/mounts`
 - `declineInvite` (function) — Decline (dismiss) an invitation from your inbox; writes no membership — `spaces:user`.
 - `findMount` (function) — Returns the first mount matching `query`, or `undefined`.
 - `getAppMountPath` (function) — The absolute path where this app's own repository filesystem is mounted (FILE_SHARING_SPEC §11.2).
+- `getInvites` (function) — The caller's current invitations (`spaces:user`).
 - `getMounts` (function) — Returns the mounts currently available.
 - `getSpaceMembers` (function) — Read a space's members one-shot — `spaces:admin`.
 - `GrantRecord` (interface) — One durable grant an app holds, for the §8.11 capability audit view.
@@ -116,6 +117,7 @@ Import: `@immediately-run/sdk/mounts`
 - `MountRemoveReason` (type) — Why a mounted filesystem was removed, surfaced on the removed descriptor so an app can say *why* it vanished instead of failing mutely (auth-mount §"mount-remove" / AM2-4): - `revoked` — a durable grant was revoked (revokeGrant / consent withdrawal); - `unshared` — the granting user's membership was removed (or downgraded out); - `signed-out` — sign-out tore down every mount; - `unmounted` — the app's own `unmountSpace` (or region teardown); - `deleted` — the space was soft-deleted.
 - `MountRule` (interface) — One granted scope of a mount (plan 12 §F): a backend-natural path prefix and the access mode there.
 - `mountSpace` (function) — Mount a specific space by id (e.g.
+- `onInvitesChange` (function) — Subscribe to invitation-inbox changes (arrived / accepted / declined).
 - `onMountsChange` (function) — Subscribe to mount changes.
 - `openSettings` (function) — Mount this app's per-user settings — a private `~/.config`-style filesystem, auto-provisioned for the signed-in user and isolated to THIS app (the host chroots it; a different app can never name it).
 - `openSettingsOf` (function) — Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file commander" surface.
@@ -135,6 +137,7 @@ Import: `@immediately-run/sdk/mounts`
 - `SpaceInfo` (interface) — Summary of a space, as returned by listSpaces.
 - `unmountSpace` (function) — Release a mounted space (stops its listener on the host).
 - `unshareSpace` (function) — Remove a member from a space — `spaces:admin`.
+- `useInvites` (function) — React hook returning the caller's live invitation inbox, re-rendering on change (the space-manager Invitations inbox, §9.8).
 - `useMounts` (function) — React hook returning the mounts currently available, re-rendering on change.
 - `waitForMount` (function) — Resolves once a mount matching `query` is present (immediately if it already is).
 
