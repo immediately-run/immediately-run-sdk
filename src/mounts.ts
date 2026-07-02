@@ -247,6 +247,50 @@ export const useMounts = (): SandboxMount[] => {
 };
 
 // ---------------------------------------------------------------------------
+// Session-scope mounts — the first-party "App | Session" lens (PRINCIPALS §9 B2).
+// ---------------------------------------------------------------------------
+
+/** A mount as seen through the first-party **Session** lens (PRINCIPALS_SPEC §9 B2):
+ *  the session's mounts BEYOND this app's own (the editor/agent session's). This is
+ *  a metadata view — no filesystem port — so it extends {@link SandboxMount} with only
+ *  {@link forwardedToApp}. */
+export interface SessionMount extends SandboxMount {
+  /** True iff this mount is ALSO in the app's own {@link useMounts} (the App lens);
+   *  `false` for a session-export-only mount visible only to the editor/agent + the
+   *  Session lens. */
+  forwardedToApp: boolean;
+}
+
+// The host pushes the session mount list ONLY to a FIRST-PARTY frame — the channel
+// is gated by the first-party-only `mounts:registry` capability (§8.9.1 / D-PRIN-4).
+// A URL-loaded/previewed app (or a fork of the File Explorer) never holds it, so the
+// push never arrives and `initial: []` stands — the Session lens is simply absent,
+// fail-closed. Mirrors the host's `session-mounts`/`request-session-mounts` wiring.
+const sessionMountsChannel = createPushChannel<SessionMount[]>({
+  pushType: 'session-mounts',
+  requestType: 'request-session-mounts',
+  initial: [],
+  parse: (msg) => (Array.isArray(msg.mounts) ? (msg.mounts as SessionMount[]) : undefined),
+});
+
+/** The session's mounts (the "Session" lens superset), or `[]` when this frame is
+ *  not first-party. One-off read; use {@link onSessionMountsChange}/{@link useSessionMounts}
+ *  to react live. First-party only (`mounts:registry`) — a fork always sees `[]`. */
+export const getSessionMounts = (): SessionMount[] => sessionMountsChannel.get();
+
+/** Subscribe to Session-lens mount changes. Invoked immediately with the current
+ *  list (`[]` for a non-first-party frame), then on every change. Returns an
+ *  unsubscribe. */
+export const onSessionMountsChange = (
+  listener: (mounts: SessionMount[]) => void,
+): (() => void) => sessionMountsChannel.onChange(listener);
+
+/** React hook returning the live "Session" lens mount list, re-rendering on change.
+ *  Empty for any non-first-party frame (the host withholds the channel), so a URL-
+ *  loaded File Explorer fork renders no Session lens. */
+export const useSessionMounts = (): SessionMount[] => sessionMountsChannel.use();
+
+// ---------------------------------------------------------------------------
 // Spaces — on-demand, shareable Firestore-backed filesystems.
 // The host owns all UX: if you aren't signed in, or the space doesn't exist or
 // isn't accessible, the parent window presents sign-in / create / request-access
