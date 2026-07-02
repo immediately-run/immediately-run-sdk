@@ -26,6 +26,8 @@ import {
   acceptInvite,
   declineInvite,
   shareSpace,
+  getInvites,
+  onInvitesChange,
   type Invite,
 } from './mounts';
 
@@ -96,6 +98,15 @@ describe('invites — SDK surface (§6.4/§7)', () => {
       code: 'forbidden',
       message: 'no invitation for this space',
     });
+  });
+
+  it('the live invitations channel surfaces the host-pushed inbox', () => {
+    const seen: Invite[][] = [];
+    onInvitesChange((i) => seen.push(i));
+    // The host pushes a snapshot on the `invitations` channel.
+    for (const h of listeners['invitations'] || []) h({ invites: [invite] });
+    expect(getInvites()).toEqual([invite]);
+    expect(seen[seen.length - 1]).toEqual([invite]);
   });
 
   it('the deprecated shareSpace alias now drives the `invite` verb (not `share`)', async () => {
