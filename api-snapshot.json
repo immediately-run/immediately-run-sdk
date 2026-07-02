@@ -21,8 +21,10 @@
     "BootProps",
     "CATCH_ALL_ROUTING_SPEC",
     "DEFAULT_ROUTING_SPEC",
+    "MdxComponents",
     "TinkerableApp",
-    "boot"
+    "boot",
+    "resolveMdxComponents"
   ],
   "catalog": [
     "ApiMethod",
@@ -31,6 +33,10 @@
     "invokeStream",
     "onCatalogChange",
     "useCatalog"
+  ],
+  "components/Admonition": [
+    "Admonition",
+    "AdmonitionType"
   ],
   "components/FileRouter": [
     "FileRouter"
@@ -41,10 +47,17 @@
     "RenderExportedComponentContext",
     "RenderFileContextType"
   ],
-  "components/MDXComponents": [
-    "DEFAULT_MDX_COMPONENTS",
+  "components/Link": [
     "InternalLink",
     "Link"
+  ],
+  "components/MDXComponents": [
+    "Admonition",
+    "AdmonitionType",
+    "DEFAULT_MDX_COMPONENTS",
+    "InternalLink",
+    "Link",
+    "WikiLink"
   ],
   "components/MainContent": [
     "MainContent",
@@ -59,6 +72,9 @@
     "Route",
     "RouteProps",
     "Routes"
+  ],
+  "components/WikiLink": [
+    "WikiLink"
   ],
   "components/defaults": [
     "defaultErrorComponent",
@@ -159,6 +175,8 @@
     "getHostRuntime"
   ],
   "index": [
+    "Admonition",
+    "AdmonitionType",
     "ApiMethod",
     "AppliedRoutingRule",
     "AuthState",
@@ -222,6 +240,7 @@
     "Link",
     "LoadingRegion",
     "MDXProvider",
+    "MdxComponents",
     "Member",
     "Metadata",
     "MetadataQueryEntry",
@@ -273,6 +292,7 @@
     "TaskInput",
     "TinkerableApp",
     "ToolDef",
+    "WikiLink",
     "__resetReady",
     "__setReadyDeps",
     "acceptInvite",
@@ -368,6 +388,7 @@
     "resolveContentRef",
     "resolveContentRefs",
     "resolveInteractive",
+    "resolveMdxComponents",
     "revokeGrant",
     "revokeInvite",
     "revokeSecret",

@@ -1,54 +1,24 @@
-import { ReactNode, use, useCallback } from 'react';
-import { navigate } from '../routing';
-import { TinkerableContext } from '../TinkerableContext';
-import { constructOuterUrl, constructUrl, isInternalHref, repositoryPrefixURL } from '../urlUtils';
+import { ReactNode } from 'react';
+import { Admonition } from './Admonition';
+import { Link } from './Link';
+import { WikiLink } from './WikiLink';
 
-/** An `<a>` that performs in-sandbox navigation on click (prevents the default
- *  full-page load and routes via {@link navigate}). */
-export const InternalLink = ({
-  href,
-  children,
-  ...props
-}: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
-  const clickHandler = useCallback(
-    (e: any) => {
-      if (href) {
-        e.preventDefault();
-        navigate(href);
-      }
-    },
-    [href]
-  );
-  return (
-    <a href={href} onClick={clickHandler} {...props}>
-      {children}
-    </a>
-  );
-};
+// The link primitives moved to ./Link so WikiLink can reuse Link without a
+// MDXComponents ↔ WikiLink import cycle (check:circular). Re-exported here so the
+// public `Link` / `InternalLink` entry points are unchanged.
+export { InternalLink, Link } from './Link';
+export { Admonition } from './Admonition';
+export type { AdmonitionType } from './Admonition';
+export { WikiLink } from './WikiLink';
 
-/** A link that routes same-app hrefs through the sandbox router (as an
- *  {@link InternalLink}) and renders external hrefs as a plain `<a>`. */
-export const Link = ({
-  href,
-  children,
-  ...properties
-}: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
-  const { outerHref, navigationState } = use(TinkerableContext);
-  if (href && isInternalHref(outerHref, href, navigationState)) {
-    const targetHref = constructOuterUrl(outerHref, href, navigationState);
-    return (
-      <InternalLink href={targetHref} {...properties}>
-        {children}
-      </InternalLink>
-    );
-  } else {
-    // create a regular link to external resource
-    return <a {...{ href, ...properties }}>{children}</a>;
-  }
-};
-
-/** Default MDX component overrides: routes `<a>` through {@link Link} so links in
- *  MDX prose navigate within the app. Passed to {@link MDXProvider} by `boot`. */
+/** Default MDX component overrides passed to {@link MDXProvider} by `boot`. These
+ *  are the platform's *phantom defaults* (MARKDOWN_SYNTAX_SPEC §11.2): they are
+ *  always present in the provider — even for a plain-markdown repo that never
+ *  calls `boot({ mdxComponents })` — so the platform-emitted `Admonition` (§12)
+ *  and `WikiLink` (§13) components resolve without the MDX missing-reference guard
+ *  firing, and Markdown links route in-app via {@link Link}. An app overrides any
+ *  of them by name via `boot({ mdxComponents })`, which *merges* over these
+ *  defaults (§11.3) — overriding `WikiLink` alone still keeps `a` and `Admonition`. */
 export const DEFAULT_MDX_COMPONENTS = {
   a({
     href,
@@ -61,4 +31,6 @@ export const DEFAULT_MDX_COMPONENTS = {
       </Link>
     );
   },
-};
+  Admonition,
+  WikiLink,
+} as Record<string, (props: any) => ReactNode>;
