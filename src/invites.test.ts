@@ -25,7 +25,6 @@ import {
   listMyInvites,
   acceptInvite,
   declineInvite,
-  shareSpace,
   getInvites,
   onInvitesChange,
   type Invite,
@@ -107,13 +106,5 @@ describe('invites — SDK surface (§6.4/§7)', () => {
     for (const h of listeners['invitations'] || []) h({ invites: [invite] });
     expect(getInvites()).toEqual([invite]);
     expect(seen[seen.length - 1]).toEqual([invite]);
-  });
-
-  it('the deprecated shareSpace alias now drives the `invite` verb (not `share`)', async () => {
-    protocolRequest.mockResolvedValue(ok(undefined));
-    await shareSpace('space-1', 'carol', 'reader');
-    expect(protocolRequest).toHaveBeenCalledWith('spaces', 'invite', [
-      { spaceId: 'space-1', login: 'carol', role: 'reader' },
-    ]);
   });
 });

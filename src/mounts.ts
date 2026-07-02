@@ -619,18 +619,6 @@ export const onInvitesChange = (listener: (invites: Invite[]) => void): (() => v
  *  (the space-manager Invitations inbox, §9.8). */
 export const useInvites = (): Invite[] => invitesChannel.use();
 
-/**
- * Invite a user (by provider handle) to a space at a role — `spaces:admin`.
- *
- * @deprecated Use {@link inviteToSpace}. As of FILE_SHARING_SPEC §6.4 this no longer
- * writes membership directly — it creates an invitation the recipient must accept
- * (it now routes to the same `invite` verb). Kept for back-compat; removed in a
- * future major.
- */
-export const shareSpace = async (spaceId: string, login: string, role: Role): Promise<void> => {
-  await request('invite', { spaceId, login, role });
-};
-
 /** Remove a member from a space — `spaces:admin`. Refused if it would orphan the
  *  space (owner-lockout, T41). */
 export const unshareSpace = async (spaceId: string, uid: string): Promise<void> => {
