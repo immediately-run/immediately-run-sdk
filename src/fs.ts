@@ -14,6 +14,7 @@
 // so — unlike the `invoke()` catalog surface — it is hand-written, not gate-table-derived.
 import type { SandboxMount, MountRule } from './mounts';
 import { getAppMountPath } from './mounts';
+import { onFsChange } from './onFsChange';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -244,6 +245,18 @@ export interface MountFs {
    *  (EDITOR_FIRST_EDITING_SPEC §3). Re-evaluate on `onMountsChange` — a role downgrade
    *  flips it. EROFS from the host stays authoritative. */
   canWrite(relPath?: string): boolean;
+  /** Subscribe to changes to files in this mount — the mount-scoped projection of
+   *  the host working-tree change stream (`onFsChange`), so a viewer re-reads an
+   *  affected file instead of polling (SDK_FS_SURFACE_SPEC §5). The callback gets
+   *  the changed paths RELATIVE to this mount (feed them straight back into
+   *  `readFile`/`stat`/…). Returns an unsubscribe fn.
+   *
+   *  **Working-tree-only in v1 (an honest gap, O2):** the host push channel carries
+   *  only working-tree changes, so `onChange` on a NON-working-tree mount (a space)
+   *  is an inert subscription that never fires until that channel lands. Like
+   *  `onFsChange`, origin-exclusion (ignoring the echo of your own write) is the
+   *  caller's responsibility. */
+  onChange(cb: (changedRelPaths: string[]) => void): () => void;
 }
 
 const promisesOf = (port: SandboxFsPort): NodeFsPromises =>
@@ -380,6 +393,22 @@ export function openFs(mount: SandboxMount): MountFs {
     },
     canWrite(relPath = '') {
       return writableAt(mount, relPath);
+    },
+    onChange(cb) {
+      // §5 — mount-scoped projection of the working-tree change channel
+      // (`onFsChange`). v1 is WORKING-TREE-ONLY: the host pushes only working-tree
+      // changes, so a non-working-tree mount (a space) has no channel yet (O2) and
+      // gets an inert subscription rather than another mount's paths leaking in.
+      if (root !== getAppMountPath()) {
+        return () => {}; // no channel for this mount — inert (honest v1 gap)
+      }
+      return onFsChange((change) => {
+        // Skip the empty pre-first-event initial batch; forward only real changes,
+        // as mount-relative paths (drop the repo-relative leading slash) so they
+        // feed straight back into readFile/stat/etc.
+        if (change.paths.length === 0) return;
+        cb(change.paths.map((p) => p.replace(/^\/+/, '')));
+      });
     },
   };
   return api;
