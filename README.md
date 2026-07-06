@@ -65,6 +65,14 @@ single request:
 The installed npm package also ships `.d.ts` carrying the same JSDoc, so your
 editor/agent tooling can read the typed API inline without any network access.
 
+## Verify (the CI/deploy gate)
+
+`npm run verify` runs this repo's full CI gate in one command —
+`check:circular` → `test` → `build` → `api:check` (the additive-only API-stability
+check against the committed snapshot). Run it before pushing; it is the same set of
+checks CI enforces, so a local green equals a green CI. (Ways of working §4: the local
+verify gate must equal the deploy gate — one `npm run verify` per repo.)
+
 ## License
 
 [MIT](./LICENSE)
