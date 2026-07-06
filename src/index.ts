@@ -21,6 +21,7 @@ export * from './netFetch';
 export * from './secrets';
 export * from './llm';
 export * from './diagnostics';
+export * from './vcs';
 export * from './onFsChange';
 export * from './fs';
 export * from './debug';
