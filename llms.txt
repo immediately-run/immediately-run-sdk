@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.26.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.27.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -450,6 +450,22 @@ Import: `@immediately-run/sdk/sandboxTypes`
 - `MetadataQueryFunction` (type) — A query over the metadata store: receive every file's frontmatter keyed by path and return the paths that match.
 - `MetadataQueryResult` (type) — The result of running a metadata query: the matched entries (path + frontmatter), or the error a throwing query produced.
 - `ModuleExports` (type) — The exports object of an evaluated sandbox module (untyped — shape depends on the module).
+
+## vcs
+
+Import: `@immediately-run/sdk/vcs`
+
+- `getVcsState` (function) — One-off read of the current source-control state.
+- `onVcsStateChange` (function) — Subscribe to source-control changes.
+- `refreshDiff` (function) — Ask the host to recompute the working-tree diff and push a fresh VcsState.
+- `refreshPRs` (function) — Ask the host to re-poll the open PRs and push a fresh VcsState.
+- `resetWorkingTree` (function) — Ask the host to DISCARD the working tree (COW writable wipe + journal clear) — irreversible.
+- `useVcsState` (function) — React hook: the current source-control state, re-rendering on every change.
+- `VcsActionError` (interface) — An error from a `vcs` action, carrying a machine-readable `.code`.
+- `VcsBranch` (interface) — The branch the working tree sits on and the upstream it diverged from (host `BranchInfo`, §15.1).
+- `VcsChange` (interface) — One changed path in the working tree (vs.
+- `VcsPR` (interface) — One pull request open from the current branch (host `BranchPR`).
+- `VcsState` (interface) — The whole source-control snapshot the host projects to a `vcs:read` frame.
 
 ## version
 
