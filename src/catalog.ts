@@ -16,6 +16,14 @@ export interface ApiMethod {
   capability: string;
   /** True when the method STREAMS (use {@link invokeStream}) vs. single-reply. */
   stream?: boolean;
+  /**
+   * JSON Schema for the method's single object argument, when the host declares one.
+   * Self-describes the call so a catalog-as-tools bridge (an embedded agent) can
+   * advertise the real param shape — e.g. that `authoring:typecheck` takes a nested
+   * `{ files: [{ path, content }] }` array — instead of a permissive "any object".
+   * Absent for methods the host advertises without a schema.
+   */
+  paramsSchema?: Record<string, unknown>;
 }
 
 // `scheme:method` → ['scheme', 'method'] (the wire protocol is `protocol-scheme`).
