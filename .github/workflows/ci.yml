@@ -17,8 +17,12 @@ jobs:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
           package-manager-cache: false  # never use caching in release builds
-      # Trusted publishing requires npm >= 11.5.1
-      - run: npm install -g npm@latest
+      # Trusted publishing requires npm >= 11.5.1. Pin to the 11.x line: npm@latest
+      # went to 12.0.0 (2026-07), whose provenance path throws `Cannot find module
+      # 'sigstore'` under `npm publish` (a .0 major regression that broke the 0.29.0
+      # publish here, and 0.5.0 in the transpiler). 11.x stays >= 11.5.1 and
+      # publishes cleanly; revisit when 12.x is fixed.
+      - run: npm install -g npm@11
       - run: npm ci
       # Fail fast on a circular import — the sandbox bundler infinite-loops on one
       # at app boot ("Maximum call stack size exceeded"). Caught the 0.2.7 cycle.
