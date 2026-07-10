@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.29.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.30.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -443,6 +443,44 @@ Import: `@immediately-run/sdk/runtime`
 - `SDK_PROTOCOL_VERSION` (const) — The wire protocol (postMessage envelope / channels / methods) THIS SDK speaks.
 - `sdkHandshake` (function) — Build this SDK's handshake payload (version + protocol) for the host to record.
 - `SdkHandshake` (interface) — This SDK's handshake payload — the version + protocol the host records + checks against `HOST_PROTOCOL_VERSION` (§6/T45).
+
+## safeContent/parseSafeMdast
+
+Import: `@immediately-run/sdk/safeContent/parseSafeMdast`
+
+- `parseSafeMdast` (function) — Parse untrusted Markdown/MDX-syntax source to an mdast tree with **no evaluator in the pipeline**: JSX-as-data (no acorn), GFM on, the expression extension OFF, no raw-HTML re-parse.
+- `SafeMdastNode` (interface)
+- `SafeMdxAttribute` (interface)
+
+## safeContent/renderMdast
+
+Import: `@immediately-run/sdk/safeContent/renderMdast`
+
+- `renderMdast` (function) — Render a safe-parsed mdast tree to React.
+- `RenderMdastOptions` (interface)
+- `SafeContentComponents` (interface)
+
+## safeContent/SafeContent
+
+Import: `@immediately-run/sdk/safeContent/SafeContent`
+
+- `SafeContent` (function)
+- `SafeContentProps` (interface)
+
+## safeContent/sanitizeUrl
+
+Import: `@immediately-run/sdk/safeContent/sanitizeUrl`
+
+- `sanitizeUrl` (function) — Return the URL if its scheme is allowed (or it is relative/anchor), else `undefined`.
+
+## safeContent/wikilink
+
+Import: `@immediately-run/sdk/safeContent/wikilink`
+
+- `parseWikiInner` (function) — Parse the `[[label|target]]` / `[[target]]` inner text (label first, then target — the §13.1 order), or `null` for an empty target (leave the literal `[[…]]`).
+- `splitWikiLinks` (function) — Split a text string on its `[[…]]` runs into ordered text / wiki parts, or `null` when there is no usable wiki-link (so the caller keeps the text node untouched).
+- `WikiLinkToken` (interface)
+- `WikiPart` (type)
 
 ## sandboxTypes
 
