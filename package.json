@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -32,15 +32,21 @@
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm test && npm run build && npm run api:check",
+    "verify": "npm run check:circular && npm test && npm run test:safe-content && npm run build && npm run api:check",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
-    "prepublishOnly": "npm run check:circular && npm run build && npm run api:check"
+    "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
+    "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "mdast-util-from-markdown": "^2.0.3",
+    "mdast-util-gfm": "^3.1.0",
+    "mdast-util-mdx-jsx": "^3.2.0",
+    "micromark-extension-gfm": "^3.0.0",
+    "micromark-extension-mdx-jsx": "^3.0.2",
     "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {
