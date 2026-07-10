@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.28.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.29.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -325,6 +325,12 @@ Import: `@immediately-run/sdk/components/Admonition`
 
 - `Admonition` (function) — Default MDX `Admonition` component — the render target for the GitHub-style `> [!NOTE]` blockquote-alert syntax (the transpiler remark plugin, R3-152, compiles that syntax to `<Admonition type="note">…</Admonition>`).
 - `AdmonitionType` (type) — The GitHub admonition kinds the transpiler's `> [!TYPE]` plugin emits (R3-152).
+
+## components/HeadingAnchor
+
+Import: `@immediately-run/sdk/components/HeadingAnchor`
+
+- `HeadingAnchor` (function) — Default MDX `HeadingAnchor` component — the render target for the autolink anchor the transpiler's heading-slug plugin (R3-186, `MARKDOWN_SYNTAX_SPEC §15.4`) prepends to every heading.
 
 ## components/Link
 
