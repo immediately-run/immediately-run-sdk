@@ -41,6 +41,9 @@
   "components/FileRouter": [
     "FileRouter"
   ],
+  "components/HeadingAnchor": [
+    "HeadingAnchor"
+  ],
   "components/Include": [
     "Include",
     "RenderExportedComponent",
@@ -55,6 +58,7 @@
     "Admonition",
     "AdmonitionType",
     "DEFAULT_MDX_COMPONENTS",
+    "HeadingAnchor",
     "InternalLink",
     "Link",
     "WikiLink"
@@ -224,6 +228,7 @@
     "FsChange",
     "FsError",
     "GrantRecord",
+    "HeadingAnchor",
     "HostFetchInit",
     "HostFetchResponse",
     "HostFetchStreamEvent",

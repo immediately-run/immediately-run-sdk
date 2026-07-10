@@ -8,7 +8,7 @@ import { createRoot } from 'react-dom/client';
 import { resolveMdxComponents } from '../boot';
 import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
 import { RenderExportedComponentContext } from './Include';
-import { Admonition, DEFAULT_MDX_COMPONENTS, WikiLink } from './MDXComponents';
+import { Admonition, DEFAULT_MDX_COMPONENTS, HeadingAnchor, WikiLink } from './MDXComponents';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -38,12 +38,14 @@ const ctx: TinkerableState = {
 };
 
 describe('DEFAULT_MDX_COMPONENTS — the phantom defaults (§11.2)', () => {
-  it('always provides a, Admonition and WikiLink', () => {
+  it('always provides a, Admonition, HeadingAnchor and WikiLink', () => {
     // The MDX missing-reference guard throws only when a referenced component is
     // ABSENT from the provider map. These keys being present is exactly what stops
-    // `_missingMdxReference("Admonition"/"WikiLink")` from firing on a plain repo.
+    // `_missingMdxReference("Admonition"/"HeadingAnchor"/"WikiLink")` from firing on
+    // a plain repo (§11.2 phantom defaults).
     expect(typeof DEFAULT_MDX_COMPONENTS.a).toBe('function');
     expect(typeof DEFAULT_MDX_COMPONENTS.Admonition).toBe('function');
+    expect(typeof DEFAULT_MDX_COMPONENTS.HeadingAnchor).toBe('function');
     expect(typeof DEFAULT_MDX_COMPONENTS.WikiLink).toBe('function');
   });
 });
@@ -90,6 +92,23 @@ describe('default Admonition (§12.3)', () => {
   it('defaults to the note kind for an unknown type', () => {
     const { container, unmount } = render(<Admonition type="bogus">x</Admonition>);
     expect(container.querySelector('.ir-admonition-title')!.textContent).toBe('Note');
+    unmount();
+  });
+});
+
+describe('default HeadingAnchor (§15.4)', () => {
+  it('renders an aria-labelled permalink whose href targets the heading id', () => {
+    const { container, unmount } = render(<HeadingAnchor id="sec-8-9" />);
+    const a = container.querySelector('a.ir-heading-anchor');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).toBe('#sec-8-9'); // permalink == the heading's own id
+    expect(a!.getAttribute('aria-label')).toBe('Permalink to this heading');
+    unmount();
+  });
+
+  it('renders nothing for a missing id (no dead `#` link)', () => {
+    const { container, unmount } = render(<HeadingAnchor />);
+    expect(container.querySelector('a')).toBeNull();
     unmount();
   });
 });
