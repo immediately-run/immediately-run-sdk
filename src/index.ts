@@ -32,3 +32,4 @@ export * from './ready';
 export * from './loading';
 export * from './protocolStream';
 export * from './sandboxTypes';
+export * from './safeContent';

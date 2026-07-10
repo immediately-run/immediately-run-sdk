@@ -266,6 +266,7 @@
     "RenderExportedComponent",
     "RenderExportedComponentContext",
     "RenderFileContextType",
+    "RenderMdastOptions",
     "RequestEditError",
     "ResolvedUser",
     "Role",
@@ -275,6 +276,11 @@
     "Routes",
     "SDK_PROTOCOL_VERSION",
     "SDK_VERSION",
+    "SafeContent",
+    "SafeContentComponents",
+    "SafeContentProps",
+    "SafeMdastNode",
+    "SafeMdxAttribute",
     "SandboxFsPort",
     "SandboxMount",
     "SandboxUser",
@@ -304,6 +310,8 @@
     "VcsPR",
     "VcsState",
     "WikiLink",
+    "WikiLinkToken",
+    "WikiPart",
     "__resetReady",
     "__setReadyDeps",
     "acceptInvite",
@@ -390,11 +398,14 @@
     "openInEditor",
     "openSettings",
     "openSettingsOf",
+    "parseSafeMdast",
+    "parseWikiInner",
     "postToRegion",
     "protocolStream",
     "refreshDiff",
     "refreshPRs",
     "renameEntry",
+    "renderMdast",
     "renderRoute",
     "reportReady",
     "requestAddSecret",
@@ -411,10 +422,12 @@
     "revokeInvite",
     "revokeSecret",
     "sandboxFs",
+    "sanitizeUrl",
     "sdkHandshake",
     "setActiveFile",
     "setHostTheme",
     "setSpaceRole",
+    "splitWikiLinks",
     "startItemDrag",
     "unmountSpace",
     "unshareSpace",
@@ -629,6 +642,44 @@
     "announceHandshake",
     "getHostRuntime",
     "sdkHandshake"
+  ],
+  "safeContent/SafeContent": [
+    "SafeContent",
+    "SafeContentProps"
+  ],
+  "safeContent/index": [
+    "RenderMdastOptions",
+    "SafeContent",
+    "SafeContentComponents",
+    "SafeContentProps",
+    "SafeMdastNode",
+    "SafeMdxAttribute",
+    "WikiLinkToken",
+    "WikiPart",
+    "parseSafeMdast",
+    "parseWikiInner",
+    "renderMdast",
+    "sanitizeUrl",
+    "splitWikiLinks"
+  ],
+  "safeContent/parseSafeMdast": [
+    "SafeMdastNode",
+    "SafeMdxAttribute",
+    "parseSafeMdast"
+  ],
+  "safeContent/renderMdast": [
+    "RenderMdastOptions",
+    "SafeContentComponents",
+    "renderMdast"
+  ],
+  "safeContent/sanitizeUrl": [
+    "sanitizeUrl"
+  ],
+  "safeContent/wikilink": [
+    "WikiLinkToken",
+    "WikiPart",
+    "parseWikiInner",
+    "splitWikiLinks"
   ],
   "sandboxUtils": [
     "addListener",
