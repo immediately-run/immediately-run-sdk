@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { Admonition } from './Admonition';
+import { HeadingAnchor } from './HeadingAnchor';
 import { Link } from './Link';
 import { WikiLink } from './WikiLink';
 
@@ -9,6 +10,7 @@ import { WikiLink } from './WikiLink';
 export { InternalLink, Link } from './Link';
 export { Admonition } from './Admonition';
 export type { AdmonitionType } from './Admonition';
+export { HeadingAnchor } from './HeadingAnchor';
 export { WikiLink } from './WikiLink';
 
 /** Default MDX component overrides passed to {@link MDXProvider} by `boot`. These
@@ -32,5 +34,6 @@ export const DEFAULT_MDX_COMPONENTS = {
     );
   },
   Admonition,
+  HeadingAnchor,
   WikiLink,
 } as Record<string, (props: any) => ReactNode>;
