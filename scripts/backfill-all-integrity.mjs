@@ -19,25 +19,51 @@ const PKG = '@immediately-run/sdk';
 
 // Compare two `major.minor.patch` strings; returns <0, 0, >0. Pre-release/build
 // suffixes aren't used by this package's published versions, so a numeric
-// triple compare is sufficient.
+// triple compare is sufficient. Coerces to string defensively so a stray
+// non-string from an npm-output-shape change can't crash the release
+// (`a.split is not a function` took down a publish — see `normalizeNpmVersions`).
 export const compareSemver = (a, b) => {
-  const pa = a.split('.').map(Number);
-  const pb = b.split('.').map(Number);
+  const pa = String(a).split('.').map(Number);
+  const pb = String(b).split('.').map(Number);
   for (let i = 0; i < 3; i++) {
     if ((pa[i] ?? 0) !== (pb[i] ?? 0)) return (pa[i] ?? 0) - (pb[i] ?? 0);
   }
   return 0;
 };
 
-/** Published versions (from npm) at or above `floor`, oldest first. */
+/** Published versions (from npm) at or above `floor`, oldest first. Filters to
+ *  string, semver-shaped entries first so a malformed element can never reach
+ *  `compareSemver`. */
 export const versionsAtOrAbove = (allVersions, floor) =>
-  allVersions.filter((v) => compareSemver(v, floor) >= 0).sort(compareSemver);
+  allVersions
+    .filter((v) => typeof v === 'string' && /^\d+\.\d+\.\d+/.test(v))
+    .filter((v) => compareSemver(v, floor) >= 0)
+    .sort(compareSemver);
+
+/**
+ * Normalize the JSON of `npm view <pkg> versions --json` to a flat string[].
+ * npm has emitted THREE shapes across versions: a bare string (single-version
+ * package), a plain array (the common case), and — the shape that crashed a
+ * 0.29.0 publish — an OBJECT keyed by the package name (`{ "@scope/pkg": [...] }`).
+ * The old `Array.isArray(parsed) ? parsed : [parsed]` wrapped that object into
+ * `[ {…} ]`, feeding a non-string to `compareSemver`. Handle all three.
+ */
+export const normalizeNpmVersions = (parsed) => {
+  if (Array.isArray(parsed)) return parsed;
+  if (typeof parsed === 'string') return [parsed];
+  if (parsed && typeof parsed === 'object') {
+    const arr = parsed[PKG] ?? Object.values(parsed).find(Array.isArray);
+    if (Array.isArray(arr)) return arr;
+    if (typeof arr === 'string') return [arr];
+  }
+  throw new Error(
+    `unexpected \`npm view ${PKG} versions --json\` output shape: ${JSON.stringify(parsed).slice(0, 200)}`,
+  );
+};
 
 const publishedVersions = () => {
   const out = execFileSync('npm', ['view', PKG, 'versions', '--json'], { encoding: 'utf8' });
-  const parsed = JSON.parse(out);
-  // npm returns a bare string for a single-version package, an array otherwise.
-  return Array.isArray(parsed) ? parsed : [parsed];
+  return normalizeNpmVersions(JSON.parse(out));
 };
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

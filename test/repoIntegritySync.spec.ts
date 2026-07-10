@@ -109,4 +109,35 @@ describe('backfill-all version range (SP2-2 floor..current)', () => {
     expect(JSON.parse(range)).toEqual(['0.2.8', '0.3.0', '0.8.0', '0.10.0']);
     expect(cmp).toBe('true');
   });
+
+  // Regression: a non-string/malformed element must never reach compareSemver
+  // (`a.split is not a function` crashed a publish). versionsAtOrAbove filters
+  // to string, semver-shaped entries first.
+  it('drops non-string / non-semver entries defensively', () => {
+    const script = join(repo, 'scripts', 'backfill-all-integrity.mjs').replace(/\\/g, '/');
+    const out = evalNode(
+      `import('${script}').then((m) => {` +
+        `console.log(JSON.stringify(m.versionsAtOrAbove(['0.2.8', 42, null, {x:1}, 'latest', '0.3.0'], '0.2.8')));` +
+        `})`,
+    );
+    expect(JSON.parse(out.trim())).toEqual(['0.2.8', '0.3.0']);
+  });
+
+  // Regression: `npm view versions --json` has three shapes across npm versions;
+  // the OBJECT-keyed-by-package shape crashed the 0.29.0 publish (it was wrapped
+  // into `[{…}]`). normalizeNpmVersions must flatten all three to string[].
+  it('normalizes every npm `versions --json` output shape', () => {
+    const script = join(repo, 'scripts', 'backfill-all-integrity.mjs').replace(/\\/g, '/');
+    const out = evalNode(
+      `import('${script}').then((m) => {` +
+        `console.log(JSON.stringify(m.normalizeNpmVersions(['0.1.0','0.2.0'])));` + // plain array
+        `console.log(JSON.stringify(m.normalizeNpmVersions('0.1.0')));` + // single string
+        `console.log(JSON.stringify(m.normalizeNpmVersions({'@immediately-run/sdk':['0.1.0','0.29.0']})));` + // object-keyed
+        `})`,
+    );
+    const [arr, str, obj] = out.split('\n');
+    expect(JSON.parse(arr)).toEqual(['0.1.0', '0.2.0']);
+    expect(JSON.parse(str)).toEqual(['0.1.0']);
+    expect(JSON.parse(obj)).toEqual(['0.1.0', '0.29.0']);
+  });
 });
