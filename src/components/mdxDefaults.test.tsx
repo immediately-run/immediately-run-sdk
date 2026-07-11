@@ -6,6 +6,7 @@ import type { FC, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { resolveMdxComponents } from '../boot';
+import * as sandboxUtils from '../sandboxUtils';
 import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
 import { RenderExportedComponentContext } from './Include';
 import { Admonition, DEFAULT_MDX_COMPONENTS, HeadingAnchor, WikiLink } from './MDXComponents';
@@ -229,6 +230,87 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
     });
     expect(container.querySelector('span.ir-wikilink-broken')).toBeNull();
     expect(container.querySelector('a.ir-wikilink')).not.toBeNull();
+    unmount();
+  });
+
+  // ── Fragments — deep-linking (§13.5, R3-212) ──────────────────────────────────
+  const FRAG_FILES = {
+    '/app/content/spec.mdx': { title: 'Spec' },
+    '/app/content/intro.mdx': { title: 'Intro' },
+  } as TinkerableState['filesMetadata'];
+
+  it('resolves a cross-file section target — existence checked on the STRIPPED path', () => {
+    // `[[spec.mdx#sec-8-9]]` must be `resolved` (not broken): the `#sec-8-9` fragment
+    // is split off before the existence check.
+    const { container, unmount } = renderWiki(<WikiLink target="spec.mdx#sec-8-9" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: FRAG_FILES,
+    });
+    const a = container.querySelector('a.ir-wikilink');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('a bogus fragment on an EXISTING file still resolves (scroll degrades to top, not broken)', () => {
+    const { container, unmount } = renderWiki(<WikiLink target="spec.mdx#bogus" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: FRAG_FILES,
+    });
+    expect(container.querySelector('a.ir-wikilink[data-state="resolved"]')).not.toBeNull();
+    expect(container.querySelector('span.ir-wikilink-broken')).toBeNull();
+    unmount();
+  });
+
+  it('a fragment on a MISSING file renders broken (file existence still wins)', () => {
+    const { container, unmount } = renderWiki(<WikiLink target="nope.mdx#x" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: FRAG_FILES,
+    });
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.querySelector('span.ir-wikilink-broken')).not.toBeNull();
+    unmount();
+  });
+
+  it('a same-page anchor `[[#sec-8-9]]` scrolls in place with NO route change', () => {
+    const sendMessage = jest.spyOn(sandboxUtils, 'sendMessage');
+    const target = document.createElement('h3');
+    target.id = 'sec-8-9';
+    const scrollSpy = jest.fn();
+    target.scrollIntoView = scrollSpy;
+    document.body.appendChild(target);
+
+    const { container, unmount } = renderWiki(<WikiLink target="#sec-8-9" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: FRAG_FILES,
+    });
+    const a = container.querySelector('a.ir-wikilink') as HTMLAnchorElement;
+    expect(a).not.toBeNull();
+    expect(a.getAttribute('data-state')).toBe('anchor');
+    expect(a.getAttribute('href')).toBe('#sec-8-9');
+
+    act(() => {
+      a.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    });
+    expect(scrollSpy).toHaveBeenCalled();
+    // "no route change": the host was never asked to change the URL.
+    expect(sendMessage).not.toHaveBeenCalledWith('urlchange', expect.anything());
+
+    sendMessage.mockRestore();
+    document.body.removeChild(target);
+    unmount();
+  });
+
+  it('a self-file target WITH a fragment becomes a same-page anchor (not inert self)', () => {
+    const { container, unmount } = renderWiki(<WikiLink target="intro.mdx#sec-2" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: FRAG_FILES,
+    });
+    const a = container.querySelector('a.ir-wikilink');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('data-state')).toBe('anchor');
+    expect(a!.getAttribute('href')).toBe('#sec-2');
+    expect(container.querySelector('span.ir-wikilink-self')).toBeNull();
     unmount();
   });
 });

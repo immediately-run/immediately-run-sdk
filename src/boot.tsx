@@ -7,6 +7,7 @@ import { ErrorNotFound } from './components/errors';
 import { FileRouter } from './components/FileRouter';
 import { MainContent } from './components/MainContent';
 import { DEFAULT_MDX_COMPONENTS } from './components/MDXComponents';
+import { ScrollAfterNavigation } from './components/ScrollAfterNavigation';
 import { getInitialContext, updateContext } from './contextUtils';
 import { getInjectedMetadataEmitter, resolveMetadataSource } from './injectedBundler';
 import { MDXProvider } from './MDXProvider';
@@ -123,6 +124,9 @@ export const TinkerableApp = ({
 
   return (
     <TinkerableContext value={context}>
+      {/* Capability C: lands cross-page `#fragment` deep-links on their section
+          after the destination tree mounts, uniform for every MDX app (§13.5). */}
+      <ScrollAfterNavigation />
       {children ?? <Router />}
     </TinkerableContext>
   );
