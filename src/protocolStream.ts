@@ -26,6 +26,15 @@ export interface StreamTransport {
     type: string,
     handler: (msg: { msgId?: number; stream?: StreamFrame }) => void
   ) => () => void;
+  // Tell the host to STOP the stream early — abort the in-flight generation (and,
+  // for `llm:chat`, the upstream provider fetch so it stops BILLING). Sent when the
+  // consumer bails before a terminal frame: an early `break`/`return` out of the
+  // `for await`, or an `AbortSignal` firing. Carries the same `(type, msgId)` the
+  // host tagged its frames with, so the host aborts the matching generator
+  // (LLM_AND_AGENTS_SPEC §3.3 "abort the in-flight LLM request"). Optional — a
+  // transport predating the cancel frame simply omits it and the old behavior
+  // (host runs to completion) stands.
+  cancel?: (msg: { type: string; msgId: number; cancel: true }) => void;
 }
 
 /** Thrown when a stream ends in an `error` frame; carries the host's `code`. */
@@ -53,16 +62,30 @@ const nextMsgId = (): number => {
  * Yields each event value; returns the `done` value; throws `StreamError` on an
  * error frame. Always unsubscribes (via the generator's `finally`) so an early
  * `break` in the consumer doesn't leak the listener.
+ *
+ * `signal` wires a caller {@link AbortSignal} to mid-stream cancellation: when it
+ * fires (or the consumer `break`s before a terminal frame), the `finally` sends a
+ * `cancel` frame back over `transport.cancel` so the HOST stops generating — without
+ * it, aborting only stops the app-side iterator while the upstream provider keeps
+ * streaming and BILLING (LLM_AND_AGENTS_SPEC §3.3, R3-224 / adversarial F2).
  */
 export async function* consumeStream<T = unknown, R = unknown>(
   transport: StreamTransport,
   type: string,
   method: string,
   params: unknown[],
-  msgId: number = nextMsgId()
+  msgId: number = nextMsgId(),
+  signal?: AbortSignal
 ): AsyncGenerator<T, R, void> {
   const queue: StreamFrame[] = [];
   let wake: (() => void) | null = null;
+  // True once a terminal (`done`/`error`) frame arrived — so the `finally` knows the
+  // host already stopped and must NOT send a redundant cancel. Left false when the
+  // consumer bails early or the signal aborts (the two cases that DO need a cancel).
+  let settled = false;
+  // True once the request frame went out. A cancel is only meaningful for a stream
+  // the host actually started — an abort BEFORE `send` sends nothing to cancel.
+  let started = false;
   const push = (frame: StreamFrame) => {
     queue.push(frame);
     const w = wake;
@@ -75,9 +98,20 @@ export async function* consumeStream<T = unknown, R = unknown>(
     push(msg.stream);
   });
 
+  // An abort wakes the pull loop out of its idle `await`; the loop then throws.
+  const onAbort = () => {
+    const w = wake;
+    wake = null;
+    w?.();
+  };
+  if (signal) signal.addEventListener('abort', onAbort);
+
   try {
+    if (signal?.aborted) throw new StreamError('aborted', 'stream aborted before start');
     transport.send({ type, method, params, msgId, stream: true });
+    started = true;
     while (true) {
+      if (signal?.aborted) throw new StreamError('aborted', 'stream aborted');
       if (queue.length === 0) {
         await new Promise<void>((resolve) => {
           wake = resolve;
@@ -88,32 +122,44 @@ export async function* consumeStream<T = unknown, R = unknown>(
       if (frame.kind === 'event') {
         yield frame.value as T;
       } else if (frame.kind === 'done') {
+        settled = true;
         return frame.value as R;
       } else {
+        settled = true;
         throw new StreamError(frame.code, frame.message);
       }
     }
   } finally {
     unsubscribe();
+    if (signal) signal.removeEventListener('abort', onAbort);
+    // Consumer stopped pulling before a terminal frame (early break/return, or the
+    // signal aborted): tell the host to stop the in-flight generation + billing.
+    if (started && !settled) transport.cancel?.({ type, msgId, cancel: true });
   }
 }
 
-// The real sandbox transport, built from the bundler messageBus helpers.
+// The real sandbox transport, built from the bundler messageBus helpers. `cancel`
+// rides the same messageBus as `send` — a `{type, msgId, cancel:true}` frame the
+// host dispatcher routes to the in-flight generator's AbortController.
 const bundlerTransport: StreamTransport = {
   send: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
   subscribe: (type, handler) =>
     addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
+  cancel: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
 };
 
 /**
  * Consume an elevated streaming protocol method from app code.
  *
  * `for await (const ev of protocolStream('protocol-contribute', 'run', [opts])) …`
+ *
+ * Pass `signal` to abort the stream (and the host's in-flight work) mid-flight.
  */
 export function protocolStream<T = unknown, R = unknown>(
   protocolName: string,
   method: string,
-  params: unknown[]
+  params: unknown[],
+  signal?: AbortSignal
 ): AsyncGenerator<T, R, void> {
-  return consumeStream<T, R>(bundlerTransport, protocolName, method, params);
+  return consumeStream<T, R>(bundlerTransport, protocolName, method, params, undefined, signal);
 }

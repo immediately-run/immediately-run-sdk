@@ -59,6 +59,12 @@ export interface ChatRequest {
   /** An ABSTRACT tier hint, never a vendor model id — the host maps it to a concrete
    *  model on the resolved provider. Omit to take the provider's default. */
   modelHint?: 'fast' | 'smart';
+  /** Abort the completion mid-stream. When it fires, the SDK sends the host a cancel
+   *  frame so the host aborts the upstream provider request and STOPS BILLING the
+   *  user's key — not merely stops the app-side iterator (LLM_AND_AGENTS_SPEC §3.3
+   *  "abort the in-flight LLM request", R3-224). Not sent over the wire (an
+   *  `AbortSignal` isn't serializable); handled SDK-side. */
+  signal?: AbortSignal;
 }
 
 /** One streamed chunk. Consumers typically accumulate `text-delta`s. */
@@ -90,7 +96,14 @@ export interface ChatResult {
  * throws with `code: 'auth-required'`; an un-granted call throws `forbidden`.
  */
 export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, void> {
-  return invokeStream<ChatDelta, ChatResult>('llm:chat', req as unknown as Record<string, unknown>);
+  // Peel `signal` out of the request before it becomes wire params — an AbortSignal
+  // can't cross the postMessage boundary as data; it drives the SDK-side cancel frame.
+  const { signal, ...params } = req;
+  return invokeStream<ChatDelta, ChatResult>(
+    'llm:chat',
+    params as unknown as Record<string, unknown>,
+    signal,
+  );
 }
 
 /** The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read
