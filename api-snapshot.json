@@ -51,6 +51,7 @@
     "RenderFileContextType"
   ],
   "components/Link": [
+    "FragmentLink",
     "InternalLink",
     "Link"
   ],
@@ -76,6 +77,10 @@
     "Route",
     "RouteProps",
     "Routes"
+  ],
+  "components/ScrollAfterNavigation": [
+    "ScrollAfterNavigation",
+    "useScrollAfterNavigation"
   ],
   "components/WikiLink": [
     "WikiLink"
@@ -686,6 +691,9 @@
     "protocolRequest",
     "sendMessage"
   ],
+  "scrollToId": [
+    "scrollToId"
+  ],
   "secrets": [
     "SecretError",
     "SecretGrant",
@@ -743,6 +751,7 @@
     "parsePath",
     "parseTarget",
     "repositoryPrefixURL",
+    "splitHash",
     "underAppRoot"
   ],
   "vcs": [
