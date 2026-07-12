@@ -23,6 +23,19 @@ export const getOuterHostname = (outerHref:string) => {
 export const getSearchParams = (search?: string): Record<string, string> => Object.fromEntries(
   [...(new URLSearchParams(search ?? window.location.search).entries())]);
 
+/**
+ * Split a link target into its path part and its `#fragment` (the `#` dropped),
+ * e.g. `"FOO.mdx#sec-8-9"` → `["FOO.mdx", "sec-8-9"]`, `"#sec-3"` → `["", "sec-3"]`,
+ * `"FOO.mdx"` → `["FOO.mdx", ""]`. Only the **first** `#` splits — a fragment never
+ * contains another `#`. The seam between wiki-links (§13) and heading ids (§15):
+ * existence is resolved on the path part, the fragment is threaded to navigation.
+ * MARKDOWN_SYNTAX_SPEC §13.5.
+ */
+export const splitHash = (target: string): [string, string] => {
+  const i = target.indexOf('#');
+  return i === -1 ? [target, ''] : [target.slice(0, i), target.slice(i + 1)];
+};
+
 
 export const parseTarget = (target: string, navigation: NavigationState): NavigationState => {
   const newNavigation = { ...navigation };
@@ -56,11 +69,17 @@ export const repositoryPrefixURL = (outerHref:string, navigationState: Navigatio
 
 export const constructOuterUrl = (previousOuterHref:string, sandboxTarget:string, navigationState: NavigationState, addFilesPrefix=true):string => {
   if (isAbsolutePath(sandboxTarget)) {
+    // Split a trailing `#fragment` off before the target is folded into the
+    // sandboxPath, and carry it in `hash` instead — a fragment addresses a section,
+    // not a file, so it must not leak into the path (MARKDOWN_SYNTAX_SPEC §13.5). An
+    // absolute target with no fragment clears any stale hash from the prior state.
+    const [pathPart, hash] = splitHash(sandboxTarget);
     return constructUrl(
       previousOuterHref,
       {
         ...navigationState,
-        sandboxPath: addFilesPrefix ? joinPaths(FILES_PREFIX, sandboxTarget) : sandboxTarget
+        sandboxPath: addFilesPrefix ? joinPaths(FILES_PREFIX, pathPart) : pathPart,
+        hash,
       })
   }
   return (

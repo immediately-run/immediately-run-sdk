@@ -2,6 +2,7 @@ import { ReactNode, use } from 'react';
 import { Link } from './Link';
 import { RenderExportedComponentContext } from './Include';
 import { TinkerableContext } from '../TinkerableContext';
+import { splitHash } from '../urlUtils';
 
 /** Derive a human label from a target path: basename without the extension. */
 const labelFromTarget = (target: string): string => {
@@ -54,13 +55,21 @@ const resolveWikiTarget = (target: string, currentFile?: string): string | undef
  * context nests with each `<Include>`, a relative target inside an included
  * fragment resolves against the **fragment**, not the top-level page in the URL.
  *
+ * A target may carry a `#fragment` (`[[FILE.mdx#sec-8-9]]`, `[[#sec-8-9]]`): the
+ * fragment is **split off** ({@link splitHash}, §13.5) and existence is resolved on
+ * the **fragment-stripped path**, so a section citation to an existing file resolves
+ * (not "broken"). The fragment then rides to navigation, where the scroll-after-nav
+ * effect ({@link useScrollAfterNavigation}) lands the reader on the section.
+ *
  * The resolved path is checked for **existence** against the live metadata store
- * (keyed by absolute `/app/…` paths) for the three states (§13.3):
- * - **self** — the resolved path is the current file: inert text, no link.
+ * (keyed by absolute `/app/…` paths) for the states (§13.3, §13.5):
+ * - **anchor** — a fragment with no path (`[[#sec-8-9]]`), or a fragment whose path is
+ *   the current file: a same-page {@link Link} that scrolls in place, no route change.
+ * - **self** — the resolved path is the current file (no fragment): inert text, no link.
  * - **broken** — no file at the resolved path (and the store has loaded): rendered
  *   as marked text, **not** a throw.
  * - **resolved** — routed through {@link Link} (in-app navigation for a same-app
- *   href, a plain `<a>` otherwise).
+ *   href, a plain `<a>` otherwise), carrying any `#fragment`.
  *
  * The check is **optimistic until the metadata store loads** (an empty store never
  * flashes "broken"), and a relative target with no ambient render context (MDX
@@ -82,7 +91,8 @@ export const WikiLink = ({
   const currentFile = renderContext?.evaluationContext?.evaluation?.module?.filepath;
 
   const rawTarget = target ?? '';
-  const text = children ?? label ?? (rawTarget ? labelFromTarget(rawTarget) : '');
+  const [pathPart, frag] = splitHash(rawTarget);
+  const text = children ?? label ?? (rawTarget ? labelFromTarget(pathPart || frag || rawTarget) : '');
 
   // Defensive: the kernel never emits an empty target, but a hand-written
   // `<WikiLink>` might. Render inert text rather than a link to nowhere.
@@ -94,7 +104,17 @@ export const WikiLink = ({
     );
   }
 
-  const resolved = resolveWikiTarget(rawTarget, currentFile);
+  // Same-page anchor: a fragment with no path (`[[#sec-8-9]]`). Scroll within the
+  // current file — no route change (§13.5). <Link> intercepts a bare `#`-href.
+  if (pathPart === '' && frag) {
+    return (
+      <Link href={`#${frag}`} className="ir-wikilink" data-state="anchor" {...rest}>
+        {text}
+      </Link>
+    );
+  }
+
+  const resolved = resolveWikiTarget(pathPart, currentFile);
   const files = filesMetadata ?? {};
   const loaded = Object.keys(files).length > 0;
 
@@ -102,13 +122,23 @@ export const WikiLink = ({
   // it optimistically (can't check existence or self-ness generically).
   if (resolved !== undefined) {
     if (currentFile && resolved === currentFile) {
+      // The target IS this file. With a fragment it is a same-page anchor to another
+      // of this file's sections; without one it is an inert self-reference.
+      if (frag) {
+        return (
+          <Link href={`#${frag}`} className="ir-wikilink" data-state="anchor" {...rest}>
+            {text}
+          </Link>
+        );
+      }
       return (
         <span className="ir-wikilink ir-wikilink-self" data-state="self" {...rest}>
           {text}
         </span>
       );
     }
-    const exists = !loaded || resolved in files; // optimistic until loaded
+    // Existence is checked on the FRAGMENT-STRIPPED path (optimistic until loaded).
+    const exists = !loaded || resolved in files;
     if (!exists) {
       return (
         <span
@@ -122,6 +152,8 @@ export const WikiLink = ({
       );
     }
   }
+  // Resolved cross-file target: route through <Link>, carrying the raw target so its
+  // `#fragment` rides through navigation to the scroll-after-nav effect (§13.5).
   return (
     <Link href={rawTarget} className="ir-wikilink" data-state="resolved" {...rest}>
       {text}
