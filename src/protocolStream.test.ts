@@ -6,6 +6,7 @@ function fakeTransport() {
   const sent: any[] = [];
   let handler: ((msg: { msgId?: number; stream?: StreamFrame }) => void) | null = null;
   let unsubscribed = false;
+  const canceled: any[] = [];
   const transport: StreamTransport = {
     send: (msg) => sent.push(msg),
     subscribe: (_type, h) => {
@@ -15,10 +16,12 @@ function fakeTransport() {
         handler = null;
       };
     },
+    cancel: (msg) => canceled.push(msg),
   };
   return {
     transport,
     sent,
+    canceled,
     isUnsubscribed: () => unsubscribed,
     emit: (msgId: number, stream: StreamFrame) => handler?.({ msgId, stream }),
   };
@@ -103,5 +106,63 @@ describe('consumeStream — SDK iterator over the streaming transport (§5.1)', 
     expect(await first).toEqual({ value: 1, done: false });
     expect(await it.next()).toEqual({ value: 2, done: false });
     expect(await it.next()).toEqual({ value: 'fin', done: true });
+  });
+
+  // R3-224 (§3.3 "abort the in-flight LLM request"): early cancellation must send the
+  // host a `cancel` frame — without it the host keeps generating and billing.
+  describe('mid-stream cancel (R3-224)', () => {
+    it('sends a cancel frame when the consumer breaks early before a terminal frame', async () => {
+      const fx = fakeTransport();
+      const it = consumeStream(fx.transport, 'protocol-llm', 'chat', [{}], 8);
+      const step = it.next();
+      fx.emit(8, { kind: 'event', value: 'a' }); // mid-stream — no done yet
+      await step;
+      await it.return(undefined as never); // consumer abandons the iterator
+      expect(fx.canceled).toEqual([{ type: 'protocol-llm', msgId: 8, cancel: true }]);
+      expect(fx.isUnsubscribed()).toBe(true);
+    });
+
+    it('does NOT send a cancel frame after a normal done (host already stopped)', async () => {
+      const fx = fakeTransport();
+      const it = consumeStream(fx.transport, 'protocol-llm', 'chat', [{}], 9);
+      const first = it.next();
+      fx.emit(9, { kind: 'done', value: { stopReason: 'end' } });
+      await first;
+      await it.next(); // drain the done
+      expect(fx.canceled).toEqual([]);
+    });
+
+    it('does NOT send a cancel frame after an error frame (host already stopped)', async () => {
+      const fx = fakeTransport();
+      const it = consumeStream(fx.transport, 'protocol-llm', 'chat', [{}], 10);
+      const step = it.next();
+      fx.emit(10, { kind: 'error', code: 'auth-required', message: 'x' });
+      await expect(step).rejects.toMatchObject({ code: 'auth-required' });
+      expect(fx.canceled).toEqual([]);
+    });
+
+    it('an AbortSignal firing mid-stream throws `aborted` AND sends a cancel frame', async () => {
+      const fx = fakeTransport();
+      const ctrl = new AbortController();
+      const it = consumeStream(fx.transport, 'protocol-llm', 'chat', [{}], 11, ctrl.signal);
+      const first = it.next();
+      fx.emit(11, { kind: 'event', value: 'partial' });
+      await first;
+      const pending = it.next(); // now idle-awaiting the next frame
+      ctrl.abort(); // user hits stop
+      await expect(pending).rejects.toMatchObject({ name: 'StreamError', code: 'aborted' });
+      expect(fx.canceled).toEqual([{ type: 'protocol-llm', msgId: 11, cancel: true }]);
+      expect(fx.isUnsubscribed()).toBe(true);
+    });
+
+    it('an already-aborted signal never sends the request and sends no cancel', async () => {
+      const fx = fakeTransport();
+      const ctrl = new AbortController();
+      ctrl.abort();
+      const it = consumeStream(fx.transport, 'protocol-llm', 'chat', [{}], 12, ctrl.signal);
+      await expect(it.next()).rejects.toMatchObject({ code: 'aborted' });
+      expect(fx.sent).toEqual([]); // request never went out
+      expect(fx.canceled).toEqual([]); // nothing to cancel
+    });
   });
 });

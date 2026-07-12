@@ -66,15 +66,20 @@ const streamTransport: StreamTransport = {
   send: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
   subscribe: (type, handler) =>
     addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
+  // Early-cancel: route a `{type, msgId, cancel:true}` frame back to the host so it
+  // aborts the in-flight generation (and, for `llm:chat`, stops billing) — §3.3.
+  cancel: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
 };
 
-/** Call a STREAMING catalog method by name, yielding its events. */
+/** Call a STREAMING catalog method by name, yielding its events. Pass `signal` to
+ *  abort mid-stream: the host stops generating and (for `llm:chat`) stops billing. */
 export function invokeStream<T = unknown, R = unknown>(
   name: string,
   params: Record<string, unknown> = {},
+  signal?: AbortSignal,
 ): AsyncGenerator<T, R, void> {
   const [scheme, method] = split(name);
-  return consumeStream<T, R>(streamTransport, `protocol-${scheme}`, method, [params]);
+  return consumeStream<T, R>(streamTransport, `protocol-${scheme}`, method, [params], undefined, signal);
 }
 
 // The catalog list is read over the transport (§4): the host pushes `api-catalog`
