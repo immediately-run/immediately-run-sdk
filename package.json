@@ -42,6 +42,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@immediately-run/mdx-plugins": "file:../immediately-run-mdx-plugins",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-mdx-jsx": "^3.2.0",

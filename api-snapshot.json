@@ -265,6 +265,7 @@
     "MountRule",
     "ObjectUrlState",
     "Orientation",
+    "ParseSafeMdastOptions",
     "ReadyState",
     "RegionMessage",
     "RemovedMount",
@@ -653,6 +654,7 @@
     "SafeContentProps"
   ],
   "safeContent/index": [
+    "ParseSafeMdastOptions",
     "RenderMdastOptions",
     "SafeContent",
     "SafeContentComponents",
@@ -668,6 +670,7 @@
     "splitWikiLinks"
   ],
   "safeContent/parseSafeMdast": [
+    "ParseSafeMdastOptions",
     "SafeMdastNode",
     "SafeMdxAttribute",
     "parseSafeMdast"

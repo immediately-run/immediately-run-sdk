@@ -177,6 +177,57 @@ describe('renderMdast — the render-as-data security properties', () => {
     unmount();
   });
 
+  it('R3-213: a heading id set by the shared plugin (data.hProperties.id) is translated to a React prop', () => {
+    // The no-acorn path has no hast stage, so renderMdast must translate the id +
+    // data-slug the shared remarkHeadingAnchors plugin sets on the mdast into props —
+    // else headings render id-less and `#sec-8-9` deep-linking breaks in the safe path.
+    const heading: SafeMdastNode = {
+      type: 'heading',
+      depth: 2,
+      data: { hProperties: { id: 'sec-8-9', 'data-slug': '89-powerbox' } },
+      children: [text('8.9 Powerbox')],
+    };
+    const { container, unmount } = render(renderMdast(root(heading), {}));
+    const h2 = container.querySelector('h2');
+    expect(h2?.getAttribute('id')).toBe('sec-8-9');
+    expect(h2?.getAttribute('data-slug')).toBe('89-powerbox');
+    unmount();
+  });
+
+  it('R3-213: WikiLink / Admonition element nodes render via the shared component map (literal props only)', () => {
+    // The nodes the shared plugins emit resolve through the SAME components map the
+    // compiled path uses — the caller (an interpreter app) passes DEFAULT_MDX_COMPONENTS.
+    // Here we assert the mechanism: named element nodes reach the mapped component with
+    // their literal attributes (incl. a `#sec-` deep-link fragment carried verbatim).
+    const seen: Record<string, Record<string, unknown>> = {};
+    const components: SafeContentComponents = {
+      WikiLink: (props) => { seen.WikiLink = props; return <a data-t={props.target ?? ''}>{props.label ?? ''}</a>; },
+      Admonition: (props) => { seen.Admonition = props; return <aside data-type={props.type ?? ''} />; },
+    };
+    const wikiNode: SafeMdastNode = {
+      type: 'mdxJsxTextElement',
+      name: 'WikiLink',
+      attributes: [
+        { type: 'mdxJsxAttribute', name: 'target', value: 'specs/x.mdx#sec-3-2' },
+        { type: 'mdxJsxAttribute', name: 'label', value: 'Guide' },
+      ],
+      children: [],
+    };
+    const admNode: SafeMdastNode = {
+      type: 'mdxJsxFlowElement',
+      name: 'Admonition',
+      attributes: [{ type: 'mdxJsxAttribute', name: 'type', value: 'note' }],
+      children: [para(text('heads up'))],
+    };
+    const { container, unmount } = render(renderMdast(root(para(wikiNode), admNode), { components }));
+    expect(seen.WikiLink.target).toBe('specs/x.mdx#sec-3-2');
+    expect(seen.WikiLink.label).toBe('Guide');
+    expect(seen.Admonition.type).toBe('note');
+    expect(container.querySelector('a[data-t="specs/x.mdx#sec-3-2"]')).not.toBeNull();
+    expect(container.querySelector('aside[data-type="note"]')).not.toBeNull();
+    unmount();
+  });
+
   it('§5.1: standard markdown renders (headings, emphasis, lists) as safe elements', () => {
     const tree = root(
       { type: 'heading', depth: 2, children: [text('Title')] },
