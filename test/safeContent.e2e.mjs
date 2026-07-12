@@ -117,6 +117,52 @@ test('§5.1 fail-safe: parse+render of hostile MDX calls NO evaluator (fetch/Fun
   assert.match(html, /\{expression\}/, 'body `{expression}` stays literal');
 });
 
+test('R3-213: the real parse runs the SHARED kernel remark plugins (heading ids, admonitions, wiki-links)', async () => {
+  // The safe subset the compiled path also renders — proving `parseSafeMdast` runs the
+  // SAME @immediately-run/mdx-plugins the transpiler runs, so the two paths can't drift.
+  const src = [
+    '## 8.9 Powerbox',
+    '',
+    '> [!NOTE]',
+    '> heads up',
+    '',
+    'See [[Guide|specs/x.mdx#sec-3-2]] and [[plain.mdx]].',
+  ].join('\n');
+  const tree = await parseSafeMdast(src);
+
+  const find = (pred) => {
+    let hit = null;
+    const walk = (n) => {
+      if (hit) return;
+      if (pred(n)) { hit = n; return; }
+      for (const c of n.children ?? []) walk(c);
+    };
+    walk(tree);
+    return hit;
+  };
+  const attrVal = (n, name) => n.attributes?.find((a) => a.name === name)?.value;
+
+  // (a) heading anchors (R3-186/R3-211): section id via data.hProperties + prepended anchor.
+  const heading = find((n) => n.type === 'heading');
+  assert.equal(heading?.data?.hProperties?.id, 'sec-8-9', 'section-id set on the heading (hProperties)');
+  assert.equal(heading.children[0].type, 'mdxJsxTextElement');
+  assert.equal(heading.children[0].name, 'HeadingAnchor');
+
+  // (b) admonitions (§12): `> [!NOTE]` → <Admonition type="note">.
+  const adm = find((n) => n.name === 'Admonition');
+  assert.ok(adm, 'admonition element produced');
+  assert.equal(adm.type, 'mdxJsxFlowElement');
+  assert.equal(attrVal(adm, 'type'), 'note');
+
+  // (c) wiki-links (§13): `[[label|target]]` → <WikiLink> carrying the RAW target incl.
+  // the `#sec-3-2` deep-link fragment (verbatim — resolution is a render concern).
+  const wl = find((n) => n.name === 'WikiLink');
+  assert.ok(wl, 'wiki-link element produced');
+  assert.equal(wl.type, 'mdxJsxTextElement');
+  assert.equal(attrVal(wl, 'target'), 'specs/x.mdx#sec-3-2');
+  assert.equal(attrVal(wl, 'label'), 'Guide');
+});
+
 test('§5.1: the safe pipeline never imports @mdx-js/mdx compile() or acorn (compiled path unreachable)', async () => {
   // Gate wiring (test 7): the safe terminal must not route through the executable
   // (compiled MDX) path. Assert the built safe module graph references neither

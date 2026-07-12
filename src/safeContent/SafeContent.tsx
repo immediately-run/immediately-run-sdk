@@ -2,6 +2,16 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { parseSafeMdast } from './parseSafeMdast';
 import { renderMdast, type RenderMdastOptions } from './renderMdast';
 
+// R3-213 — sharing the component map: `parseSafeMdast` runs the SAME kernel remark
+// plugins the compiled path uses, so it emits `<Admonition>` / `<WikiLink>` /
+// `<HeadingAnchor>` element nodes. To render them identically to the compiled path (and
+// so pick up the R3-212 fragment resolver + scroll), an interpreter app passes the SAME
+// `DEFAULT_MDX_COMPONENTS` it hands `boot({ mdxComponents })` as this component's
+// `components` — that shared map IS the uniformity (no forked second component set). We
+// deliberately do NOT import DEFAULT_MDX_COMPONENTS here: the safe renderer is a lean,
+// dep-light security primitive (render-as-data, no evaluator, ESM-clean for the e2e
+// bundle), and must not pull the full component library into its module graph.
+
 // `<SafeContent>` — the host/SDK-owned safe renderer (TRUST_MODES_SPEC §5.1,
 // AGENT_AUTHORING §10). An interpreter app renders untrusted Markdown/MDX-syntax
 // content — a shared board's body, a multi-writer wiki entry — through THIS component

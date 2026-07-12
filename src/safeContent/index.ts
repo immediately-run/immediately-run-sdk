@@ -16,7 +16,7 @@ export type {
   SafeContentComponents,
 } from './renderMdast';
 export { parseSafeMdast } from './parseSafeMdast';
-export type { SafeMdastNode, SafeMdxAttribute } from './parseSafeMdast';
+export type { SafeMdastNode, SafeMdxAttribute, ParseSafeMdastOptions } from './parseSafeMdast';
 export { sanitizeUrl } from './sanitizeUrl';
 export { splitWikiLinks, parseWikiInner } from './wikilink';
 export type { WikiLinkToken, WikiPart } from './wikilink';

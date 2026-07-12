@@ -101,7 +101,16 @@ function renderNode(node: SafeMdastNode, opts: RenderMdastOptions, index = 0): R
       return createElement('p', { key }, ...renderChildren(node, opts));
     case 'heading': {
       const tag = HEADING_TAGS[Math.min(Math.max((node.depth ?? 1) - 1, 0), 5)];
-      return createElement(tag, { key }, ...renderChildren(node, opts));
+      // R3-213: the no-acorn path has no hast stage, so the heading id the shared
+      // `remarkHeadingAnchors` plugin sets via `data.hProperties.id` (+ the `data-slug`
+      // fallback, R3-211) must be translated to React props HERE, or headings render
+      // id-less and deep-linking (`#sec-8-9`) breaks in the safe path. These are
+      // plugin-computed literal strings, not author input — safe to pass through.
+      const hp = (node.data as { hProperties?: Record<string, unknown> } | undefined)?.hProperties;
+      const headingProps: Record<string, string> = {};
+      if (typeof hp?.id === 'string') headingProps.id = hp.id;
+      if (typeof hp?.['data-slug'] === 'string') headingProps['data-slug'] = hp['data-slug'];
+      return createElement(tag, { key, ...headingProps }, ...renderChildren(node, opts));
     }
     case 'strong':
       return createElement('strong', { key }, ...renderChildren(node, opts));

@@ -18,6 +18,13 @@
 // an ESM-only package, and one that does gets it via Node's ESM-from-CJS import. The
 // dynamic load changes only *when* the deps resolve, never the produced tree.
 
+import {
+  remarkAdmonitions,
+  remarkWikiLinks,
+  remarkHeadingAnchors,
+  type HeadingAnchorOptions,
+} from '@immediately-run/mdx-plugins';
+
 // A minimal structural mdast shape — we deliberately avoid a type dependency on the
 // ESM-only `mdast`/`unist` packages (which would break the CJS build's type surface).
 export interface SafeMdastNode {
@@ -79,19 +86,52 @@ function loadDeps(): Promise<Deps> {
   return depsPromise;
 }
 
+export interface ParseSafeMdastOptions {
+  /** `false` ⇒ headings use plain text-slug ids (the R3-186 base; no `sec-…` section
+   *  ids, no `data-slug`) — the `sectionIds:false` frontmatter opt-out, matching the
+   *  compiled path. Default (undefined/true) ⇒ section-like headings get `sec-…` ids
+   *  (R3-211). */
+  sectionIds?: boolean;
+}
+
+// The three kernel remark plugins for the MDX *safe subset* — the SAME source the
+// compiled path (transpiler `compileMdx`) runs, imported from the shared package so the
+// two render standards can't drift (TRUST_MODES_SPEC §5 / §5.1, R3-213). They are pure
+// mdast transforms: `(options?) => (tree) => void`. `unified`'s `Plugin` type widens the
+// return to `Transformer | void`; here we invoke the transformer directly on the tree,
+// so narrow it to a plain in-place mutator.
+type MdastMutator = (tree: SafeMdastNode) => void;
+const admonitions = remarkAdmonitions as unknown as () => MdastMutator;
+const wikiLinks = remarkWikiLinks as unknown as () => MdastMutator;
+const headingAnchors = remarkHeadingAnchors as unknown as (o?: HeadingAnchorOptions) => MdastMutator;
+
 /**
  * Parse untrusted Markdown/MDX-syntax source to an mdast tree with **no evaluator in
  * the pipeline**: JSX-as-data (no acorn), GFM on, the expression extension OFF, no
  * raw-HTML re-parse. The returned tree is safe to hand to `renderMdast` — expression
  * attributes are inert strings and raw HTML is inert `html` nodes.
+ *
+ * After the no-acorn parse it runs the SHARED kernel remark plugins — in the SAME order
+ * as the compiled path's `compile.ts` (admonitions §12 → wiki-links §13 → heading/section
+ * anchors §15/R3-211; GFM is already applied via the micromark extension above) — so the
+ * safe subset renders identically in both standards. The plugins only emit element nodes
+ * with LITERAL attributes and set `data.hProperties.id` on headings; they add no evaluator
+ * and no acorn, preserving the §5.1 fail-safe.
  */
-export async function parseSafeMdast(source: string): Promise<SafeMdastNode> {
+export async function parseSafeMdast(
+  source: string,
+  options: ParseSafeMdastOptions = {},
+): Promise<SafeMdastNode> {
   const { fromMarkdown, mdxJsx, mdxJsxFromMarkdown, gfm, gfmFromMarkdown } = await loadDeps();
-  return fromMarkdown(source, {
+  const tree = fromMarkdown(source, {
     // `mdxJsx()` WITHOUT an acorn option → JSX tags + literal attrs; expressions are
     // raw strings, never estree. The mdx *expression* extension is intentionally
     // absent, so `{…}` in body text stays literal. GFM for tables/task-lists.
     extensions: [mdxJsx(), gfm()],
     mdastExtensions: [mdxJsxFromMarkdown(), gfmFromMarkdown()],
   });
+  admonitions()(tree);
+  wikiLinks()(tree);
+  headingAnchors({ sectionIds: options.sectionIds !== false })(tree);
+  return tree;
 }
