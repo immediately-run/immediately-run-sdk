@@ -26,6 +26,7 @@ export * from './onFsChange';
 export * from './fs';
 export * from './debug';
 export * from './tasks';
+export * from './launch';
 export * from './runtime';
 export * from './irMarkers';
 export * from './ready';
