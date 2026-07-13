@@ -3,6 +3,9 @@
 // returns `{ok:false,code}` (never throws) on refusal, that `dismiss()` posts a
 // `launch-dismiss`, and that a `launch-ended` message drives status + fires
 // `onDismiss` exactly once — identically for dismiss/revoke/failed (R-SAL-1).
+export {}; // make this a MODULE — else its top-level `Listener`/`listeners` become
+// GLOBAL script declarations and collide with the same names in debug.test.ts under
+// the shared tsc typecheck (TS2300), which jest's per-file isolation never surfaces.
 type Listener = (msg: Record<string, unknown>) => void;
 const listeners: Record<string, Listener[]> = {};
 const sendMessage = jest.fn();
