@@ -28,12 +28,10 @@
 // re-export module, which pulls the real deps from node_modules; the produced tree is
 // identical either way.
 
-import {
-  remarkAdmonitions,
-  remarkWikiLinks,
-  remarkHeadingAnchors,
-  type HeadingAnchorOptions,
-} from '@immediately-run/mdx-plugins';
+// Type-only — the plugin VALUES are re-exported from (and inlined by) `./mdastDeps`; a
+// value import here would put a bare `@immediately-run/mdx-plugins` specifier in the dist
+// the sandbox resolver can't resolve on-host. `import type` is fully erased at build.
+import type { HeadingAnchorOptions } from '@immediately-run/mdx-plugins';
 
 // A minimal structural mdast shape — we deliberately avoid a type dependency on the
 // ESM-only `mdast`/`unist` packages (which would break the CJS build's type surface).
@@ -60,6 +58,10 @@ export interface SafeMdxAttribute {
   value?: string | { type: string; value?: string } | null;
 }
 
+// `unified`'s `Plugin` type widens the return to `Transformer | void`; the safe path
+// invokes each transformer directly on the tree, so narrow it to a plain in-place mutator.
+type MdastMutator = (tree: SafeMdastNode) => void;
+
 type Deps = {
   fromMarkdown: (
     value: string,
@@ -69,6 +71,10 @@ type Deps = {
   mdxJsxFromMarkdown: () => unknown;
   gfm: () => unknown;
   gfmFromMarkdown: () => unknown;
+  // The three shared kernel remark plugins, also inlined into `./mdastDeps` (see there).
+  remarkAdmonitions: () => MdastMutator;
+  remarkWikiLinks: () => MdastMutator;
+  remarkHeadingAnchors: (o?: HeadingAnchorOptions) => MdastMutator;
 };
 
 let depsPromise: Promise<Deps> | null = null;
@@ -76,18 +82,21 @@ let depsPromise: Promise<Deps> | null = null;
 function loadDeps(): Promise<Deps> {
   if (!depsPromise) {
     // ONE dynamic import of the pre-inlined artifact (see the header note + `mdastDeps.ts`)
-    // instead of five bare ESM specifiers the sandbox resolver can't walk on-host.
-    depsPromise = import('./mdastDeps').then(
-      (m) =>
-        ({
-          fromMarkdown: (m as unknown as { fromMarkdown: Deps['fromMarkdown'] }).fromMarkdown,
-          mdxJsx: (m as unknown as { mdxJsx: Deps['mdxJsx'] }).mdxJsx,
-          mdxJsxFromMarkdown: (m as unknown as { mdxJsxFromMarkdown: Deps['mdxJsxFromMarkdown'] })
-            .mdxJsxFromMarkdown,
-          gfm: (m as unknown as { gfm: Deps['gfm'] }).gfm,
-          gfmFromMarkdown: (m as unknown as { gfmFromMarkdown: Deps['gfmFromMarkdown'] }).gfmFromMarkdown,
-        }) as Deps,
-    );
+    // — the five ESM parser packages AND the shared remark plugins, none of which the
+    // sandbox resolver can walk/resolve as bare specifiers on-host.
+    depsPromise = import('./mdastDeps').then((m) => {
+      const d = m as unknown as Deps;
+      return {
+        fromMarkdown: d.fromMarkdown,
+        mdxJsx: d.mdxJsx,
+        mdxJsxFromMarkdown: d.mdxJsxFromMarkdown,
+        gfm: d.gfm,
+        gfmFromMarkdown: d.gfmFromMarkdown,
+        remarkAdmonitions: d.remarkAdmonitions,
+        remarkWikiLinks: d.remarkWikiLinks,
+        remarkHeadingAnchors: d.remarkHeadingAnchors,
+      } as Deps;
+    });
   }
   return depsPromise;
 }
@@ -99,17 +108,6 @@ export interface ParseSafeMdastOptions {
    *  (R3-211). */
   sectionIds?: boolean;
 }
-
-// The three kernel remark plugins for the MDX *safe subset* — the SAME source the
-// compiled path (transpiler `compileMdx`) runs, imported from the shared package so the
-// two render standards can't drift (TRUST_MODES_SPEC §5 / §5.1, R3-213). They are pure
-// mdast transforms: `(options?) => (tree) => void`. `unified`'s `Plugin` type widens the
-// return to `Transformer | void`; here we invoke the transformer directly on the tree,
-// so narrow it to a plain in-place mutator.
-type MdastMutator = (tree: SafeMdastNode) => void;
-const admonitions = remarkAdmonitions as unknown as () => MdastMutator;
-const wikiLinks = remarkWikiLinks as unknown as () => MdastMutator;
-const headingAnchors = remarkHeadingAnchors as unknown as (o?: HeadingAnchorOptions) => MdastMutator;
 
 /**
  * Parse untrusted Markdown/MDX-syntax source to an mdast tree with **no evaluator in
@@ -128,7 +126,16 @@ export async function parseSafeMdast(
   source: string,
   options: ParseSafeMdastOptions = {},
 ): Promise<SafeMdastNode> {
-  const { fromMarkdown, mdxJsx, mdxJsxFromMarkdown, gfm, gfmFromMarkdown } = await loadDeps();
+  const {
+    fromMarkdown,
+    mdxJsx,
+    mdxJsxFromMarkdown,
+    gfm,
+    gfmFromMarkdown,
+    remarkAdmonitions,
+    remarkWikiLinks,
+    remarkHeadingAnchors,
+  } = await loadDeps();
   const tree = fromMarkdown(source, {
     // `mdxJsx()` WITHOUT an acorn option → JSX tags + literal attrs; expressions are
     // raw strings, never estree. The mdx *expression* extension is intentionally
@@ -136,8 +143,10 @@ export async function parseSafeMdast(
     extensions: [mdxJsx(), gfm()],
     mdastExtensions: [mdxJsxFromMarkdown(), gfmFromMarkdown()],
   });
-  admonitions()(tree);
-  wikiLinks()(tree);
-  headingAnchors({ sectionIds: options.sectionIds !== false })(tree);
+  // The SHARED kernel remark plugins, in the SAME order as the compiled path's `compile.ts`
+  // (admonitions §12 → wiki-links §13 → heading/section anchors §15/R3-211).
+  remarkAdmonitions()(tree);
+  remarkWikiLinks()(tree);
+  remarkHeadingAnchors({ sectionIds: options.sectionIds !== false })(tree);
   return tree;
 }
