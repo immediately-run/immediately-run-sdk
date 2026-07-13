@@ -7,7 +7,20 @@ import { defineConfig } from "tsup";
 // resolved against per-file URLs at runtime — a single bundled index.js would
 // not expose those subpaths.
 export default defineConfig({
-  entry: ["src/**/*.ts", "src/**/*.tsx", "!src/**/*.test.ts", "!src/**/*.test.tsx"],
+  entry: [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "!src/**/*.test.ts",
+    "!src/**/*.test.tsx",
+    // `mdastDeps` is NOT a per-file passthrough: it's an internal build artifact that a
+    // dedicated esbuild pass (`scripts/build-safecontent-deps.mjs`, run after tsup)
+    // emits as a self-contained bundle so the sandbox resolver never walks the ESM-only
+    // mdast/micromark conditional-exports tree (R3-213). Excluding it here keeps tsup
+    // from emitting a bare-import version (which esbuild would have to overwrite) and
+    // keeps it OUT of the public `.d.ts` API surface — it's internal, reached only by
+    // `parseSafeMdast`'s relative `import('./mdastDeps')`, never as a public subpath.
+    "!src/safeContent/mdastDeps.ts",
+  ],
   format: ["esm", "cjs"],
   bundle: false,
   dts: true,

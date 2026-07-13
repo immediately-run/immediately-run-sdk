@@ -165,16 +165,32 @@ test('R3-213: the real parse runs the SHARED kernel remark plugins (heading ids,
 
 test('§5.1: the safe pipeline never imports @mdx-js/mdx compile() or acorn (compiled path unreachable)', async () => {
   // Gate wiring (test 7): the safe terminal must not route through the executable
-  // (compiled MDX) path. Assert the built safe module graph references neither
-  // `@mdx-js/mdx` nor `acorn`.
-  const { readFileSync } = await import('node:fs');
+  // (compiled MDX) path. Assert the built safe module graph never IMPORTS `@mdx-js/mdx`
+  // or `acorn` — the evaluator edges that would make it executable.
+  //
+  // We match import/require EDGES, not any substring "acorn". Since R3-213's packaging
+  // fix, `dist/safeContent/mdastDeps.js` is a self-contained esbuild bundle that inlines
+  // the micromark-mdx-jsx parser tree; that tree carries one INERT `ruleId: 'acorn'`
+  // string (a vfile-message label in `micromark-factory-mdx-expression`, never an
+  // evaluator) and no acorn code — acorn is not a runtime edge of the tree (only passing
+  // an acorn option would wire it, which `parseSafeMdast` never does). A substring check
+  // would false-positive on that label; the import-edge check catches the real regression
+  // (someone actually wiring acorn/mdx compile into the pipeline). The behavioral proof —
+  // the eval spies above recording ZERO calls — remains the primary fail-safe.
+  const { readFileSync, readdirSync } = await import('node:fs');
   const { fileURLToPath } = await import('node:url');
   const dir = fileURLToPath(new URL('../dist/safeContent/', import.meta.url));
-  const { readdirSync } = await import('node:fs');
-  const files = readdirSync(dir).filter((f) => f.endsWith('.js'));
+  const files = readdirSync(dir).filter((f) => f.endsWith('.js') || f.endsWith('.cjs'));
+  const importsModule = (src, mod) => {
+    const m = mod.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return (
+      new RegExp(`from\\s*["']${m}["']`).test(src) ||
+      new RegExp(`(?:import|require)\\(\\s*["']${m}["']\\s*\\)`).test(src)
+    );
+  };
   for (const f of files) {
     const src = readFileSync(dir + f, 'utf8');
     assert.ok(!/@mdx-js\/mdx/.test(src), `${f} must not reference @mdx-js/mdx`);
-    assert.ok(!/["']acorn["']/.test(src), `${f} must not reference acorn`);
+    assert.ok(!importsModule(src, 'acorn'), `${f} must not import acorn`);
   }
 });

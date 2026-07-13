@@ -17,6 +17,16 @@
 // build too — a CJS consumer that never renders untrusted content never `require()`s
 // an ESM-only package, and one that does gets it via Node's ESM-from-CJS import. The
 // dynamic load changes only *when* the deps resolve, never the produced tree.
+//
+// The dynamic import targets `./mdastDeps` — a SINGLE self-contained artifact that a
+// dedicated build pass (`scripts/build-safecontent-deps.mjs`) inlines the whole ESM tree
+// into (see `mdastDeps.ts` for the WHY). This keeps the `import()` boundary (a consumer
+// that never renders safe content never loads the ~300KB parser) while making the imported
+// target one already-bundled file the immediately.run sandbox resolver can fetch without
+// walking the unified/micromark conditional-exports tree — the R3-213 on-host packaging
+// gap. In jest/ts-jest and the e2e bundle the same `./mdastDeps` resolves to the source
+// re-export module, which pulls the real deps from node_modules; the produced tree is
+// identical either way.
 
 import {
   remarkAdmonitions,
@@ -65,21 +75,17 @@ let depsPromise: Promise<Deps> | null = null;
 
 function loadDeps(): Promise<Deps> {
   if (!depsPromise) {
-    depsPromise = Promise.all([
-      import('mdast-util-from-markdown'),
-      import('micromark-extension-mdx-jsx'),
-      import('mdast-util-mdx-jsx'),
-      import('micromark-extension-gfm'),
-      import('mdast-util-gfm'),
-    ]).then(
-      ([fromMd, mdxJsxExt, mdxJsxMdast, gfmExt, gfmMdast]) =>
+    // ONE dynamic import of the pre-inlined artifact (see the header note + `mdastDeps.ts`)
+    // instead of five bare ESM specifiers the sandbox resolver can't walk on-host.
+    depsPromise = import('./mdastDeps').then(
+      (m) =>
         ({
-          fromMarkdown: (fromMd as unknown as { fromMarkdown: Deps['fromMarkdown'] }).fromMarkdown,
-          mdxJsx: (mdxJsxExt as unknown as { mdxJsx: Deps['mdxJsx'] }).mdxJsx,
-          mdxJsxFromMarkdown: (mdxJsxMdast as unknown as { mdxJsxFromMarkdown: Deps['mdxJsxFromMarkdown'] })
+          fromMarkdown: (m as unknown as { fromMarkdown: Deps['fromMarkdown'] }).fromMarkdown,
+          mdxJsx: (m as unknown as { mdxJsx: Deps['mdxJsx'] }).mdxJsx,
+          mdxJsxFromMarkdown: (m as unknown as { mdxJsxFromMarkdown: Deps['mdxJsxFromMarkdown'] })
             .mdxJsxFromMarkdown,
-          gfm: (gfmExt as unknown as { gfm: Deps['gfm'] }).gfm,
-          gfmFromMarkdown: (gfmMdast as unknown as { gfmFromMarkdown: Deps['gfmFromMarkdown'] }).gfmFromMarkdown,
+          gfm: (m as unknown as { gfm: Deps['gfm'] }).gfm,
+          gfmFromMarkdown: (m as unknown as { gfmFromMarkdown: Deps['gfmFromMarkdown'] }).gfmFromMarkdown,
         }) as Deps,
     );
   }
