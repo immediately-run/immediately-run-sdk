@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.32.0",
+  "version": "0.33.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -27,12 +27,12 @@
   "scripts": {
     "gen:version": "node scripts/gen-version.mjs",
     "prebuild": "node scripts/gen-version.mjs",
-    "build": "tsup",
+    "build": "tsup && node scripts/build-safecontent-deps.mjs",
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm test && npm run test:safe-content && npm run build && npm run api:check",
+    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs"
@@ -43,15 +43,16 @@
   },
   "dependencies": {
     "@immediately-run/mdx-plugins": "^0.1.0",
+    "react-error-boundary": "^6.0.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "esbuild": "^0.27.0",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-mdx-jsx": "^3.2.0",
     "micromark-extension-gfm": "^3.0.0",
     "micromark-extension-mdx-jsx": "^3.0.2",
-    "react-error-boundary": "^6.0.0"
-  },
-  "devDependencies": {
-    "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^29.5.0",
     "@types/react": "^19.0.0",
