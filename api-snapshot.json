@@ -247,6 +247,12 @@
     "IrMarkerName",
     "ItemDragError",
     "LOADING_TIMINGS",
+    "LaunchErrorCode",
+    "LaunchHandle",
+    "LaunchOptions",
+    "LaunchRegion",
+    "LaunchStatus",
+    "LaunchTarget",
     "Link",
     "LoadingRegion",
     "MDXProvider",
@@ -370,6 +376,7 @@
     "isAllowedMarkerName",
     "isDebugEnabled",
     "isIrMarkerName",
+    "launch",
     "listAllSpaces",
     "listGrants",
     "listMyInvites",
@@ -489,6 +496,15 @@
     "isIrMarkerName",
     "resolveInteractive",
     "validateMarker"
+  ],
+  "launch": [
+    "LaunchErrorCode",
+    "LaunchHandle",
+    "LaunchOptions",
+    "LaunchRegion",
+    "LaunchStatus",
+    "LaunchTarget",
+    "launch"
   ],
   "llm": [
     "ChatDelta",

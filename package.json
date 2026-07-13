@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
