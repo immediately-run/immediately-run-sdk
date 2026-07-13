@@ -32,3 +32,20 @@ export { mdxJsx } from 'micromark-extension-mdx-jsx';
 export { mdxJsxFromMarkdown } from 'mdast-util-mdx-jsx';
 export { gfm } from 'micromark-extension-gfm';
 export { gfmFromMarkdown } from 'mdast-util-gfm';
+
+// The three kernel remark plugins for the MDX safe subset (admonitions §12 / wiki-links
+// §13 / heading+section anchors §15/R3-211). They live in the SHARED `@immediately-run/
+// mdx-plugins` package the compiled path (transpiler) also consumes, so the two render
+// standards build from ONE plugin source and can't drift (TRUST_MODES_SPEC §5/§5.1,
+// R3-213). They are re-exported HERE — and thus inlined into this bundle — because
+// `parseSafeMdast` imported them with a bare `@immediately-run/mdx-plugins` specifier the
+// sandbox resolver could not resolve on-host either (a transitive dep of the SDK, absent
+// from the app's node_modules closure). Inlining them mirrors the transpiler, which
+// bundles the same package via `noExternal`. The plugins are pure mdast transforms with a
+// type-only `unified` dep and no acorn/`@mdx-js/mdx` edge, so they don't taint the
+// no-evaluator guarantee.
+export {
+  remarkAdmonitions,
+  remarkWikiLinks,
+  remarkHeadingAnchors,
+} from '@immediately-run/mdx-plugins';
