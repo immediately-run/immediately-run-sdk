@@ -166,12 +166,15 @@ export const launch = async (
   target: LaunchTarget,
   opts: LaunchOptions,
 ): Promise<LaunchHandle | { ok: false; code: LaunchErrorCode }> => {
+  // The host wraps a successful handler return as `{ ok:true, data }` (the same
+  // Recipe-B framing `invokeTask` uses); a refusal is `{ ok:false, code }`.
   const res = (await protocolRequest('launch', 'create', [{ target, opts }])) as
-    | { ok: true; launchId: string }
+    | { ok: true; data: { launchId: string } }
     | { ok: false; code?: LaunchErrorCode }
     | undefined;
-  if (!res || res.ok !== true) {
-    return { ok: false, code: res?.code ?? 'unknown' };
+  if (!res || res.ok !== true || !res.data?.launchId) {
+    const code = res && res.ok === false ? (res.code ?? 'unknown') : 'unknown';
+    return { ok: false, code };
   }
-  return new LaunchHandleImpl(res.launchId);
+  return new LaunchHandleImpl(res.data.launchId);
 };

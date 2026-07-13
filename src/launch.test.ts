@@ -33,7 +33,7 @@ beforeEach(() => {
 });
 
 it('resolves a running handle on host ok:true and posts the create request', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx1' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx1' } });
   const h = await mod.launch({ task: 'open-project' }, { region: 'stage', input: { dir: 1 } });
   expect(protocolRequest).toHaveBeenCalledWith('launch', 'create', [
     { target: { task: 'open-project' }, opts: { region: 'stage', input: { dir: 1 } } },
@@ -57,14 +57,14 @@ it('maps a missing/garbled host reply to code:unknown', async () => {
 });
 
 it('dismiss() posts launch-dismiss with the launchId', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx2' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx2' } });
   const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
   handle.dismiss();
   expect(sendMessage).toHaveBeenCalledWith('launch-dismiss', { launchId: 'lx2' });
 });
 
 it('a launch-ended message drives status and fires onDismiss once', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx3' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx3' } });
   const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
   let fired = 0;
   handle.onDismiss(() => (fired += 1));
@@ -78,7 +78,7 @@ it('a launch-ended message drives status and fires onDismiss once', async () => 
 });
 
 it('dismiss after end is a no-op (idempotent)', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx4' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx4' } });
   const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
   end('lx4', 'dismissed');
   sendMessage.mockReset();
@@ -87,7 +87,7 @@ it('dismiss after end is a no-op (idempotent)', async () => {
 });
 
 it('onDismiss on an already-ended handle still fires (next tick) and unsubscribe is safe', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx5' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx5' } });
   const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
   end('lx5', 'failed');
   let fired = 0;
@@ -98,7 +98,7 @@ it('onDismiss on an already-ended handle still fires (next tick) and unsubscribe
 });
 
 it('a terminal message for an unknown launchId is ignored', async () => {
-  protocolRequest.mockResolvedValue({ ok: true, launchId: 'lx6' });
+  protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx6' } });
   const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
   end('some-other-id', 'revoked');
   expect(handle.status).toBe('running');
