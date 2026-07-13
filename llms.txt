@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.32.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.33.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -449,6 +449,7 @@ Import: `@immediately-run/sdk/runtime`
 Import: `@immediately-run/sdk/safeContent/parseSafeMdast`
 
 - `parseSafeMdast` (function) — Parse untrusted Markdown/MDX-syntax source to an mdast tree with **no evaluator in the pipeline**: JSX-as-data (no acorn), GFM on, the expression extension OFF, no raw-HTML re-parse.
+- `ParseSafeMdastOptions` (interface)
 - `SafeMdastNode` (interface)
 - `SafeMdxAttribute` (interface)
 
