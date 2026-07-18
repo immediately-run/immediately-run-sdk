@@ -682,7 +682,11 @@ export const lookupUser = (login: string): Promise<ResolvedUser> =>
 
 /** One durable grant an app holds, for the §8.11 capability audit view. */
 export interface GrantRecord {
-  /** The app's provider-qualified identity (`provider__namespace__repository`). */
+  /** The app's provider-qualified **program** identity (AA-01 `appKey`). The DEFAULT
+   *  program keys to the bare `provider__namespace__repository`; a NAMED mini-app
+   *  appends a fourth `enc()`-escaped component (`provider__namespace__repository__name`)
+   *  so its grants isolate from the repo's other programs. Host-supplied — the app
+   *  never builds this key. */
   appKey: string;
   spaceId: string;
   /** Universal mount id (§3.5). */
