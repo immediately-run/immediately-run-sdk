@@ -226,17 +226,73 @@ export const onMountsChange = (
  * Resolves once a mount matching `query` is present (immediately if it already
  * is). Handy for "use it when it appears" — e.g.
  * `await waitForMount({ type: 'firestore' })` before reading `/firestore`.
+ *
+ * `timeoutMs` (optional, additive) rejects with a `timeout`-coded error instead of
+ * waiting forever. Omit it to keep the original unbounded behaviour — but prefer
+ * setting it on any path whose caller would otherwise hang silently: a mount that
+ * never arrives is indistinguishable from one that is merely slow, and an awaited
+ * promise that never settles surfaces to the user as a feature that quietly does
+ * nothing.
+ *
+ * **Hazard — `onMountsChange` calls its listener SYNCHRONOUSLY on subscribe** (the
+ * documented initial replay). So when the mount is already present — the common
+ * case, since callers typically `await` the host request that creates it first —
+ * the callback below runs *during* the `onMountsChange(...)` call, before the
+ * assignment to `unsubscribe` completes. `unsubscribe` is therefore declared with
+ * `let` ABOVE the subscription and read only inside a deferred closure: writing
+ * `const unsubscribe = onMountsChange(...)` and referencing it in the callback
+ * throws `ReferenceError: Cannot access 'unsubscribe' before initialization` (a
+ * temporal-dead-zone read) on exactly that path. That bug silently broke
+ * `openSettings()` — and with it the agent's conversation memory.
  */
-export const waitForMount = (query: MountQuery): Promise<SandboxMount> =>
-  new Promise((resolve) => {
-    const unsubscribe = onMountsChange((mounts) => {
+export const waitForMount = (
+  query: MountQuery,
+  timeoutMs?: number,
+): Promise<SandboxMount> => awaitMatchingMount(onMountsChange, query, timeoutMs);
+
+/** The framework-free core of {@link waitForMount}, with the subscription injected
+ *  so a test can drive the synchronous-initial-replay case that broke it. */
+export const awaitMatchingMount = (
+  subscribe: (listener: (mounts: SandboxMount[]) => void) => () => void,
+  query: MountQuery,
+  timeoutMs?: number,
+): Promise<SandboxMount> =>
+  new Promise((resolve, reject) => {
+    // `let`, declared BEFORE `subscribe(...)` — see the hazard note above. A
+    // `const` bound to the subscribe call is in its temporal dead zone while the
+    // synchronous initial replay runs, and any read of it from the listener
+    // throws.
+    let unsubscribe: (() => void) | undefined;
+    let settled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // Deferred so we never dispose the subscription from inside its own initial
+    // replay, and late enough that `unsubscribe` is always assigned.
+    const stop = (): void => {
+      settled = true;
+      if (timer !== undefined) clearTimeout(timer);
+      void Promise.resolve().then(() => unsubscribe?.());
+    };
+    unsubscribe = subscribe((mounts) => {
+      if (settled) return;
       const found = mounts.find((m) => matches(m, query));
       if (found) {
-        // Defer unsubscribe so we don't dispose during the initial replay call.
-        Promise.resolve().then(unsubscribe);
+        stop();
         resolve(found);
       }
     });
+    // The initial replay may have settled us above, before `unsubscribe` existed;
+    // `stop()`'s deferred read picks it up, so nothing more is needed here.
+    if (!settled && timeoutMs !== undefined) {
+      timer = setTimeout(() => {
+        if (settled) return;
+        stop();
+        const err = new Error(
+          `waitForMount timed out after ${timeoutMs}ms waiting for ${JSON.stringify(query)}`,
+        ) as SpaceError;
+        err.code = 'timeout';
+        reject(err);
+      }, timeoutMs);
+    }
   });
 
 /** React hook returning the mounts currently available, re-rendering on change. */
@@ -313,6 +369,8 @@ export interface SpaceError extends Error {
     | 'forbidden'
     | 'not-found'
     | 'unsupported-scheme'
+    // Client-side, never from the host: a bounded `waitForMount` gave up.
+    | 'timeout'
     | 'unknown';
 }
 
@@ -481,8 +539,17 @@ const settingsRequest = async <T = unknown>(
  */
 export const openSettings = async (): Promise<SandboxMount> => {
   const mount = await settingsRequest<SandboxMount>('open');
-  return waitForMount({ id: mount.id ?? mount.path });
+  // The host has already accepted the request and announced the mount, so this
+  // normally resolves on the initial replay. Bounded anyway: an unbounded wait
+  // here turns any delivery failure into a promise that never settles, and every
+  // caller of `openSettings()` is doing it to reach durable state — so the app
+  // just quietly loses that state with nothing to report.
+  return waitForMount({ id: mount.id ?? mount.path }, SETTINGS_MOUNT_TIMEOUT_MS);
 };
+
+/** How long `openSettings()` waits for the host to deliver the mount it just
+ *  agreed to create. Generous — this is a hang-breaker, not a latency budget. */
+const SETTINGS_MOUNT_TIMEOUT_MS = 15_000;
 
 /**
  * One-time SEED of this app's settings from the parent it declares as `forkOf`
