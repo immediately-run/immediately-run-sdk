@@ -61,14 +61,43 @@ function literalProps(attributes: SafeMdxAttribute[] | undefined): Record<string
 let keyCounter = 0;
 const nextKey = () => `sc-${keyCounter++}`;
 
+/**
+ * The element to build for a link/image: the host's registered override when it has one,
+ * else the intrinsic tag.
+ *
+ * **Why this is safe.** `components` is the HOST's registry — the same one `<Component/>`
+ * syntax resolves against — never author input. An author cannot add to it or choose one
+ * here, because the lookup is by a FIXED key (`'a'`/`'img'`), not by anything read out of
+ * the document. The URL is still `sanitizeUrl`'d before it is handed over, and only props
+ * this renderer controls are passed. The trust boundary is unchanged: author text still
+ * reaches nothing but children and a sanitized URL.
+ *
+ * **Why it is needed.** Without it, a safe-rendered document's links are raw `<a href>`,
+ * so a click performs a REAL navigation. Inside an app's sandboxed iframe that is fatal —
+ * the frame navigates away from the app, and in a routed host app it dies with
+ * `Failed to construct 'URL': Invalid URL`. Hosts route links through a component for
+ * exactly this reason, and the compiled-MDX path has always honoured that component; the
+ * safe path silently ignored it, so one document behaved differently on the two renderers.
+ */
+function elementFor(
+  tag: 'a' | 'img',
+  components: RenderMdastOptions['components'],
+): React.ElementType {
+  return (components?.[tag] as React.ElementType) ?? tag;
+}
+
 /** Render a wikilink token via the in-mount resolver, or inert text when it can't
  *  resolve (never a network call — resolution is the injected mount-scoped callback). */
-function renderWiki(token: WikiLinkToken, resolve: RenderMdastOptions['resolveWikiLink']): ReactNode {
+function renderWiki(token: WikiLinkToken, opts: RenderMdastOptions): ReactNode {
   const label = token.label ?? token.target;
-  const href = resolve?.(token.target);
+  const href = opts.resolveWikiLink?.(token.target);
   const safe = href !== undefined ? sanitizeUrl(href) : undefined;
   if (safe === undefined) return label; // inert text — unresolved or out-of-mount
-  return createElement('a', { href: safe, 'data-wikilink': token.target, key: nextKey() }, label);
+  return createElement(
+    elementFor('a', opts.components),
+    { href: safe, 'data-wikilink': token.target, key: nextKey() },
+    label,
+  );
 }
 
 /** Render a `text` node, splitting any `[[…]]` wikilinks out of it. */
@@ -78,7 +107,7 @@ function renderText(value: string, opts: RenderMdastOptions): ReactNode {
   return parts.map((p, i) =>
     'text' in p
       ? createElement(Fragment, { key: `t${i}` }, p.text)
-      : createElement(Fragment, { key: `w${i}` }, renderWiki(p.wiki, opts.resolveWikiLink)),
+      : createElement(Fragment, { key: `w${i}` }, renderWiki(p.wiki, opts)),
   );
 }
 
@@ -136,12 +165,21 @@ function renderNode(node: SafeMdastNode, opts: RenderMdastOptions, index = 0): R
       const href = sanitizeUrl(node.url);
       // A rejected scheme → render the link TEXT only (inert), never an <a href>.
       if (href === undefined) return createElement(Fragment, { key }, ...renderChildren(node, opts));
-      return createElement('a', { key, href, title: node.title ?? undefined }, ...renderChildren(node, opts));
+      return createElement(
+        elementFor('a', opts.components),
+        { key, href, title: node.title ?? undefined },
+        ...renderChildren(node, opts),
+      );
     }
     case 'image': {
       const src = sanitizeUrl(node.url);
       if (src === undefined) return node.alt ? createElement(Fragment, { key }, node.alt) : null;
-      return createElement('img', { key, src, alt: node.alt ?? '', title: node.title ?? undefined });
+      return createElement(elementFor('img', opts.components), {
+        key,
+        src,
+        alt: node.alt ?? '',
+        title: node.title ?? undefined,
+      });
     }
     // GFM tables.
     case 'table':
