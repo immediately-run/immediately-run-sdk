@@ -432,6 +432,7 @@
     "resolveContentRefs",
     "resolveInteractive",
     "resolveMdxComponents",
+    "revealRegion",
     "revokeGrant",
     "revokeInvite",
     "revokeSecret",
@@ -487,6 +488,7 @@
     "RegionMessage",
     "onRegionMessage",
     "postToRegion",
+    "revealRegion",
     "useRegionMessage"
   ],
   "irMarkers": [
