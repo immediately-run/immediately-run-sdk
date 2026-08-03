@@ -177,6 +177,85 @@ describe('renderMdast — the render-as-data security properties', () => {
     unmount();
   });
 
+  // ── Host link/image overrides on the safe path ────────────────────────────────
+  //
+  // A raw `<a href>` performs a REAL navigation on click. Inside an app's sandboxed
+  // iframe that is fatal: the frame leaves the app, and a routed host app dies with
+  // "Failed to construct 'URL': Invalid URL". Hosts therefore route links through a
+  // component -- which the compiled-MDX path has always honoured and this path did not,
+  // so one document behaved differently on the two renderers.
+
+  it('a markdown link uses the host `a` override when the registry has one', () => {
+    const seen: string[] = [];
+    const A = ({ href, children }: any) => {
+      seen.push(href);
+      return <a href={href} data-routed="1">{children}</a>;
+    };
+    const link: SafeMdastNode = { type: 'link', url: '/content/roadmap/index.mdx', children: [text('Roadmap')] };
+    const components = { a: A } as unknown as SafeContentComponents;
+    const { container, unmount } = render(renderMdast(root(para(link)), { components }));
+    const a = container.querySelector('a');
+    expect(a?.getAttribute('data-routed')).toBe('1'); // the override rendered, not a raw <a>
+    expect(seen).toEqual(['/content/roadmap/index.mdx']); // and it received the href
+    unmount();
+  });
+
+  it('a wikilink uses the host `a` override too', () => {
+    const A = ({ href, children }: any) => <a href={href} data-routed="1">{children}</a>;
+    const tree = root(para(text('see [[in-mount.mdx]]')));
+    const components = { a: A } as unknown as SafeContentComponents;
+    const { container, unmount } = render(
+      renderMdast(tree, { components, resolveWikiLink: () => '/mnt/board/in-mount.mdx' }),
+    );
+    expect(container.querySelector('a')?.getAttribute('data-routed')).toBe('1');
+    unmount();
+  });
+
+  it('an image uses the host `img` override when the registry has one', () => {
+    const Img = ({ src, alt }: any) => <img src={src} alt={alt} data-routed="1" />;
+    const img: SafeMdastNode = { type: 'image', url: '/assets/x.png', alt: 'x' };
+    const components = { img: Img } as unknown as SafeContentComponents;
+    const { container, unmount } = render(renderMdast(root(para(img)), { components }));
+    expect(container.querySelector('img')?.getAttribute('data-routed')).toBe('1');
+    unmount();
+  });
+
+  it('falls back to the intrinsic tag when the host registers no override', () => {
+    const link: SafeMdastNode = { type: 'link', url: 'https://ok.com', children: [text('go')] };
+    const { container, unmount } = render(renderMdast(root(para(link)), { components: {} as SafeContentComponents }));
+    const a = container.querySelector('a');
+    expect(a?.getAttribute('href')).toBe('https://ok.com');
+    expect(a?.getAttribute('data-routed')).toBeNull();
+    unmount();
+  });
+
+  it('SECURITY: the override never sees a rejected scheme -- sanitizing still happens first', () => {
+    const seen: string[] = [];
+    const A = ({ href, children }: any) => {
+      seen.push(href);
+      return <a href={href}>{children}</a>;
+    };
+    const link: SafeMdastNode = { type: 'link', url: 'javascript:evil()', children: [text('click')] };
+    const components = { a: A } as unknown as SafeContentComponents;
+    const { container, unmount } = render(renderMdast(root(para(link)), { components }));
+    expect(seen).toEqual([]); // the override was never invoked for a rejected scheme
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.textContent).toContain('click'); // inert text, as before
+    unmount();
+  });
+
+  it('SECURITY: an author cannot choose the element -- the lookup key is fixed', () => {
+    // A document naming a component in its own text must not be able to redirect the
+    // `a` lookup; only the fixed key `a` is consulted.
+    const Evil = () => <span data-evil="1" />;
+    const link: SafeMdastNode = { type: 'link', url: 'https://ok.com', children: [text('Evil')] };
+    const components = { Evil } as unknown as SafeContentComponents;
+    const { container, unmount } = render(renderMdast(root(para(link)), { components }));
+    expect(container.querySelector('[data-evil]')).toBeNull();
+    expect(container.querySelector('a')?.getAttribute('href')).toBe('https://ok.com');
+    unmount();
+  });
+
   it('R3-213: a heading id set by the shared plugin (data.hProperties.id) is translated to a React prop', () => {
     // The no-acorn path has no hast stage, so renderMdast must translate the id +
     // data-slug the shared remarkHeadingAnchors plugin sets on the mdast into props —
