@@ -80,18 +80,19 @@ export type GetSpaceMembersError =
 export const getSpaceMembers = (spaceId: string): Promise<Array<Member>> =>
   invoke<Array<Member>>("spaces:members", { spaceId });
 
-export type ShareSpaceError =
+export type InviteToSpaceError =
   "auth-required" | "cancelled" | "forbidden" | "not-found" | "unsupported-scheme" | "unknown";
 
 /**
- * Invite a user (by provider handle) to a space at a role. The host resolves
+ * Invite a user (by provider handle) to a space at a role — an OFFER:
+ * membership materialises only when they accept (§6.4). The host resolves
  * the handle, so the app never sees other users' uids except the one it
  * invited.
  *
- * Capability: `spaces:admin`. Catalog name: `spaces:share`.
- * @throws `Error & { code: ShareSpaceError }` on host refusal.
+ * Capability: `spaces:admin`. Catalog name: `spaces:invite`.
+ * @throws `Error & { code: InviteToSpaceError }` on host refusal.
  */
-export const shareSpace = async (spaceId: string, login: string, role: Role): Promise<void> => { await invoke<void>("spaces:share", { spaceId, login, role }); };
+export const inviteToSpace = async (spaceId: string, login: string, role: Role): Promise<void> => { await invoke<void>("spaces:invite", { spaceId, login, role }); };
 
 export type UnshareSpaceError =
   "auth-required" | "cancelled" | "forbidden" | "not-found" | "unsupported-scheme" | "unknown" | "conflict";

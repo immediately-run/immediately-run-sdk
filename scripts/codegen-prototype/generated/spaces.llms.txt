@@ -5,7 +5,7 @@
 | `listSpaces` | `spaces:list` | `spaces:app` | request | app | `Array<SpaceInfo>` |
 | `listAllSpaces` | `spaces:listAll` | `spaces:user` | request | — | `Array<SpaceInfo>` |
 | `getSpaceMembers` | `spaces:members` | `spaces:admin` | request | spaceId | `Array<Member>` |
-| `shareSpace` | `spaces:share` | `spaces:admin` | request | spaceId, login, role | `void` |
+| `inviteToSpace` | `spaces:invite` | `spaces:admin` | request | spaceId, login, role | `void` |
 | `unshareSpace` | `spaces:unshare` | `spaces:admin` | request | spaceId, uid | `void` |
 | `setSpaceRole` | `spaces:setRole` | `spaces:admin` | request | spaceId, uid, role | `void` |
 | `lookupUser` | `spaces:lookupUser` | `spaces:admin` | request | login | `ResolvedUser` |

@@ -3,13 +3,13 @@
 // This is the §2 `CapabilityDescriptor` set from
 // `docs/specs/SDK_SIMPLIFICATION_SPEC.md`, transcribed by hand from the THREE
 // surfaces it would replace as authoritative:
-//   - the runtime catalog names (`src/catalog.ts` `invoke('spaces:share', …)`)
-//   - the hand-written typed wrappers (`src/mounts.ts` shareSpace/unshareSpace/…)
+//   - the runtime catalog names (`src/catalog.ts` `invoke('spaces:invite', …)`)
+//   - the hand-written typed wrappers (`src/mounts.ts` inviteToSpace/unshareSpace/…)
 //   - the capability + error vocabulary (`docs/specs/CAPABILITY_REFERENCE.md`)
 //
 // In the real design this set is generated from the host gate table; here it is
 // authored so the generator (generate.mjs) has something to project from. Every
-// field is the ONE place a fact about `spaces:share` lives — change `params` here
+// field is the ONE place a fact about `spaces:invite` lives — change `params` here
 // and the wrapper, its types, the catalog schema, and llms.txt all move together.
 
 /** Shared named types (emitted once, referenced by `$ref`). These are the
@@ -132,12 +132,20 @@ export const methods = [
     alias: { fn: 'getSpaceMembers', positional: ['spaceId'] },
   },
   {
-    name: 'spaces:share',
+    // Was transcribed as `spaces:share` → `shareSpace` — a method the SDK has never
+    // exported (R3-166, corrected 2026-08-08 once `verify.mjs` started comparing
+    // against the shipped surface). The real one is `spaces:invite` →
+    // `inviteToSpace`, and the difference is the MODEL, not the spelling: under the
+    // §6.4 pull-based flow an invite is an OFFER, so this writes an invite doc and
+    // membership — and therefore the space's trust tier — materialises only if the
+    // invitee accepts. Do not "simplify" the name back to share.
+    name: 'spaces:invite',
     capability: 'spaces:admin',
     kind: 'request',
     doc:
-      'Invite a user (by provider handle) to a space at a role. The host resolves the ' +
-      'handle, so the app never sees other users\' uids except the one it invited.',
+      'Invite a user (by provider handle) to a space at a role — an OFFER: membership ' +
+      'materialises only when they accept (§6.4). The host resolves the handle, so the ' +
+      'app never sees other users\' uids except the one it invited.',
     params: {
       type: 'object',
       required: ['spaceId', 'login', 'role'],
@@ -149,7 +157,7 @@ export const methods = [
     },
     result: { type: 'void' },
     errors: SPACE_ERRORS,
-    alias: { fn: 'shareSpace', positional: ['spaceId', 'login', 'role'] },
+    alias: { fn: 'inviteToSpace', positional: ['spaceId', 'login', 'role'] },
   },
   {
     name: 'spaces:unshare',
