@@ -31,7 +31,7 @@
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
-    "verify:codegen-parity": "node scripts/codegen-prototype/verify.mjs --self-test && node scripts/codegen-prototype/verify.mjs",
+    "verify:codegen-parity": "node scripts/codegen-prototype/verify.mjs --self-test && node scripts/codegen-prototype/verify.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
     "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",

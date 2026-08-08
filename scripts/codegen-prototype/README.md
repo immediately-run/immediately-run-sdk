@@ -13,7 +13,7 @@ wrappers, the catalog, and the docs in parallel. Covers both a **request** famil
 | `descriptors.streams.mjs` | The single source for the **stream** family — `contribute:run` + `llm:chat`, transcribed from `src/contribute.ts` + `src/llm.ts`. Proves the `kind:'stream'` → `AsyncGenerator<Event, Result>` projection (incl. discriminated-union events via `oneOf`/`const`). |
 | `generate.mjs` | The generator — emits the §3 projections (wrappers, types, error unions, llms.txt, catalog manifest). Dependency-free; ships a tiny json-schema→TS (object/enum/const/array/record/unknown/$ref/oneOf/void). Real impl uses `json-schema-to-typescript`. |
 | `verify.mjs` | §7 acceptance test (request) — descriptors ≡ the **SHIPPED** surface: each `alias.fn` is a real export of the BUILT `dist/mounts.js` and is pinned in `api-snapshot.json`, and the generated path (via the real `invoke()` from `dist/catalog.js`) makes an identical wire call + throws the same `.code`, all 9 methods. |
-| `verify.streams.mjs` | §7 acceptance test (stream) — generated path ≡ hand-written `src/contribute.ts`/`src/llm.ts` path (identical request envelope + yielded events + return value + thrown `.code`), both methods. |
+| `verify.streams.mjs` | §7 acceptance test (stream) — descriptors ≡ the **SHIPPED** surface, through the REAL `consumeStream`: each `alias.fn` is an export of the BUILT `dist/contribute.js`/`dist/llm.js`, and the generated path (real `invokeStream`) matches on request envelope, yielded events, return value and thrown `.code`. Plus the `signal`-stays-off-the-wire constraint. |
 | `generated/` | Output: `<family>.generated.ts` (wrappers+types), `<family>.llms.txt` (docs), `<family>.catalog.json` (catalog twin). |
 
 ## Run
@@ -21,8 +21,13 @@ wrappers, the catalog, and the docs in parallel. Covers both a **request** famil
 ```sh
 node scripts/codegen-prototype/generate.mjs ./descriptors.spaces.mjs    # 1 source → 3 projections
 node scripts/codegen-prototype/generate.mjs ./descriptors.streams.mjs
-node scripts/codegen-prototype/verify.mjs           # 9/9 request methods: generated ≡ hand-written
-node scripts/codegen-prototype/verify.streams.mjs   # 2/2 stream methods:  generated ≡ hand-written
+node scripts/codegen-prototype/verify.mjs             # 9/9 request methods ≡ the SHIPPED surface
+node scripts/codegen-prototype/verify.streams.mjs     # 2/2 stream  methods ≡ the SHIPPED surface
+node scripts/codegen-prototype/verify.mjs --self-test         # the gate is not vacuous
+node scripts/codegen-prototype/verify.streams.mjs --self-test # …nor is the stream one
+
+# both, as CI runs them (needs `npm run build` first):
+npm run verify:codegen-parity
 ```
 
 Both generated `.ts` files type-check under `--strict`, including discriminated-union
@@ -62,5 +67,9 @@ fix — ambient magic (e.g. `fs` is not an SDK export) — is called out in the 
   this note used to claim — `transport()` resolves lazily and `tasks` is a
   type-only import. It was tsup's extensionless relative specifiers, which node's
   ESM resolver rejects; a small `registerHooks` resolver bridges them.)
-  `verify.streams.mjs` still re-implements, and is still blind in the same way —
-  migrating it is the next obvious step.
+  **`verify.streams.mjs` too** — it was further gone (it re-implemented
+  `consumeStream` itself), and now drives `dist/contribute.js` + `dist/llm.js` and
+  the real `invokeStream`, over a scripted transport installed at the §4 discovery
+  global. It also pins one shipped behaviour the descriptors do not model: `chat()`
+  peels `signal` off before the wire, and the self-test proves the naive generated
+  form would leak it — a real constraint on the §3.2 stream projection.
