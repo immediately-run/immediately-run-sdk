@@ -37,12 +37,21 @@ export const types = {
     description: 'A member of a space (for the share/manage UI).',
     schema: {
       type: 'object',
-      required: ['grantee', 'role'],
+      required: ['grantee', 'principal', 'role'],
       properties: {
         grantee: {
           type: 'string',
           description:
             'The grantee — `user:{uid}` | `group:{gid}` (core_concepts §4: canonical name).',
+        },
+        principal: {
+          type: 'string',
+          description:
+            '@deprecated Use `grantee`. A same-value alias kept for back-compat through the ' +
+            '`principal`→`grantee` migration; the host still populates both. Modelled here ' +
+            'because the descriptors must describe what SHIPS: omitting it would make the ' +
+            'generated `Member` drop a public field — a breaking change `api:check` cannot ' +
+            'see (it compares exported NAMES, and the interface keeps its name).',
         },
         role: { $ref: 'Role' },
         login: { type: 'string' },
