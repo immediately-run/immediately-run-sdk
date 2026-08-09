@@ -2,12 +2,12 @@
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `listSpaces` | `spaces:list` | `spaces:app` | request | app | `Array<SpaceInfo>` |
-| `listAllSpaces` | `spaces:listAll` | `spaces:user` | request | — | `Array<SpaceInfo>` |
-| `getSpaceMembers` | `spaces:members` | `spaces:admin` | request | spaceId | `Array<Member>` |
+| `listSpaces` | `spaces:list` | `spaces:app` | request | app | `SpaceInfo[]` |
+| `listAllSpaces` | `spaces:listAll` | `spaces:user` | request | — | `SpaceInfo[]` |
+| `getSpaceMembers` | `spaces:members` | `spaces:admin` | request | spaceId | `Member[]` |
 | `inviteToSpace` | `spaces:invite` | `spaces:admin` | request | spaceId, login, role | `void` |
 | `unshareSpace` | `spaces:unshare` | `spaces:admin` | request | spaceId, uid | `void` |
 | `setSpaceRole` | `spaces:setRole` | `spaces:admin` | request | spaceId, uid, role | `void` |
 | `lookupUser` | `spaces:lookupUser` | `spaces:admin` | request | login | `ResolvedUser` |
-| `listGrants` | `spaces:grants` | `spaces:admin` | request | — | `Array<GrantRecord>` |
+| `listGrants` | `spaces:grants` | `spaces:admin` | request | — | `GrantRecord[]` |
 | `revokeGrant` | `spaces:revokeGrant` | `spaces:admin` | request | appKey, spaceId | `void` |

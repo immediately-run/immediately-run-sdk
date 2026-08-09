@@ -16,11 +16,24 @@
 // In the real impl this step is `json-schema-to-typescript`.
 
 import { mkdirSync, writeFileSync } from 'node:fs';
+
+/** A TS string literal in the repo's quote style. `JSON.stringify` emits double
+ *  quotes; the hand-written surface (and prettier's `singleQuote`) uses single, and
+ *  the migration's acceptance test is that the emitted `.d.ts` does not change —
+ *  so quote style is not cosmetic here, it is diff noise that hides real changes. */
+const strLit = (v) => `'${String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const outDir = join(here, 'generated');
+// R3-166 migration: `--emit-src` writes the wrappers into the real SDK source tree
+// (`src/generated/<family>.ts`) instead of the prototype's sandbox, with the import
+// specifier adjusted for that depth. The doc/catalog projections still go to
+// `generated/` — they are artifacts, not shipped modules.
+const emitSrc = process.argv.includes('--emit-src');
+const srcOutDir = join(here, '../../src/generated');
+const catalogImport = emitSrc ? '../catalog' : '../../../src/catalog';
 const descPath = process.argv[2] ?? './descriptors.spaces.mjs';
 const { family } = await import(pathToFileURL(resolve(here, descPath)).href);
 
@@ -28,7 +41,7 @@ const { family } = await import(pathToFileURL(resolve(here, descPath)).href);
 function tsType(schema) {
   if (!schema) return 'void';
   if (schema.$ref) return schema.$ref;
-  if (schema.const !== undefined) return JSON.stringify(schema.const);
+  if (schema.const !== undefined) return strLit(schema.const);
   if (Array.isArray(schema.oneOf)) return schema.oneOf.map(tsType).join(' | ');
   switch (schema.type) {
     case 'void': return 'void';
@@ -36,11 +49,18 @@ function tsType(schema) {
     case 'record': return 'Record<string, unknown>';
     case 'string':
       return Array.isArray(schema.enum)
-        ? schema.enum.map((v) => JSON.stringify(v)).join(' | ')
+        ? schema.enum.map((v) => strLit(v)).join(' | ')
         : 'string';
     case 'number': return 'number';
     case 'boolean': return 'boolean';
-    case 'array': return `Array<${tsType(schema.items)}>`;
+    // `T[]`, not `Array<T>`: type-identical to TypeScript, but the hand-written
+    // surface uses `T[]`, and the migration's acceptance test is that the emitted
+    // `.d.ts` does not change. Cosmetic churn in a "no-op swap" is noise that hides
+    // the real diffs. Parenthesise unions so `A | B` becomes `(A | B)[]`.
+    case 'array': {
+      const inner = tsType(schema.items);
+      return /[|&]/.test(inner) ? `(${inner})[]` : `${inner}[]`;
+    }
     case 'object': {
       const props = schema.properties ?? {};
       const required = new Set(schema.required ?? []);
@@ -109,7 +129,7 @@ function emitWrappers() {
   const anyStream = family.methods.some((m) => m.kind === 'stream');
   const anyReq = family.methods.some((m) => m.kind !== 'stream');
   const imports = [anyReq && 'invoke', anyStream && 'invokeStream'].filter(Boolean).join(', ');
-  out.push(`import { ${imports} } from '../../../src/catalog';`);
+  out.push(`import { ${imports} } from '${catalogImport}';`);
   if (anyStream) out.push("import type { StreamError } from '../../../src/protocolStream';");
   out.push('');
 
@@ -117,7 +137,7 @@ function emitWrappers() {
 
   for (const m of family.methods) {
     out.push(`export type ${errUnionName(m)} =`);
-    out.push('  ' + m.errors.map((e) => JSON.stringify(e)).join(' | ') + ';');
+    out.push('  ' + m.errors.map((e) => strLit(e)).join(' | ') + ';');
     out.push('');
     out.push(jsdoc(m));
 
@@ -180,12 +200,21 @@ function emitCatalogManifest() {
 }
 
 mkdirSync(outDir, { recursive: true });
-writeFileSync(join(outDir, `${family.scheme}.generated.ts`), emitWrappers() + '\n');
+if (emitSrc) {
+  mkdirSync(srcOutDir, { recursive: true });
+  writeFileSync(join(srcOutDir, `${family.scheme}.ts`), emitWrappers() + '\n');
+} else {
+  writeFileSync(join(outDir, `${family.scheme}.generated.ts`), emitWrappers() + '\n');
+}
 writeFileSync(join(outDir, `${family.scheme}.llms.txt`), emitLlmsTxt());
 writeFileSync(join(outDir, `${family.scheme}.catalog.json`), emitCatalogManifest() + '\n');
 
 console.log(`Generated ${family.scheme} from 1 descriptor set:`);
-console.log(`  generated/${family.scheme}.generated.ts   (typed wrappers + types + error unions)`);
+console.log(
+  emitSrc
+    ? `  src/generated/${family.scheme}.ts        (typed wrappers + types + error unions — SHIPPED)`
+    : `  generated/${family.scheme}.generated.ts   (typed wrappers + types + error unions)`,
+);
 console.log(`  generated/${family.scheme}.llms.txt       (doc projection)`);
 console.log(`  generated/${family.scheme}.catalog.json   (catalog manifest — host-derived twin)`);
 console.log(`\n${family.methods.length} methods, ${Object.keys(family.types).length} shared types — one edit each.`);

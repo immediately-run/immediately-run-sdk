@@ -1,3 +1,17 @@
+// ⚠ NOT IN THE VERIFY CHAIN ANY MORE — and that is deliberate (R3-166 migration).
+//
+// This gate compared the generated output against an INDEPENDENTLY hand-written
+// `src/mounts.ts`. That independence is what made it evidence, and the migration
+// consumed it: `mounts.ts` now re-exports `src/generated/spaces.ts`, so for the
+// `spaces:*` family this compares generated code to itself. It still passes. It no
+// longer asserts anything, and a green check that cannot fail is precisely the bug
+// this whole line of work removed — so it is out of `verify:codegen-parity`, and
+// `verify-drift.mjs` guards the migrated family instead.
+//
+// The file is kept because it is the acceptance-test TEMPLATE for the next family:
+// point it at an unmigrated one, run it BEFORE swapping, and it does real work
+// again. Its `--self-test` also documents the drift classes that matter.
+//
 // Type-member parity: do the descriptors' SHARED TYPES match the shipped ones,
 // field for field?
 //
@@ -26,7 +40,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { types as descriptorTypes } from './descriptors.spaces.mjs';
+import { types as descriptorTypes, family } from './descriptors.spaces.mjs';
+const descriptorMethods = family.methods;
 
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
@@ -58,6 +73,28 @@ const declarationsOf = (path) => {
     true,
   );
   const all = new Map();
+  /** The JSDoc text attached to a declaration, normalised for comparison. The
+   *  shipped types carry substantial prose (the grantee/`principal` rationale, the
+   *  AA-01 `appKey` explanation); a descriptor's one-line `description` replacing
+   *  it is a silent DOWNGRADE of exactly the discoverability SDK_SIMPLIFICATION
+   *  exists to improve, so it is compared, not assumed. */
+  const docOf = (node) => {
+    const ranges = ts.getLeadingCommentRanges(src.text, node.pos) ?? [];
+    const jsdoc = ranges
+      .map((r) => src.text.slice(r.pos, r.end))
+      .filter((t) => t.startsWith('/**'));
+    if (jsdoc.length === 0) return '';
+    return jsdoc[jsdoc.length - 1]
+      .replace(/^\/\*\*|\*\/$/g, '')
+      .split('\n')
+      .map((l) => l.replace(/^\s*\*/, '').trim())
+      // A line ending in `-` is a SOFT hyphen-wrap in the source ("already-" /
+      // "invited/member"), not two words. Joining those with a space would report
+      // a phantom doc loss, so rejoin them directly.
+      .reduce((acc, line) => (acc.endsWith('-') ? acc + line : acc ? `${acc} ${line}` : line), '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
   const hasExportModifier = (node) =>
     node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 
@@ -73,15 +110,27 @@ const declarationsOf = (path) => {
   }
 
   for (const node of src.statements) {
-    if (hasExportModifier(node) && node.name) exportedNames.add(node.name.text);
+    if (hasExportModifier(node)) {
+      // A VariableStatement carries no `.name` — the names live on its
+      // declarations (`export const a = …, b = …`), so it needs its own arm.
+      if (ts.isVariableStatement(node)) {
+        for (const d of node.declarationList.declarations) {
+          if (ts.isIdentifier(d.name)) exportedNames.add(d.name.text);
+        }
+      } else if (node.name) {
+        exportedNames.add(node.name.text);
+      }
+    }
     if (ts.isInterfaceDeclaration(node)) {
       all.set(node.name.text, {
         kind: 'interface',
+        doc: docOf(node),
         members: node.members
           .filter((m) => m.name)
           .map((m) => ({
             name: m.name.getText(src),
             optional: m.questionToken !== undefined,
+            doc: docOf(m),
           })),
       });
     } else if (ts.isTypeAliasDeclaration(node)) {
@@ -94,7 +143,22 @@ const declarationsOf = (path) => {
         .map((s) => s.trim().replace(/^['"]|['"]$/g, ''))
         .filter(Boolean)
         .sort();
-      all.set(node.name.text, { kind: 'alias', text, members });
+      all.set(node.name.text, { kind: 'alias', doc: docOf(node), text, members });
+    } else if (ts.isVariableStatement(node)) {
+      // The wrappers themselves: `declare const f: (…) => …` in the emitted
+      // `.d.ts`, `export const f = …` in the generated source. Their prose is the
+      // most-read part of the surface, so it is compared too; the SHAPE of a
+      // function is already covered by the wire check, so only arity is compared
+      // here (the two files express types differently — explicit vs inferred).
+      for (const decl of node.declarationList.declarations) {
+        if (!ts.isIdentifier(decl.name)) continue;
+        const fnNode = decl.initializer ?? decl.type;
+        const params =
+          fnNode && (ts.isArrowFunction(fnNode) || ts.isFunctionTypeNode(fnNode))
+            ? fnNode.parameters.map((prm) => prm.name.getText(src))
+            : null;
+        all.set(decl.name.text, { kind: 'function', doc: docOf(node), params });
+      }
     }
   }
   return new Map([...all].filter(([name]) => exportedNames.has(name)));
@@ -119,6 +183,57 @@ const compareType = (name) => {
   if (s.kind !== g.kind) {
     problems.push(`kind differs: shipped ${s.kind}, generated ${g.kind}`);
     return problems;
+  }
+
+  // DOC parity, as NO INFORMATION LOSS rather than byte-equality.
+  //
+  // Byte-equality is the wrong bar and would defeat the point: the generated doc is
+  // deliberately a SUPERSET — it appends the capability, the catalog name, and a
+  // `@throws` line the hand-written prose does not carry. Demanding identity would
+  // force the generator to reproduce hand-written phrasing verbatim.
+  //
+  // What must not happen is prose disappearing: `GrantRecord.appKey`'s explanation
+  // going to nothing, or `Member.grantee`'s rationale flattening to a one-liner. So
+  // the test is that every meaningful word of the SHIPPED doc still appears
+  // somewhere in the generated one. Rewording is allowed; deletion is not. False
+  // negatives are possible (a reworded doc reusing the same words) — the bar is
+  // deliberately loose in that direction, because the failure being guarded is
+  // wholesale loss.
+  const docWords = (d) =>
+    (d || '')
+      .replace(/\{@link\s+([^}]+)\}/g, '$1') // {@link X} → X
+      .toLowerCase()
+      .replace(/[*`_]/g, '')
+      .split(/[^a-z0-9:§'’.-]+/)
+      .map((w) => w.replace(/^[.'’-]+|[.'’-]+$/g, ''))
+      .filter((w) => w.length > 2);
+  const docLoss = (shippedDoc, generatedDoc) => {
+    const have = new Set(docWords(generatedDoc));
+    return [...new Set(docWords(shippedDoc))].filter((w) => !have.has(w));
+  };
+
+  const lost = docLoss(s.doc, g.doc);
+  if (lost.length) {
+    problems.push(
+      `doc LOSES: ${lost.join(', ')}\n     shipped:   ${s.doc}\n     generated: ${g.doc || '(none)'}`,
+    );
+  }
+  for (const m of s.members ?? []) {
+    const gm = (g.members ?? []).find((x) => x.name === m.name);
+    if (!gm) continue;
+    const mLost = docLoss(m.doc, gm.doc);
+    if (mLost.length) {
+      problems.push(
+        `\`${m.name}\` doc LOSES: ${mLost.join(', ')}\n     shipped:   ${m.doc}\n     generated: ${gm.doc || '(none)'}`,
+      );
+    }
+  }
+
+  if (s.kind === 'function') {
+    if (s.params && g.params && s.params.length !== g.params.length) {
+      problems.push(`arity differs: shipped (${s.params.join(', ')}), generated (${g.params.join(', ')})`);
+    }
+    return problems; // doc compared above; SHAPE is the wire check's job
   }
 
   if (s.kind === 'alias') {
@@ -157,7 +272,11 @@ const compareType = (name) => {
 const checkAll = ({ quiet = false } = {}) => {
   const failures = [];
   let pass = 0;
-  for (const name of Object.keys(descriptorTypes)) {
+  const subjects = [
+    ...Object.keys(descriptorTypes),
+    ...descriptorMethods.map((m) => m.alias.fn),
+  ];
+  for (const name of subjects) {
     const problems = compareType(name);
     if (problems.length === 0) {
       pass++;
@@ -170,12 +289,12 @@ const checkAll = ({ quiet = false } = {}) => {
       }
     }
   }
-  return { pass, failures, total: Object.keys(descriptorTypes).length };
+  return { pass, failures, total: subjects.length };
 };
 
 const main = () => {
   const { pass, failures, total } = checkAll();
-  console.log(`\n${pass}/${total} shared types: descriptor ≡ the SHIPPED type surface.`);
+  console.log(`\n${pass}/${total} types + wrappers: descriptor ≡ the SHIPPED type/doc surface.`);
   if (failures.length) {
     console.error(
       `\n${failures.length} type(s) differ from what the SDK ships. Until they agree, generating\n` +

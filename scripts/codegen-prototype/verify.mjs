@@ -1,3 +1,17 @@
+// ⚠ NOT IN THE VERIFY CHAIN ANY MORE — and that is deliberate (R3-166 migration).
+//
+// This gate compared the generated output against an INDEPENDENTLY hand-written
+// `src/mounts.ts`. That independence is what made it evidence, and the migration
+// consumed it: `mounts.ts` now re-exports `src/generated/spaces.ts`, so for the
+// `spaces:*` family this compares generated code to itself. It still passes. It no
+// longer asserts anything, and a green check that cannot fail is precisely the bug
+// this whole line of work removed — so it is out of `verify:codegen-parity`, and
+// `verify-drift.mjs` guards the migrated family instead.
+//
+// The file is kept because it is the acceptance-test TEMPLATE for the next family:
+// point it at an unmigrated one, run it BEFORE swapping, and it does real work
+// again. Its `--self-test` also documents the drift classes that matter.
+//
 // The §7 acceptance test for the gate-table → SDK codegen: does generating from
 // the descriptor set produce the SHIPPED surface?
 //

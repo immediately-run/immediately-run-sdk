@@ -3,6 +3,28 @@ import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { createPushChannel } from './pushChannel';
 import { getHostRuntime } from './hostRuntime';
 import { mountMatches } from './mountMatch';
+// R3-166 — the `spaces:*` family is GENERATED from the capability descriptor set
+// (`scripts/codegen-prototype/descriptors.spaces.mjs`) rather than hand-written here.
+// Re-exported from this module so every existing import path keeps working: the
+// swap is a no-op to consumers (SDK_SIMPLIFICATION_SPEC §7 step 3), which is
+// asserted by the emitted-`.d.ts` before/after comparison, not assumed.
+//
+// `Role` is imported (not only re-exported) because `Invite` below still uses it —
+// the invite methods are the same `spaces:` scheme but are NOT yet described, so
+// they remain hand-written. That split is the next migration increment.
+import type { Role, SpaceInfo, Member, GrantRecord } from './generated/spaces';
+export type { Role, SpaceInfo, Member, ResolvedUser, GrantRecord } from './generated/spaces';
+export {
+  listSpaces,
+  listAllSpaces,
+  getSpaceMembers,
+  inviteToSpace,
+  unshareSpace,
+  setSpaceRole,
+  lookupUser,
+  listGrants,
+  revokeGrant,
+} from './generated/spaces';
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
 // FileCap SHAPE without pulling that side effect into every `mounts` importer.
 import type { FileCap } from './tasks';
@@ -353,13 +375,6 @@ export const useSessionMounts = (): SessionMount[] => sessionMountsChannel.use()
 // and only then resolves these calls. See docs/specs/FILE_SHARING_SPEC.md.
 // ---------------------------------------------------------------------------
 
-/** Summary of a space, as returned by {@link listSpaces}. */
-export interface SpaceInfo {
-  spaceId: string;
-  role?: 'owner' | 'writer' | 'reader';
-  owner?: string;
-  name?: string;
-}
 
 /** An error from a space operation, carrying a machine-readable `code`. */
 export interface SpaceError extends Error {
@@ -598,9 +613,6 @@ export const createSpace = (
   opts: { name?: string } = {}
 ): Promise<SandboxMount> => requestMountInternal('create', opts);
 
-/** List spaces you can access — all of them, or just those bound to this app. */
-export const listSpaces = (opts: { app?: boolean } = {}): Promise<SpaceInfo[]> =>
-  request<SpaceInfo[]>('list', opts);
 
 /** Release a mounted space (stops its listener on the host). */
 export const unmountSpace = async (query: { spaceId: string }): Promise<void> => {
@@ -616,34 +628,6 @@ export const unmountSpace = async (query: { spaceId: string }): Promise<void> =>
 // crosses to the app.
 // ---------------------------------------------------------------------------
 
-/** A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`. */
-export type Role = 'owner' | 'writer' | 'reader';
-
-/** A member of a space (for the share/manage UI). */
-export interface Member {
-  /**
-   * The **grantee** — `user:{uid}` | `group:{gid}`. This is the canonical name
-   * (core_concepts §4: "principal" is reserved for the authority context; a space
-   * member is a *grantee*). The host populates this on every member row.
-   */
-  grantee: string;
-  /**
-   * @deprecated Use {@link Member.grantee}. Kept as an alias (same value) for
-   * back-compat during the `principal`→`grantee` migration; will be removed in a
-   * future major. The host still populates both.
-   */
-  principal: string;
-  role: Role;
-  login?: string;
-  avatarUrl?: string;
-}
-
-/** A handle resolved to a principal (handle → who). */
-export interface ResolvedUser {
-  uid: string;
-  login: string;
-  avatarUrl?: string;
-}
 
 /** A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
  *  It grants NO access until accepted — the recipient accepts it from their inbox
@@ -664,21 +648,6 @@ export interface Invite {
   avatarUrl?: string;
 }
 
-/** Enumerate ALL the user's spaces (not just this app's) — `spaces:user`. */
-export const listAllSpaces = (): Promise<SpaceInfo[]> => request<SpaceInfo[]>('listAll', {});
-
-/** Read a space's members one-shot — `spaces:admin`. */
-export const getSpaceMembers = (spaceId: string): Promise<Member[]> =>
-  request<Member[]>('members', { spaceId });
-
-/** Invite a user (by provider handle) to a space at a role — `spaces:admin`. The
- *  host resolves the handle, so the app never sees other users' uids except the one
- *  it invited. Pull-based (FILE_SHARING_SPEC §6.4): this writes an INVITATION, not
- *  membership — the recipient must {@link acceptInvite}. Re-inviting an already-
- *  invited/member user is idempotent. */
-export const inviteToSpace = async (spaceId: string, login: string, role: Role): Promise<void> => {
-  await request('invite', { spaceId, login, role });
-};
 
 /** The owner's outstanding invitations for a space — `spaces:admin`. */
 export const listPendingInvites = (spaceId: string): Promise<Invite[]> =>
@@ -730,45 +699,3 @@ export const onInvitesChange = (listener: (invites: Invite[]) => void): (() => v
  *  (the space-manager Invitations inbox, §9.8). */
 export const useInvites = (): Invite[] => invitesChannel.use();
 
-/** Remove a member from a space — `spaces:admin`. Refused if it would orphan the
- *  space (owner-lockout, T41). */
-export const unshareSpace = async (spaceId: string, uid: string): Promise<void> => {
-  await request('unshare', { spaceId, uid });
-};
-
-/** Change a member's role — `spaces:admin`. Refused if it would drop the sole
- *  owner (owner-lockout, T41). */
-export const setSpaceRole = async (spaceId: string, uid: string, role: Role): Promise<void> => {
-  await request('setRole', { spaceId, uid, role });
-};
-
-/** Resolve a provider handle to a principal (for the invite flow) — `spaces:admin`,
- *  rate-limited host-side. */
-export const lookupUser = (login: string): Promise<ResolvedUser> =>
-  request<ResolvedUser>('lookupUser', { login });
-
-/** One durable grant an app holds, for the §8.11 capability audit view. */
-export interface GrantRecord {
-  /** The app's provider-qualified **program** identity (AA-01 `appKey`). The DEFAULT
-   *  program keys to the bare `provider__namespace__repository`; a NAMED mini-app
-   *  appends a fourth `enc()`-escaped component (`provider__namespace__repository__name`)
-   *  so its grants isolate from the repo's other programs. Host-supplied — the app
-   *  never builds this key. */
-  appKey: string;
-  spaceId: string;
-  /** Universal mount id (§3.5). */
-  mountId: string;
-  subtree?: string;
-  mode: 'ro' | 'rw';
-  name?: string;
-}
-
-/** Enumerate every (app, mount) grant the user holds — the audit view
- *  (§8.11). Elevated `spaces:admin`. */
-export const listGrants = (): Promise<GrantRecord[]> => request<GrantRecord[]>('grants', {});
-
-/** Revoke one app's grant on a space — durable (the app can't re-mount) plus a
- *  best-effort live teardown. Elevated `spaces:admin`. */
-export const revokeGrant = async (appKey: string, spaceId: string): Promise<void> => {
-  await request('revokeGrant', { appKey, spaceId });
-};

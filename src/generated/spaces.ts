@@ -2,7 +2,7 @@
 // Source of truth: descriptors.spaces.mjs
 // Family: spaces — Space management (the space-manager app) — UI_AS_APPS_SPEC §5.
 
-import { invoke } from '../../../src/catalog';
+import { invoke } from '../catalog';
 
 /** A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`. */
 export type Role =

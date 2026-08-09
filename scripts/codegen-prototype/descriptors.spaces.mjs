@@ -21,7 +21,7 @@ export const types = {
     schema: { type: 'string', enum: ['owner', 'writer', 'reader'] },
   },
   SpaceInfo: {
-    description: 'Summary of a space, as returned by listing methods.',
+    description: 'Summary of a space, as returned by {@link listSpaces}.',
     schema: {
       type: 'object',
       required: ['spaceId'],
@@ -42,16 +42,21 @@ export const types = {
         grantee: {
           type: 'string',
           description:
-            'The grantee — `user:{uid}` | `group:{gid}` (core_concepts §4: canonical name).',
+            'The **grantee** — `user:{uid}` | `group:{gid}`. This is the canonical name ' +
+            '(core_concepts §4: "principal" is reserved for the authority context; a space ' +
+            'member is a *grantee*). The host populates this on every member row.',
         },
+        // Modelled because the descriptors must describe what SHIPS: omitting this
+        // would make the generated `Member` drop a public field — a breaking change
+        // `api:check` cannot see (it compares exported NAMES, and the interface keeps
+        // its name). The `description` below is the SHIPPED prose, verbatim; this
+        // rationale is for whoever edits the descriptor, not for the public doc.
         principal: {
           type: 'string',
           description:
-            '@deprecated Use `grantee`. A same-value alias kept for back-compat through the ' +
-            '`principal`→`grantee` migration; the host still populates both. Modelled here ' +
-            'because the descriptors must describe what SHIPS: omitting it would make the ' +
-            'generated `Member` drop a public field — a breaking change `api:check` cannot ' +
-            'see (it compares exported NAMES, and the interface keeps its name).',
+            '@deprecated Use {@link Member.grantee}. Kept as an alias (same value) for ' +
+            'back-compat during the `principal`→`grantee` migration; will be removed in a ' +
+            'future major. The host still populates both.',
         },
         role: { $ref: 'Role' },
         login: { type: 'string' },
@@ -77,9 +82,17 @@ export const types = {
       type: 'object',
       required: ['appKey', 'spaceId', 'mountId', 'mode'],
       properties: {
-        appKey: { type: 'string' },
+        appKey: {
+          type: 'string',
+          description:
+            "The app's provider-qualified **program** identity (AA-01 `appKey`). The DEFAULT " +
+            'program keys to the bare `provider__namespace__repository`; a NAMED mini-app ' +
+            'appends a fourth `enc()`-escaped component (`provider__namespace__repository__name`) ' +
+            "so its grants isolate from the repo's other programs. Host-supplied — the app " +
+            'never builds this key.',
+        },
         spaceId: { type: 'string' },
-        mountId: { type: 'string' },
+        mountId: { type: 'string', description: 'Universal mount id (§3.5).' },
         subtree: { type: 'string' },
         mode: { type: 'string', enum: ['ro', 'rw'] },
         name: { type: 'string' },
@@ -152,9 +165,11 @@ export const methods = [
     capability: 'spaces:admin',
     kind: 'request',
     doc:
-      'Invite a user (by provider handle) to a space at a role — an OFFER: membership ' +
-      'materialises only when they accept (§6.4). The host resolves the handle, so the ' +
-      'app never sees other users\' uids except the one it invited.',
+      'Invite a user (by provider handle) to a space at a role. The host resolves the ' +
+      'handle, so the app never sees other users\' uids except the one it invited. ' +
+      'Pull-based (FILE_SHARING_SPEC §6.4): this writes an INVITATION, not membership — ' +
+      'the recipient must {@link acceptInvite}. Re-inviting an already-invited/member ' +
+      'user is idempotent.',
     params: {
       type: 'object',
       required: ['spaceId', 'login', 'role'],
@@ -218,7 +233,7 @@ export const methods = [
     name: 'spaces:grants',
     capability: 'spaces:admin',
     kind: 'request',
-    doc: 'Enumerate every (app, mount) grant the user holds — the audit view (§8.11).',
+    doc: 'Enumerate every (app, mount) grant the user holds — the audit view (§8.11). Elevated.',
     params: { type: 'object', properties: {} },
     result: { type: 'array', items: { $ref: 'GrantRecord' } },
     errors: SPACE_ERRORS,
@@ -230,7 +245,7 @@ export const methods = [
     kind: 'request',
     doc:
       "Revoke one app's grant on a space — durable (the app can't re-mount) plus a " +
-      'best-effort live teardown.',
+      'best-effort live teardown. Elevated.',
     params: {
       type: 'object',
       required: ['appKey', 'spaceId'],
