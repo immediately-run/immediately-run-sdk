@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.38.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.39.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -100,20 +100,12 @@ Import: `@immediately-run/sdk/mounts`
 - `getInvites` (function) — The caller's current invitations (`spaces:user`).
 - `getMounts` (function) — Returns the mounts currently available.
 - `getSessionMounts` (function) — The session's mounts (the "Session" lens superset), or `[]` when this frame is not first-party.
-- `getSpaceMembers` (function) — Read a space's members one-shot — `spaces:admin`.
-- `GrantRecord` (interface) — One durable grant an app holds, for the §8.11 capability audit view.
 - `importSettingsFromParent` (function) — One-time SEED of this app's settings from the parent it declares as `forkOf` (its `package.json` `immediately.run.forkOf`) — so a fork inherits your preferences from the original app (UI_AS_APPS_SPEC §3.4).
 - `Invite` (interface) — A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
-- `inviteToSpace` (function) — Invite a user (by provider handle) to a space at a role — `spaces:admin`.
-- `listAllSpaces` (function) — Enumerate ALL the user's spaces (not just this app's) — `spaces:user`.
-- `listGrants` (function) — Enumerate every (app, mount) grant the user holds — the audit view (§8.11).
 - `listMyInvites` (function) — The caller's OWN invitation inbox — `spaces:user`.
 - `listPendingInvites` (function) — The owner's outstanding invitations for a space — `spaces:admin`.
 - `listSettingsApps` (function) — List every app that has per-user settings — the elevated "file commander" enumeration.
-- `listSpaces` (function) — List spaces you can access — all of them, or just those bound to this app.
-- `lookupUser` (function) — Resolve a provider handle to a principal (for the invite flow) — `spaces:admin`, rate-limited host-side.
 - `makeContentRef` (function) — Build a persisted CONTENT REFERENCE to a file in a mount — a `{mountId, relPath}` pointer your app serializes into ITS OWN content (a board's JSON, an MDX file's frontmatter, an album manifest — the platform doesn't dictate the container) so a later viewer can resolve it.
-- `Member` (interface) — A member of a space (for the share/manage UI).
 - `mount` (function) — Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) — `scheme:locator`, e.g.
 - `MountQuery` (type) — A predicate-style matcher for findMount / waitForMount.
 - `MountRemoveReason` (type) — Why a mounted filesystem was removed, surfaced on the removed descriptor so an app can say *why* it vanished instead of failing mutely (auth-mount §"mount-remove" / AM2-4): - `revoked` — a durable grant was revoked (revokeGrant / consent withdrawal); - `unshared` — the granting user's membership was removed (or downgraded out); - `signed-out` — sign-out tore down every mount; - `unmounted` — the app's own `unmountSpace` (or region teardown); - `deleted` — the space was soft-deleted.
@@ -129,17 +121,11 @@ Import: `@immediately-run/sdk/mounts`
 - `requestSpace` (function) — Prompt the user to grant a mount, returning the granted SandboxMount.
 - `resolveContentRef` (function) — Resolve a content reference your app found in content it ALREADY holds (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
 - `resolveContentRefs` (function) — Resolve a BATCH of content references in ONE consent round (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
-- `ResolvedUser` (interface) — A handle resolved to a principal (handle → who).
-- `revokeGrant` (function) — Revoke one app's grant on a space — durable (the app can't re-mount) plus a best-effort live teardown.
 - `revokeInvite` (function) — Withdraw a pending invitation (distinct from unshareSpace, which removes an ACCEPTED member) — `spaces:admin`.
-- `Role` (type) — A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.
 - `SandboxMount` (interface) — A filesystem mount available to the sandbox, mirrored from the host window.
 - `SessionMount` (interface) — A mount as seen through the first-party **Session** lens (PRINCIPALS_SPEC §9 B2): the session's mounts BEYOND this app's own (the editor/agent session's).
-- `setSpaceRole` (function) — Change a member's role — `spaces:admin`.
 - `SpaceError` (interface) — An error from a space operation, carrying a machine-readable `code`.
-- `SpaceInfo` (interface) — Summary of a space, as returned by listSpaces.
 - `unmountSpace` (function) — Release a mounted space (stops its listener on the host).
-- `unshareSpace` (function) — Remove a member from a space — `spaces:admin`.
 - `useInvites` (function) — React hook returning the caller's live invitation inbox, re-rendering on change (the space-manager Invitations inbox, §9.8).
 - `useMounts` (function) — React hook returning the mounts currently available, re-rendering on change.
 - `useSessionMounts` (function) — React hook returning the live "Session" lens mount list, re-rendering on change.
@@ -166,7 +152,7 @@ Import: `@immediately-run/sdk/catalog`
 
 - `ApiMethod` (interface) — One advertised method, as the host generated it from its gate table.
 - `getCatalog` (function) — The methods this app may call (grant-filtered, §5.5).
-- `invoke` (function) — Call a catalog method by name — `invoke('spaces:share', { spaceId, login, role })`.
+- `invoke` (function) — Call a catalog method by name — `invoke('spaces:invite', { spaceId, login, role })`.
 - `invokeStream` (function) — Call a STREAMING catalog method by name, yielding its events.
 - `onCatalogChange` (function) — Subscribe to catalog changes (e.g.
 - `useCatalog` (function) — React hook returning this app's method catalog, re-rendering on change.
@@ -386,6 +372,25 @@ Import: `@immediately-run/sdk/fs`
 - `openFs` (function) — Open a typed, mount-anchored filesystem view (SDK_FS_SURFACE_SPEC §2.1).
 - `sandboxFs` (function) — The resolved sandbox ZenFS, or `null` when unavailable.
 - `SandboxFsPort` (interface) — The resolved sandbox ZenFS handle (node-compatible, `/`-rooted).
+
+## generated/spaces
+
+Import: `@immediately-run/sdk/generated/spaces`
+
+- `getSpaceMembers` (function) — Read a space's members one-shot.
+- `GrantRecord` (interface) — One durable grant an app holds, for the §8.11 capability audit view.
+- `inviteToSpace` (function) — Invite a user (by provider handle) to a space at a role.
+- `listAllSpaces` (function) — Enumerate ALL the user's spaces (not just this app's).
+- `listGrants` (function) — Enumerate every (app, mount) grant the user holds — the audit view (§8.11).
+- `listSpaces` (function) — List spaces you can access — all of them, or just those bound to this app.
+- `lookupUser` (function) — Resolve a provider handle to a principal (for the invite flow).
+- `Member` (interface) — A member of a space (for the share/manage UI).
+- `ResolvedUser` (interface) — A handle resolved to a principal (handle → who).
+- `revokeGrant` (function) — Revoke one app's grant on a space — durable (the app can't re-mount) plus a best-effort live teardown.
+- `Role` (type) — A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.
+- `setSpaceRole` (function) — Change a member's role.
+- `SpaceInfo` (interface) — Summary of a space, as returned by listSpaces.
+- `unshareSpace` (function) — Remove a member from a space.
 
 ## hostRuntime
 
