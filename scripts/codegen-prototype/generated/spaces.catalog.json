@@ -12,7 +12,7 @@
     "capability": "spaces:admin"
   },
   {
-    "name": "spaces:share",
+    "name": "spaces:invite",
     "capability": "spaces:admin"
   },
   {

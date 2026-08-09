@@ -33,6 +33,15 @@ jobs:
       # forks depend on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after
       # build because it reads the emitted dist/*.d.ts.
       - run: npm run api:check
+      # R3-166: the gate-table→SDK descriptor set is the proposed single source for
+      # the generated surface. This fails if it disagrees with what actually ships —
+      # a descriptor naming an export the SDK doesn't have, or making a different
+      # wire call. Without it the descriptors drift silently, and the drift is only
+      # discovered by whoever finally tries to generate from them (they had, to a
+      # `shareSpace` method that never existed). Reads the built dist/, so it runs
+      # after `build`. NOT in `prepublishOnly`: nothing published consumes the
+      # descriptors yet, so this must never be what blocks a release.
+      - run: npm run verify:codegen-parity
       - run: npm run docs
 
       # Assemble the gh-pages payload: typedoc docs at the root + the versioned,

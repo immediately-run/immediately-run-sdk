@@ -10,7 +10,7 @@ import { createPushChannel } from './pushChannel';
 
 /** One advertised method, as the host generated it from its gate table. */
 export interface ApiMethod {
-  /** Catalog name, `protocol-` stripped — e.g. `spaces:share`, `contribute:run`. */
+  /** Catalog name, `protocol-` stripped — e.g. `spaces:invite`, `contribute:run`. */
   name: string;
   /** The capability this method requires (already held — it's in your catalog). */
   capability: string;
@@ -34,7 +34,7 @@ const split = (name: string): [string, string] => {
 };
 
 /**
- * Call a catalog method by name — `invoke('spaces:share', { spaceId, login, role })`.
+ * Call a catalog method by name — `invoke('spaces:invite', { spaceId, login, role })`.
  * A thin generic over the host protocol: the host validates params and gates the
  * call (an un-granted method → `forbidden`, even if you name it directly). For a
  * STREAMING method (`ApiMethod.stream`), use {@link invokeStream}.

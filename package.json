@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -31,8 +31,9 @@
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
+    "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check",
+    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs"
