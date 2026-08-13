@@ -2,6 +2,12 @@ export * from "./MDXProvider";
 export * from "./routing";
 export * from "./boot";
 export * from './components/Include';
+// Only the component is public. `stripFrontmatter`/`appMountRelative` are module-level
+// exports so they can be unit-tested directly, NOT public API — the SDK's surface is
+// backwards-compatible forever, so an internal helper exported for a test's convenience is a
+// permanent commitment made for the wrong reason.
+export { SafeInclude } from './components/SafeInclude';
+export * from './sourceCache';
 export * from './components/MDXComponents';
 export * from './components/MountImage';
 export * from './components/Routes';

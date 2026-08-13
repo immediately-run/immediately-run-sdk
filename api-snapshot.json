@@ -46,6 +46,8 @@
   ],
   "components/Include": [
     "Include",
+    "IncludeMode",
+    "IncludeModeContext",
     "RenderExportedComponent",
     "RenderExportedComponentContext",
     "RenderFileContextType"
@@ -78,6 +80,11 @@
     "RouteProps",
     "Routes"
   ],
+  "components/SafeInclude": [
+    "SafeInclude",
+    "appMountRelative",
+    "stripFrontmatter"
+  ],
   "components/ScrollAfterNavigation": [
     "ScrollAfterNavigation",
     "useScrollAfterNavigation"
@@ -91,6 +98,12 @@
   ],
   "components/errors": [
     "ErrorNotFound"
+  ],
+  "components/includeContexts": [
+    "IncludeMode",
+    "IncludeModeContext",
+    "RenderExportedComponentContext",
+    "RenderFileContextType"
   ],
   "contextUtils": [
     "getContextFromUrl",
@@ -267,6 +280,8 @@
     "IR_MARKERS",
     "ImmediatelyRunGlobal",
     "Include",
+    "IncludeMode",
+    "IncludeModeContext",
     "InternalLink",
     "Invite",
     "IrMarkerName",
@@ -316,6 +331,7 @@
     "SafeContent",
     "SafeContentComponents",
     "SafeContentProps",
+    "SafeInclude",
     "SafeMdastNode",
     "SafeMdxAttribute",
     "SandboxFsPort",
@@ -332,6 +348,8 @@
     "Skeleton",
     "SkeletonArchetype",
     "SkeletonRow",
+    "SourceCache",
+    "SourceReader",
     "SpaceError",
     "SpaceInfo",
     "Spinner",
@@ -367,6 +385,7 @@
     "contribute",
     "createFile",
     "createFolder",
+    "createSourceCache",
     "createSpace",
     "debug",
     "declineInvite",
@@ -755,6 +774,11 @@
     "requestSecret",
     "revokeSecret",
     "useSecrets"
+  ],
+  "sourceCache": [
+    "SourceCache",
+    "SourceReader",
+    "createSourceCache"
   ],
   "tasks": [
     "DirCap",
