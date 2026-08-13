@@ -1,18 +1,17 @@
-import { Suspense, createContext, use } from 'react';
+import { Suspense, use } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
 import { ModuleCacheContext } from '../moduleCache';
 import { EvaluationContext } from '../sandboxTypes';
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
+import { IncludeModeContext, RenderExportedComponentContext, type IncludeMode } from './includeContexts';
+import { SafeInclude } from './SafeInclude';
 
-/** The value exposed on {@link RenderExportedComponentContext}: the evaluation
- *  context of the module {@link Include} resolved. */
-export type RenderFileContextType = {
-  evaluationContext: EvaluationContext;
-};
-
-/** Context carrying the included module's {@link EvaluationContext} to its subtree. */
-export const RenderExportedComponentContext = createContext<RenderFileContextType | null>(null);
+// The contexts live in `./includeContexts` so `Include` and `SafeInclude` do not import each
+// other (`check:circular`); re-exported here because this is the public entry point and the
+// import path must not change.
+export { IncludeModeContext, RenderExportedComponentContext } from './includeContexts';
+export type { IncludeMode, RenderFileContextType } from './includeContexts';
 
 /** Low-level: render one export of an already-resolving module evaluation. Most
  *  code should use {@link Include}, which resolves the module and adds Suspense. */
@@ -34,21 +33,37 @@ export const RenderExportedComponent = ({
 };
 
 /** Render another repo file's exported component inline, resolving + evaluating it
- *  through the module cache (with Suspense + an error boundary). */
+ *  through the module cache (with Suspense + an error boundary).
+ *
+ *  Under `mode="interpreted"` (or inside an {@link IncludeModeContext} set to it) the file is
+ *  instead rendered **as data** through the safe renderer — no author JavaScript executes,
+ *  and the file need not be an evaluable module at all. */
 export const Include = ({
   filename,
   exportedSymbol = 'default',
   LoadingComponent = defaultLoadingComponent,
   ErrorComponent = defaultErrorComponent,
   baseModule,
+  mode,
 }: {
   filename: string;
   exportedSymbol?: string;
   LoadingComponent?: typeof defaultLoadingComponent;
   ErrorComponent?: typeof defaultErrorComponent;
   baseModule?: EvaluationContext;
+  /** Override {@link IncludeModeContext} for this one include. */
+  mode?: IncludeMode;
 }) => {
+  // Both contexts are read unconditionally, before the branch, so hook order is stable
+  // whichever renderer this include resolves to.
+  const contextMode = use(IncludeModeContext);
   const moduleCache = use(ModuleCacheContext);
+  // The prop wins over the context so a single file can opt out either way: an interpreter
+  // app including one trusted, executable component of its own, or a compiled app rendering
+  // one file it does not trust (the shape Grove's non-executable proof page needs).
+  if ((mode ?? contextMode) === 'interpreted') {
+    return <SafeInclude filename={filename} LoadingComponent={LoadingComponent} ErrorComponent={ErrorComponent} />;
+  }
   // @ts-ignore
   const evaluationContextPromise = moduleCache!.getEvaluationContext(filename, baseModule ?? module);
   return (

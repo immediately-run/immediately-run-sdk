@@ -1,0 +1,107 @@
+import { Suspense, use, useMemo } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+
+import { openAppFs } from '../fs';
+import { getAppMountPath } from '../mounts';
+import { useMDXComponents } from '../MDXProvider';
+import { SafeContent } from '../safeContent/SafeContent';
+import { createSourceCache, type SourceReader } from '../sourceCache';
+import { RenderExportedComponentContext } from './includeContexts';
+import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
+
+// `<Include mode="interpreted">` — the same tag, the NON-EXECUTABLE renderer. (R3-263)
+//
+// WHY THIS EXISTS. `<Include>` resolves a file through the module cache and *evaluates* it,
+// which is right for an app's own source and wrong for content. An interpreter app
+// (TRUST_MODES_SPEC §5) had no way to say "include this file, but as data": it could render
+// its own bodies through `<SafeContent>` while any file it pulled in with `<Include>` still
+// executed. Grove hit exactly that — a wiki declaring `render: safe` still ran author
+// JavaScript out of its `_layout.mdx`, because the layout chain went through `<Include>`.
+//
+// It is also what makes such a file renderable AT ALL when it does not live in the app: the
+// compiled path evaluates an app-source module, which a file resident in a content mount is
+// not. That is the `AGENT_AUTHORING §10` MDX-from-mount gate, which `TRUST_MODES §5.1` says
+// MUST terminate in the safe renderer and never in compiled MDX.
+//
+// The component map comes from `useMDXComponents` — the SAME provider map `boot({
+// mdxComponents })` establishes for the compiled path — so a document resolves the identical
+// vocabulary under either renderer and an app wires nothing extra to get it.
+
+/** Strip a leading YAML frontmatter block (and an optional BOM). The compiled path never
+ *  renders frontmatter — the MDX loader consumes it — so the safe path must not either, or
+ *  the same file gains a wall of raw YAML when the renderer changes. */
+export function stripFrontmatter(source: string): string {
+  return source.replace(/^\uFEFF?---\r?\n[\s\S]*?\r?\n---[ \t]*\r?\n?/, '');
+}
+
+/** `/app/content/x.mdx` → `content/x.mdx`. {@link openAppFs} is anchored at the app mount,
+ *  so an absolute module path has to be made mount-relative before it is read. A path that
+ *  is already relative is passed through untouched. */
+export function appMountRelative(filename: string): string {
+  const root = getAppMountPath().replace(/\/+$/, '');
+  const abs = filename.startsWith(root + '/') ? filename.slice(root.length) : filename;
+  return abs.replace(/^\/+/, '');
+}
+
+// One cache for every interpreted include in the app: a layout file is included on every
+// page, so a per-component cache would re-read it per navigation. See `../sourceCache` for
+// why a REJECTED read must not be memoised.
+const defaultSources = createSourceCache(
+  (path) => openAppFs().readFile(path, 'utf8') as Promise<string>,
+);
+
+function InterpretedBody({
+  filename,
+  components,
+  readSource,
+}: {
+  filename: string;
+  components?: Record<string, unknown>;
+  readSource?: SourceReader;
+}) {
+  // A caller-supplied reader gets its own cache; the shared one is used otherwise. Memoised
+  // on the reader identity so `use()` still sees a stable promise across renders.
+  const sources = useMemo(
+    () => (readSource ? createSourceCache(readSource) : defaultSources),
+    [readSource],
+  );
+  const raw = use(sources.read(appMountRelative(filename)));
+  const provided = useMDXComponents(components) as Record<string, unknown>;
+  const body = stripFrontmatter(raw);
+  return (
+    // Publishing the included file's path is what lets the WikiLink resolver know which file
+    // a relative `[[target]]` (and its `#sec-…` fragment) is relative TO — the same context
+    // the compiled path publishes from the module's evaluation.
+    <RenderExportedComponentContext
+      value={{ evaluationContext: { evaluation: { module: { filepath: filename } } } } as never}
+    >
+      <SafeContent source={body} components={provided as never} />
+    </RenderExportedComponentContext>
+  );
+}
+
+/** Render another file's Markdown/MDX **as data** — no author JavaScript executes. Reached
+ *  via `<Include mode="interpreted">` or `<IncludeModeContext value="interpreted">`. */
+export const SafeInclude = ({
+  filename,
+  components,
+  readSource,
+  LoadingComponent = defaultLoadingComponent,
+  ErrorComponent = defaultErrorComponent,
+}: {
+  filename: string;
+  /** Extra/override components, merged OVER the surrounding MDXProvider map. */
+  components?: Record<string, unknown>;
+  /** Read the raw bytes yourself — e.g. from a content mount rather than the app repo. */
+  readSource?: SourceReader;
+  LoadingComponent?: typeof defaultLoadingComponent;
+  ErrorComponent?: typeof defaultErrorComponent;
+}) => (
+  // Same boundary shape as the compiled path: a file that fails to read renders the error
+  // component rather than taking down the tree that included it.
+  <ErrorBoundary fallbackRender={ErrorComponent}>
+    <Suspense fallback={<LoadingComponent />}>
+      <InterpretedBody filename={filename} components={components} readSource={readSource} />
+    </Suspense>
+  </ErrorBoundary>
+);
