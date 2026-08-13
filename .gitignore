@@ -4,3 +4,6 @@ docs/
 *.log
 .DS_Store
 test/.artifacts/
+
+# `npm pack` output — a local verification artifact, never a repo file.
+*.tgz
