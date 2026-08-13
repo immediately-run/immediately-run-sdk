@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.39.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.40.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -60,8 +60,6 @@ Import: `@immediately-run/sdk/components/Include`
 
 - `Include` (function) — Render another repo file's exported component inline, resolving + evaluating it through the module cache (with Suspense + an error boundary).
 - `RenderExportedComponent` (function) — Low-level: render one export of an already-resolving module evaluation.
-- `RenderExportedComponentContext` (function) — Context carrying the included module's EvaluationContext to its subtree.
-- `RenderFileContextType` (type) — The value exposed on RenderExportedComponentContext: the evaluation context of the module Include resolved.
 
 ## components/MDXComponents
 
@@ -319,6 +317,15 @@ Import: `@immediately-run/sdk/components/HeadingAnchor`
 
 - `HeadingAnchor` (function) — Default MDX `HeadingAnchor` component — the render target for the autolink anchor the transpiler's heading-slug plugin (R3-186, `MARKDOWN_SYNTAX_SPEC §15.4`) prepends to every heading.
 
+## components/includeContexts
+
+Import: `@immediately-run/sdk/components/includeContexts`
+
+- `IncludeMode` (type) — Which renderer `Include` uses: `compiled` evaluates the module (the default, unchanged behaviour); `interpreted` renders the file's Markdown/MDX **as data** through the safe renderer, so no author JavaScript executes.
+- `IncludeModeContext` (function) — Declare the renderer for every `Include` in a subtree.
+- `RenderExportedComponentContext` (function) — Context carrying the included module's EvaluationContext to its subtree.
+- `RenderFileContextType` (type) — The value exposed on RenderExportedComponentContext: the evaluation context of the module `Include` resolved.
+
 ## components/Link
 
 Import: `@immediately-run/sdk/components/Link`
@@ -332,6 +339,12 @@ Import: `@immediately-run/sdk/components/MountImage`
 
 - `MountImage` (function) — Display an image file from a mount.
 - `MountImageProps` (interface) — Props for MountImage.
+
+## components/SafeInclude
+
+Import: `@immediately-run/sdk/components/SafeInclude`
+
+- `SafeInclude` (function) — Render another file's Markdown/MDX **as data** — no author JavaScript executes.
 
 ## components/WikiLink
 
@@ -514,6 +527,14 @@ Import: `@immediately-run/sdk/sandboxTypes`
 - `MetadataQueryFunction` (type) — A query over the metadata store: receive every file's frontmatter keyed by path and return the paths that match.
 - `MetadataQueryResult` (type) — The result of running a metadata query: the matched entries (path + frontmatter), or the error a throwing query produced.
 - `ModuleExports` (type) — The exports object of an evaluated sandbox module (untyped — shape depends on the module).
+
+## sourceCache
+
+Import: `@immediately-run/sdk/sourceCache`
+
+- `createSourceCache` (function)
+- `SourceCache` (interface)
+- `SourceReader` (type)
 
 ## vcs
 
