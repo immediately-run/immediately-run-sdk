@@ -63,6 +63,22 @@ describe('Include mode selection', () => {
   });
 });
 
+describe('the `components` prop', () => {
+  it('is accepted on the interpreted path', () => {
+    // What this can prove under jest is that the prop is threaded and the interpreted branch
+    // still renders. That it actually REACHES the renderer is a render-level fact, and the
+    // header of this file explains why those cannot live here; it is exercised by Grove,
+    // whose safe component set (sanitizing structural-tag wrappers) is precisely why this
+    // prop exists — those must NOT be registered globally via `boot`, because MDX consults
+    // the provider for intrinsics on the COMPILED path too, and a global registration would
+    // silently strip `style` from compiled authors who legitimately pass it.
+    const Marker = () => <b>MARKED</b>;
+    expect(() =>
+      render(<Include filename="/app/content/x.mdx" mode="interpreted" components={{ Marker }} />),
+    ).not.toThrow();
+  });
+});
+
 describe('stripFrontmatter', () => {
   it('removes a leading YAML block, as the compiled path does', () => {
     const src = ['---', 'title: Hidden', 'status: draft', '---', '', 'Visible body.'].join('\n');

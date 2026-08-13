@@ -45,6 +45,7 @@ export const Include = ({
   ErrorComponent = defaultErrorComponent,
   baseModule,
   mode,
+  components,
 }: {
   filename: string;
   exportedSymbol?: string;
@@ -53,6 +54,16 @@ export const Include = ({
   baseModule?: EvaluationContext;
   /** Override {@link IncludeModeContext} for this one include. */
   mode?: IncludeMode;
+  /** Interpreted mode only: components merged OVER the surrounding MDXProvider map.
+   *
+   *  An app's SAFE component set is not always the same as the one it hands
+   *  `boot({ mdxComponents })`. Grove is the worked example: under the safe renderer it also
+   *  needs sanitizing wrappers for structural tags (`main`, `section`, …), and it must NOT
+   *  register those globally, because MDX consults the provider for intrinsics on the
+   *  COMPILED path too — so a global registration would silently strip `style` and other
+   *  non-allow-listed props from compiled authors who legitimately pass them. Ignored in
+   *  compiled mode, where components come from the provider as they always have. */
+  components?: Record<string, unknown>;
 }) => {
   // Both contexts are read unconditionally, before the branch, so hook order is stable
   // whichever renderer this include resolves to.
@@ -62,7 +73,14 @@ export const Include = ({
   // app including one trusted, executable component of its own, or a compiled app rendering
   // one file it does not trust (the shape Grove's non-executable proof page needs).
   if ((mode ?? contextMode) === 'interpreted') {
-    return <SafeInclude filename={filename} LoadingComponent={LoadingComponent} ErrorComponent={ErrorComponent} />;
+    return (
+      <SafeInclude
+        filename={filename}
+        components={components}
+        LoadingComponent={LoadingComponent}
+        ErrorComponent={ErrorComponent}
+      />
+    );
   }
   // @ts-ignore
   const evaluationContextPromise = moduleCache!.getEvaluationContext(filename, baseModule ?? module);
