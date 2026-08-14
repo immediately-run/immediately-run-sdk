@@ -1,7 +1,7 @@
 import { Suspense, use, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 
-import { openAppFs } from '../fs';
+import { openAppFs, openFs } from '../fs';
 import { getAppMountPath } from '../mounts';
 import { useMDXComponents } from '../MDXProvider';
 import { SafeContent } from '../safeContent/SafeContent';
@@ -43,12 +43,47 @@ export function appMountRelative(filename: string): string {
   return abs.replace(/^\/+/, '');
 }
 
+/** Is this an absolute path that lies OUTSIDE this app's own repo mount — i.e. a file
+ *  resident in a content mount rather than in the app? */
+export function isForeignMountPath(filename: string): boolean {
+  if (!filename.startsWith('/')) return false;
+  const root = getAppMountPath().replace(/\/+$/, '');
+  return !filename.startsWith(`${root}/`) && filename !== root;
+}
+
+/**
+ * Read an interpreted include's bytes.
+ *
+ * The reason this is not just `openAppFs()`: **the whole point of the interpreted include
+ * is files the app did not author**, and the two consumers named in this file's header —
+ * a dispatched wiki's `_layout.mdx`, a whiteboard object body — live in a MOUNT. An
+ * app-anchored read cannot reach them, and it does not fail loudly either: the absolute
+ * path is stripped to a relative one and looked up *inside the app*, so
+ * `/task/<slot>/dir/_layout.mdx` becomes a miss at `task/<slot>/dir/_layout.mdx` in the
+ * app's own tree. A silent wrong-file lookup, in the component whose job is rendering
+ * other people's content.
+ *
+ * So: a path under the app mount reads exactly as before, and an absolute path outside it
+ * — which could only ever have failed — reads from the unified sandbox namespace, where
+ * every mount is addressable. This widens what resolves and changes nothing that resolved.
+ */
+function readInterpretedSource(filename: string): Promise<string> {
+  if (isForeignMountPath(filename)) {
+    // Anchored at the namespace root: mounts are addressable by their absolute paths, and
+    // this component has no way to know (and no need to know) which mount a path belongs
+    // to. It confers nothing — the ZenFS port is already chroot/`ro`-enforced host-side.
+    return openFs({ path: '/', type: 'mount' } as never).readFile(
+      filename.replace(/^\/+/, ''),
+      'utf8',
+    ) as Promise<string>;
+  }
+  return openAppFs().readFile(appMountRelative(filename), 'utf8') as Promise<string>;
+}
+
 // One cache for every interpreted include in the app: a layout file is included on every
 // page, so a per-component cache would re-read it per navigation. See `../sourceCache` for
 // why a REJECTED read must not be memoised.
-const defaultSources = createSourceCache(
-  (path) => openAppFs().readFile(path, 'utf8') as Promise<string>,
-);
+const defaultSources = createSourceCache(readInterpretedSource);
 
 function InterpretedBody({
   filename,
@@ -65,7 +100,7 @@ function InterpretedBody({
     () => (readSource ? createSourceCache(readSource) : defaultSources),
     [readSource],
   );
-  const raw = use(sources.read(appMountRelative(filename)));
+  const raw = use(sources.read(filename));
   const provided = useMDXComponents(components) as Record<string, unknown>;
   const body = stripFrontmatter(raw);
   return (
