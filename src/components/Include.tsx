@@ -6,6 +6,7 @@ import { EvaluationContext } from '../sandboxTypes';
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 import { IncludeModeContext, RenderExportedComponentContext, type IncludeMode } from './includeContexts';
 import { SafeInclude } from './SafeInclude';
+import type { SourceReader } from '../sourceCache';
 
 // The contexts live in `./includeContexts` so `Include` and `SafeInclude` do not import each
 // other (`check:circular`); re-exported here because this is the public entry point and the
@@ -40,6 +41,7 @@ export const RenderExportedComponent = ({
  *  and the file need not be an evaluable module at all. */
 export const Include = ({
   filename,
+  readSource,
   exportedSymbol = 'default',
   LoadingComponent = defaultLoadingComponent,
   ErrorComponent = defaultErrorComponent,
@@ -64,6 +66,11 @@ export const Include = ({
    *  non-allow-listed props from compiled authors who legitimately pass them. Ignored in
    *  compiled mode, where components come from the provider as they always have. */
   components?: Record<string, unknown>;
+  /** Interpreted mode only: read the raw bytes yourself — e.g. through a mount fs you
+   *  already hold, or a cache you share with the rest of your app. The default reader
+   *  handles both an app-source path and an absolute path in a mount, so this is for
+   *  control, not for reach. Ignored in compiled mode. */
+  readSource?: SourceReader;
 }) => {
   // Both contexts are read unconditionally, before the branch, so hook order is stable
   // whichever renderer this include resolves to.
@@ -77,6 +84,7 @@ export const Include = ({
       <SafeInclude
         filename={filename}
         components={components}
+        readSource={readSource}
         LoadingComponent={LoadingComponent}
         ErrorComponent={ErrorComponent}
       />

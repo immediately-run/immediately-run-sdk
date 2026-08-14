@@ -83,6 +83,7 @@
   "components/SafeInclude": [
     "SafeInclude",
     "appMountRelative",
+    "isForeignMountPath",
     "stripFrontmatter"
   ],
   "components/ScrollAfterNavigation": [

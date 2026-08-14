@@ -7,7 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { createSourceCache } from '../sourceCache';
 import { Include, IncludeModeContext } from './Include';
-import { appMountRelative, stripFrontmatter } from './SafeInclude';
+import { appMountRelative, isForeignMountPath, stripFrontmatter } from './SafeInclude';
 
 // The WIRING around the safe renderer: which renderer an `<Include>` resolves to, how a
 // module path becomes mount-relative, what happens to frontmatter, and the read cache.
@@ -27,6 +27,34 @@ const render = (ui: ReactNode) => {
   act(() => root.render(ui));
   return { container, unmount: () => act(() => root.unmount()) };
 };
+
+describe('isForeignMountPath — is this file in the app, or in someone else\'s mount?', () => {
+  // The distinction the interpreted include exists for. Getting it wrong is not a loud
+  // failure: an app-anchored read of `/task/<slot>/dir/_layout.mdx` strips to
+  // `task/<slot>/dir/_layout.mdx` and misses INSIDE the app's own tree, so a dispatched
+  // wiki renders no shell and nothing says why.
+  it('treats the app\'s own repo paths as local', () => {
+    expect(isForeignMountPath('/app/content/home.mdx')).toBe(false);
+    expect(isForeignMountPath('/app')).toBe(false);
+  });
+
+  it('treats a mount-resident path as foreign', () => {
+    expect(isForeignMountPath('/task/t1/dir/_layout.mdx')).toBe(true);
+    expect(isForeignMountPath('/mnt/abc123/content/home.mdx')).toBe(true);
+    expect(isForeignMountPath('/spaces/s1/board.mdx')).toBe(true);
+  });
+
+  it('treats a relative path as local — an app-source include, unchanged', () => {
+    expect(isForeignMountPath('content/home.mdx')).toBe(false);
+    expect(isForeignMountPath('./x.mdx')).toBe(false);
+  });
+
+  it('does not mistake a sibling PREFIX for the app mount', () => {
+    // `/application/...` shares a prefix with `/app` and is not inside it. A `startsWith`
+    // without the separator would read a foreign file as though it were the app's own.
+    expect(isForeignMountPath('/application/x.mdx')).toBe(true);
+  });
+});
 
 describe('Include mode selection', () => {
   it('defaults to compiled — every existing consumer is unaffected', () => {
