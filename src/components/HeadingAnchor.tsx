@@ -1,4 +1,8 @@
-import { ReactNode } from 'react';
+import { ReactNode, use, useCallback } from 'react';
+import { scrollToId } from '../scrollToId';
+import { TinkerableContext } from '../TinkerableContext';
+import { constructOuterUrl } from '../urlUtils';
+import { FragmentLink } from './Link';
 
 /**
  * Default MDX `HeadingAnchor` component — the render target for the autolink anchor
@@ -28,15 +32,48 @@ export const HeadingAnchor = ({
 }: {
   id?: string;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>): ReactNode => {
+  // ⚠ A BARE `#id` IS THE WRONG HREF INSIDE A SANDBOXED APP, and wrong in a way that only
+  // shows up when someone copies the link. The app runs in an iframe whose document URL is
+  // the SANDBOX's (`https://sandbox.immediately.run/index.html?href=…`), so the browser
+  // resolves `#id` against THAT — "copy link address" on a heading yields a
+  // sandbox-internal URL that means nothing to anyone else. Reported from a real wiki
+  // (2026-08-14) as exactly that URL instead of the entry's.
+  //
+  // Both halves have to be right, and they pull in opposite directions:
+  //   • the HREF must be absolute in the HOST's space, so copy-link / middle-click /
+  //     open-in-new-tab all produce a URL that resolves for a reader;
+  //   • the CLICK must NOT navigate to it — that would be a full page load to the page you
+  //     are already on. It scrolls, leaving the sandbox URL the host owns untouched.
+  //
+  // `FragmentLink` is the SDK's existing home for the second half; it runs the caller's
+  // `onClick` first and stands down if it preventDefaults, which is what lets the href be
+  // absolute here while the behaviour stays a scroll.
+  const ctx = use(TinkerableContext);
+  const onAnchorClick = useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      // Let a modified click through: cmd/ctrl/middle-click means "open the permalink",
+      // and that is precisely the case the absolute href exists to serve.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      if (id) scrollToId(id);
+    },
+    [id]
+  );
   if (!id) return null;
+  // No context (a plain-markdown repo that never called `boot()`) → keep the old bare
+  // fragment, which FragmentLink handles on its own.
+  const href = ctx?.navigationState
+    ? constructOuterUrl(ctx.outerHref, `#${id}`, ctx.navigationState)
+    : `#${id}`;
   return (
-    <a
+    <FragmentLink
       className="ir-heading-anchor"
-      href={`#${id}`}
+      href={href}
+      onClick={onAnchorClick}
       aria-label="Permalink to this heading"
       {...rest}
     >
       <span aria-hidden="true">#</span>
-    </a>
+    </FragmentLink>
   );
 };

@@ -15,9 +15,23 @@ export const APP_ROOT = '/app';
 export const underAppRoot = (repoRelativePath: string): string =>
   joinPaths(APP_ROOT, repoRelativePath);
 
+/**
+ * The origin every outer URL is rebuilt on — `protocol//host`, **port included**.
+ *
+ * `url.hostname` drops the port; `url.host` keeps it (and still omits it for the default
+ * 80/443, so a production URL is byte-identical either way). Using `hostname` here was
+ * invisible on `https://immediately.run` and broke every routed link under local dev on any
+ * port but 80: `http://localhost:3100/edit/…` was rebuilt as `http://localhost/edit/…`.
+ *
+ * Worse than a wrong link, it silently changed link BEHAVIOUR. `repositoryPrefixURL` is
+ * built from this, and `isInternalHref` decides by prefix-matching against it — so an
+ * absolute in-app URL failed the match, was classified EXTERNAL, and rendered as a plain
+ * `<a>`. Clicking it performed a real navigation out of the sandboxed frame instead of
+ * routing: the app appeared to "reload" on an ordinary internal link.
+ */
 export const getOuterHostname = (outerHref:string) => {
   const url = new URL(outerHref);
-  return `${url.protocol}//${url.hostname}`;
+  return `${url.protocol}//${url.host}`;
 }
 
 export const getSearchParams = (search?: string): Record<string, string> => Object.fromEntries(
@@ -62,9 +76,21 @@ export const maybeParseUrl = (str: string): URL | null => {
 
 export const isAbsolutePath = (sandboxPath: string) => sandboxPath.startsWith('/');
 
+/**
+ * The origin+repo prefix every same-app URL starts with — used by {@link isInternalHref} to
+ * decide whether an absolute href is "this app" or somewhere else.
+ *
+ * `hash` and `search` are cleared, not just `sandboxPath`. They belong to the CURRENT page,
+ * and leaving them in put them on the end of a *prefix*: from a page carrying `#sec-8-9`,
+ * the prefix became `…/main/#sec-8-9`, no same-app URL could start with it, every absolute
+ * in-app link was classified EXTERNAL, and clicking one navigated the sandboxed frame away
+ * instead of routing. A page with a fragment quietly broke its own links.
+ */
 export const repositoryPrefixURL = (outerHref:string, navigationState: NavigationState) => constructUrl(outerHref, {
       ...navigationState,
-      sandboxPath: ''
+      sandboxPath: '',
+      hash: '',
+      search: '',
     });
 
 export const constructOuterUrl = (previousOuterHref:string, sandboxTarget:string, navigationState: NavigationState, addFilesPrefix=true):string => {
