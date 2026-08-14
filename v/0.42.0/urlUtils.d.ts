@@ -1,0 +1,67 @@
+import { NavigationState, PathState } from './TinkerableContext.js';
+import 'react';
+import './RoutingSpec.js';
+import './sandboxTypes.js';
+
+declare const FILES_PREFIX = "/files";
+/**
+ * Mount point of the Git repository inside the sandbox filesystem. The sandbox
+ * fs is rooted at `/` (so apps can reach dynamic mounts like `/firestore`), with
+ * the repo mounted here. URL subpaths are repo-relative, so the file router
+ * resolves them under `APP_ROOT`.
+ */
+declare const APP_ROOT = "/app";
+/** Resolve a repo-relative path (e.g. a URL subpath) to its absolute sandbox path. */
+declare const underAppRoot: (repoRelativePath: string) => string;
+/**
+ * The origin every outer URL is rebuilt on — `protocol//host`, **port included**.
+ *
+ * `url.hostname` drops the port; `url.host` keeps it (and still omits it for the default
+ * 80/443, so a production URL is byte-identical either way). Using `hostname` here was
+ * invisible on `https://immediately.run` and broke every routed link under local dev on any
+ * port but 80: `http://localhost:3100/edit/…` was rebuilt as `http://localhost/edit/…`.
+ *
+ * Worse than a wrong link, it silently changed link BEHAVIOUR. `repositoryPrefixURL` is
+ * built from this, and `isInternalHref` decides by prefix-matching against it — so an
+ * absolute in-app URL failed the match, was classified EXTERNAL, and rendered as a plain
+ * `<a>`. Clicking it performed a real navigation out of the sandboxed frame instead of
+ * routing: the app appeared to "reload" on an ordinary internal link.
+ */
+declare const getOuterHostname: (outerHref: string) => string;
+declare const getSearchParams: (search?: string) => Record<string, string>;
+/**
+ * Split a link target into its path part and its `#fragment` (the `#` dropped),
+ * e.g. `"FOO.mdx#sec-8-9"` → `["FOO.mdx", "sec-8-9"]`, `"#sec-3"` → `["", "sec-3"]`,
+ * `"FOO.mdx"` → `["FOO.mdx", ""]`. Only the **first** `#` splits — a fragment never
+ * contains another `#`. The seam between wiki-links (§13) and heading ids (§15):
+ * existence is resolved on the path part, the fragment is threaded to navigation.
+ * MARKDOWN_SYNTAX_SPEC §13.5.
+ */
+declare const splitHash: (target: string) => [string, string];
+declare const parseTarget: (target: string, navigation: NavigationState) => NavigationState;
+declare const maybeParseUrl: (str: string) => URL | null;
+declare const isAbsolutePath: (sandboxPath: string) => boolean;
+/**
+ * The origin+repo prefix every same-app URL starts with — used by {@link isInternalHref} to
+ * decide whether an absolute href is "this app" or somewhere else.
+ *
+ * `hash` and `search` are cleared, not just `sandboxPath`. They belong to the CURRENT page,
+ * and leaving them in put them on the end of a *prefix*: from a page carrying `#sec-8-9`,
+ * the prefix became `…/main/#sec-8-9`, no same-app URL could start with it, every absolute
+ * in-app link was classified EXTERNAL, and clicking one navigated the sandboxed frame away
+ * instead of routing. A page with a fragment quietly broke its own links.
+ */
+declare const repositoryPrefixURL: (outerHref: string, navigationState: NavigationState) => string;
+declare const constructOuterUrl: (previousOuterHref: string, sandboxTarget: string, navigationState: NavigationState, addFilesPrefix?: boolean) => string;
+declare const isInternalHref: (outerHref: string, target: string, navigationState: NavigationState) => boolean;
+type PathSegment = {
+    name: string;
+    pattern: string;
+    transform?: (pathSegment: string) => string;
+    optionalLeadingSlash?: boolean;
+};
+declare const parsePath: (pathname: string) => PathState;
+declare const parseHref: (href: string) => NavigationState;
+declare const constructUrl: (outerHref: string, navigationState: NavigationState) => string;
+
+export { APP_ROOT, FILES_PREFIX, type PathSegment, constructOuterUrl, constructUrl, getOuterHostname, getSearchParams, isAbsolutePath, isInternalHref, maybeParseUrl, parseHref, parsePath, parseTarget, repositoryPrefixURL, splitHash, underAppRoot };
