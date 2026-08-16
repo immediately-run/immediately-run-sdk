@@ -7,7 +7,7 @@
 //    as null, never dropped by serialization);
 //  - the `editor-context` parser tolerates hosts on either side of the change.
 import * as sandboxUtils from './sandboxUtils';
-import { navigate } from './routing';
+import { navigate, setViewedDocumentResolver } from './routing';
 
 jest.mock('./sandboxUtils', () => ({
   ...jest.requireActual('./sandboxUtils'),
@@ -36,6 +36,33 @@ describe('navigate viewedDocument encoding (R3-268)', () => {
     const data = sendMessage.mock.calls[0][1];
     expect('viewedDocument' in data).toBe(true);
     expect(data.viewedDocument).toBeNull();
+  });
+
+  describe('the registered resolver (R3-268 app-wide rule)', () => {
+    afterEach(() => setViewedDocumentResolver(null));
+
+    it('fills the declaration when the caller passed none; explicit opts still win', () => {
+      setViewedDocumentResolver((href) =>
+        href.includes('/files/') ? 'content/from-resolver.mdx' : null,
+      );
+      navigate('/edit/x/y/z/main/files/a.md');
+      expect(sendMessage.mock.calls[0][1].viewedDocument).toBe('content/from-resolver.mdx');
+      navigate('/edit/x/y/z/main/tags');
+      expect(sendMessage.mock.calls[1][1].viewedDocument).toBeNull();
+      navigate('/edit/x/y/z/main/files/a.md', { viewedDocument: 'explicit.md' });
+      expect(sendMessage.mock.calls[2][1].viewedDocument).toBe('explicit.md');
+    });
+
+    it('resolver undefined or a resolver throw leaves the field off the wire', () => {
+      setViewedDocumentResolver(() => undefined);
+      navigate('/edit/x/y/z/main/files/a.md');
+      expect('viewedDocument' in sendMessage.mock.calls[0][1]).toBe(false);
+      setViewedDocumentResolver(() => {
+        throw new Error('mapping bug');
+      });
+      navigate('/edit/x/y/z/main/files/a.md');
+      expect('viewedDocument' in sendMessage.mock.calls[1][1]).toBe(false);
+    });
   });
 });
 
