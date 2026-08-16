@@ -487,6 +487,7 @@
     "setActiveFile",
     "setHostTheme",
     "setSpaceRole",
+    "setViewedDocumentResolver",
     "splitWikiLinks",
     "startItemDrag",
     "unmountSpace",
@@ -701,6 +702,7 @@
     "applyRoutingRule",
     "navigate",
     "renderRoute",
+    "setViewedDocumentResolver",
     "useRoute",
     "useRouteParams",
     "useTinkerableLink"
