@@ -25,6 +25,15 @@ export interface EditorContext {
    * file here instead (UI_AS_APPS_SPEC §5.3 self-routed-panel refinement).
    */
   activeFile: string | null;
+  /**
+   * The viewed-document HINT (R3-268): the working-tree file the STAGE app is
+   * currently rendering (leading slash), or `null`. Distinct from
+   * {@link activeFile} (the editor's focus): this is what is ON STAGE. It is an
+   * app-supplied claim the host validated for existence only — consume it as a
+   * highlight and nothing more (never scroll, move focus, or switch files on
+   * it; that contract is what keeps the signal activation-free).
+   */
+  viewedFile: string | null;
 }
 
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `editor-context`
@@ -37,7 +46,7 @@ const isStringArray = (v: unknown): v is string[] =>
 const channel = createPushChannel<EditorContext>({
   pushType: 'editor-context',
   requestType: 'request-editor-context',
-  initial: { dirtyPaths: [], openFiles: [], activeFile: null },
+  initial: { dirtyPaths: [], openFiles: [], activeFile: null, viewedFile: null },
   parse: (msg) =>
     isStringArray(msg.dirtyPaths)
       ? {
@@ -48,6 +57,9 @@ const channel = createPushChannel<EditorContext>({
           // `activeFile` is newer still; an older host that omits it (or sends a
           // non-string) reads as `null` — no file highlighted, never a throw.
           activeFile: typeof msg.activeFile === 'string' ? msg.activeFile : null,
+          // `viewedFile` is the newest (R3-268); same tolerance — an older host
+          // that omits it reads as `null` (no stage highlight), never a throw.
+          viewedFile: typeof msg.viewedFile === 'string' ? msg.viewedFile : null,
         }
       : undefined,
 });
