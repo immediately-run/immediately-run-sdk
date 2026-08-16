@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.42.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.43.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -39,9 +39,10 @@ Import: `@immediately-run/sdk/routing`
 
 - `AppliedRoutingRule` (type) — The result of matching a path: the winning RoutingRule plus its captured params.
 - `applyRoutingRule` (function) — Find the first rule in `routingSpec` whose pattern matches the current `sandboxPath`, returning it with the captured params (or `undefined`).
-- `navigate` (function) — Navigate within the app.
+- `navigate` (function)
 - `renderRoute` (function) — Render a matched rule, passing params to a `component` and falling back to `element`/`reactNode`.
 - `Router` (function) — Render the route matched for the current location (set up by `boot`'s route table).
+- `setViewedDocumentResolver` (function) — Register the app's route→viewed-document rule (R3-268); pass `null` to clear.
 - `useRoute` (function) — Read the current route: the matched rule's `name`, its `params`, the app-owned `sandboxPath`, and the read-only platform prefix fields (`mode`, `provider`, `namespace`, `repository`, `ref`) — e.g.
 - `useRouteParams` (function) — Read the current route's matched params (`:name` segments and the `*` wildcard).
 - `useTinkerableLink` (function) — Build the full outer href for an in-app target (absolute `sandboxPath` or a path relative to the current route), e.g.
