@@ -89,12 +89,32 @@ export const useRoute = () => {
 /**
  * Navigate within the app. Messages the host to update the URL; the host then
  * pushes the new href back, which drives the actual route change.
+ *
+ * `opts.viewedDocument` (R3-268) optionally declares which WORKING-TREE file
+ * this destination renders — a tri-state rider on the navigation event:
+ *  - omit the option entirely → the host derives the hint from the URL's
+ *    `files/` suffix convention (the zero-SDK default);
+ *  - `null` → this view shows no file (clears the highlight — tag pages,
+ *    search, home views);
+ *  - a repo-relative path (the CORPUS path under dispatch — only the viewer
+ *    can map its own key space) → the file explorer highlights it.
+ * The hint is highlight-only by contract (it never scrolls, never moves focus
+ * or panes, never switches the editor) and is validated host-side for
+ * existence — a wrong path degrades to "no highlight", never an error. The
+ * host remembers declarations per URL, so back/forward reproduces them
+ * without re-announcement.
  */
-export const navigate = (target: string) => {
+export const navigate = (
+  target: string,
+  opts?: { viewedDocument?: string | null },
+) => {
   console.log(`[Sandbox] Navigating to ${target}`)
   sendMessage('urlchange', {
     url: target,
     back: false,
     forward: false,
+    // Absent stays absent on the wire — the tri-state's "derive by convention"
+    // arm — so only spread the field when the caller actually declared it.
+    ...(opts && 'viewedDocument' in opts ? { viewedDocument: opts.viewedDocument } : {}),
   });
 };
