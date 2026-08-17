@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.43.1)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.44.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -446,6 +446,17 @@ Import: `@immediately-run/sdk/launch`
 - `LaunchRegion` (type) — Where a launched program runs (§6).
 - `LaunchStatus` (type) — The live state of a launch (§2).
 - `LaunchTarget` (interface) — What to launch (§3) — binding-resolved, NEVER a caller-named app.
+
+## linkSpace
+
+Import: `@immediately-run/sdk/linkSpace`
+
+- `FS_PREFIX` (const)
+- `LinkSpace` (interface)
+- `LinkSpaceContext` (function) — Ambient link space.
+- `normalizeAbsolute` (function) — Collapse `.`/`..`/empty segments into a clean absolute path.
+- `ResolvedLinkTarget` (type)
+- `resolveLinkTarget` (function) — Resolve a raw link target (a wikilink target or an in-app href's path half — fragment already split off) to an absolute filesystem path.
 
 ## loading
 
