@@ -176,8 +176,23 @@ const describeType = (checker, type, node, depth = 0) => {
  * single-element array so both spellings fingerprint identically, and so this side's
  * snapshot lines up with the sandbox's (R3-274a's audit diffs them field by field).
  */
+/**
+ * Look through `x as unknown as Record<string, unknown>` casts. Several call sites
+ * launder a typed payload through `Record<string, unknown>` to satisfy
+ * `sendMessage`'s signature; fingerprinting the CAST records `{}` and hides the
+ * real payload (`sdk-handshake` sends `{sdkVersion, protocolVersion}` this way).
+ */
+const uncast = (node) => {
+  let n = node;
+  while (n && (ts.isAsExpression(n) || ts.isTypeAssertionExpression?.(n) || ts.isParenthesizedExpression(n))) {
+    n = n.expression;
+  }
+  return n ?? node;
+};
+
 const describeParams = (checker, node) => {
   if (!node) return { type: 'unknown' };
+  node = uncast(node);
   if (ts.isArrayLiteralExpression(node) && node.elements.length === 1) {
     return describeType(checker, checker.getTypeAtLocation(node.elements[0]), node.elements[0]);
   }
@@ -325,7 +340,7 @@ export const extract = (opts = {}) => {
 
         if (callee === 'sendMessage' && literal(args[0])) {
           const payload = args[1]
-            ? describeType(checker, checker.getTypeAtLocation(args[1]), args[1])
+            ? describeType(checker, checker.getTypeAtLocation(uncast(args[1])), uncast(args[1]))
             : { fields: [] };
           record(literal(args[0]), { kind: 'message', direction: 'app->host', payload }, node);
         } else if (callee === 'addListener' && literal(args[0])) {

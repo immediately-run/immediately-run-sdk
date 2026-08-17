@@ -416,7 +416,9 @@
       },
       "sites": [
         "src/editorContext.ts"
-      ]
+      ],
+      "divergent": true,
+      "divergentNote": "declared-incomplete \u2014 the host (site-main channelBridge.ts) sends {dirtyPaths, openFiles, activeFile, viewedFile}; this side declares only {dirtyPaths, activeFile?} while the SDK reads all four. `viewedFile` (R3-268) and `openFiles` never entered this declaration. R3-274e picks one shape for both sides."
     },
     "form-factor": {
       "kind": "push",
@@ -501,7 +503,9 @@
       },
       "sites": [
         "src/onFsChange.ts"
-      ]
+      ],
+      "divergent": true,
+      "divergentNote": "subset-reads with no declared owner on either side \u2014 the host sends {paths, epoch}; this side reads only `paths`, the SDK reads both. Nothing forces the two to agree, which is the divergence PLATFORM_LAYERING_SPEC \u00a72 names as the exemplar. The `kind` also differs (message here, push channel in the SDK). R3-274e decides: keep `epoch` or drop it."
     },
     "invitations": {
       "kind": "push",
@@ -1200,7 +1204,82 @@
       "methods": {
         "chat": {
           "payload": {
-            "type": "Record<string, unknown>"
+            "fields": [
+              {
+                "name": "maxTokens",
+                "optional": true,
+                "union": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
+              },
+              {
+                "name": "messages",
+                "optional": false,
+                "array": {
+                  "fields": [
+                    {
+                      "name": "content",
+                      "optional": false,
+                      "type": "ContentPart[]"
+                    },
+                    {
+                      "name": "role",
+                      "optional": false,
+                      "type": "ChatRole"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "modelHint",
+                "optional": true,
+                "union": [
+                  {
+                    "type": "\"fast\""
+                  },
+                  {
+                    "type": "\"smart\""
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
+              },
+              {
+                "name": "responseFormat",
+                "optional": true,
+                "union": [
+                  {
+                    "type": "\"json\""
+                  },
+                  {
+                    "type": "\"text\""
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
+              },
+              {
+                "name": "tools",
+                "optional": true,
+                "union": [
+                  {
+                    "array": {
+                      "type": "ToolDef"
+                    }
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
+              }
+            ]
           }
         }
       },
@@ -1633,11 +1712,24 @@
       "kind": "message",
       "direction": "app->host",
       "payload": {
-        "type": "Record<string, unknown>"
+        "fields": [
+          {
+            "name": "protocolVersion",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "sdkVersion",
+            "optional": false,
+            "type": "string"
+          }
+        ]
       },
       "sites": [
         "src/runtime.ts"
-      ]
+      ],
+      "divergent": true,
+      "divergentNote": "divergent-declared \u2014 TWO producers of one name with different payloads: the frame announces {protocolVersion} (the SDK version baked in at build by gen-sdk-versions.mjs, read from a SIBLING checkout), the SDK announces {protocolVersion, sdkVersion}. R3-274d gives the frame its own SANDBOX_PROTOCOL_VERSION and retires the sibling read; R3-274e picks one shape."
     },
     "secrets-metadata": {
       "kind": "push",
