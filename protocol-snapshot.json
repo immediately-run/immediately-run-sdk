@@ -1,0 +1,1505 @@
+{
+  "formatVersion": 1,
+  "repo": "@immediately-run/sdk",
+  "channels": {
+    "api-catalog": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-api-catalog",
+      "payload": {
+        "reads": [
+          "methods"
+        ]
+      },
+      "value": {
+        "array": {
+          "fields": [
+            {
+              "name": "capability",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "name",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "paramsSchema",
+              "optional": true,
+              "type": "Record<string, unknown> | undefined"
+            },
+            {
+              "name": "stream",
+              "optional": true,
+              "type": "boolean | undefined"
+            }
+          ]
+        },
+        "type": "ApiMethod[]"
+      },
+      "sites": [
+        "src/catalog.ts"
+      ]
+    },
+    "auth-state": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-auth-state",
+      "payload": {
+        "reads": [
+          "state"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "status",
+            "optional": false,
+            "type": "AuthStatus"
+          },
+          {
+            "name": "user",
+            "optional": false,
+            "type": "SandboxUser | null"
+          }
+        ],
+        "type": "AuthState"
+      },
+      "sites": [
+        "src/auth.ts"
+      ]
+    },
+    "compile": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "type": "unknown"
+      },
+      "sites": [
+        "src/moduleCache.tsx"
+      ]
+    },
+    "debug-enabled": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-debug-enabled",
+      "payload": {
+        "reads": [
+          "enabled"
+        ]
+      },
+      "value": {
+        "type": "boolean"
+      },
+      "sites": [
+        "src/debug.ts"
+      ]
+    },
+    "debug-log": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "fields": [
+          {
+            "name": "data",
+            "optional": false,
+            "type": "unknown"
+          },
+          {
+            "name": "level",
+            "optional": false,
+            "type": "DebugLevel"
+          },
+          {
+            "name": "message",
+            "optional": false,
+            "type": "string"
+          }
+        ]
+      },
+      "sites": [
+        "src/debug.ts"
+      ]
+    },
+    "debug-query": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "fields": [
+          {
+            "name": "id",
+            "optional": true,
+            "type": "unknown"
+          },
+          {
+            "name": "method",
+            "optional": true,
+            "type": "unknown"
+          },
+          {
+            "name": "params",
+            "optional": true,
+            "type": "unknown"
+          }
+        ],
+        "reads": [
+          "id",
+          "method",
+          "params"
+        ]
+      },
+      "sites": [
+        "src/debug.ts"
+      ]
+    },
+    "debug-query-result": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "fields": [
+          {
+            "name": "error",
+            "optional": false,
+            "type": "string | undefined"
+          },
+          {
+            "name": "id",
+            "optional": false,
+            "type": "unknown"
+          },
+          {
+            "name": "ok",
+            "optional": false,
+            "type": "boolean"
+          },
+          {
+            "name": "result",
+            "optional": false,
+            "type": "unknown"
+          }
+        ]
+      },
+      "sites": [
+        "src/debug.ts"
+      ]
+    },
+    "diagnostics": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-diagnostics",
+      "payload": {
+        "reads": [
+          "buildErrors",
+          "consoleEntries",
+          "provenance"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "buildErrors",
+            "optional": false,
+            "type": "BuildError[]"
+          },
+          {
+            "name": "consoleEntries",
+            "optional": false,
+            "type": "ConsoleEntry[]"
+          },
+          {
+            "name": "provenance",
+            "optional": false,
+            "type": "DiagnosticsProvenance | null"
+          }
+        ],
+        "type": "Diagnostics"
+      },
+      "sites": [
+        "src/diagnostics.ts"
+      ]
+    },
+    "dnd-cancel": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "type": "{}"
+      },
+      "sites": [
+        "src/dnd.ts"
+      ]
+    },
+    "dropped-item": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "fields": [
+          {
+            "name": "from",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "item",
+            "optional": false,
+            "type": "DraggableItem"
+          },
+          {
+            "name": "position",
+            "optional": false,
+            "type": "{ x: number; y: number; }"
+          }
+        ],
+        "reads": [
+          "from",
+          "item",
+          "position"
+        ]
+      },
+      "sites": [
+        "src/dnd.ts"
+      ]
+    },
+    "editor-context": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-editor-context",
+      "payload": {
+        "reads": [
+          "activeFile",
+          "dirtyPaths",
+          "openFiles",
+          "viewedFile"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "activeFile",
+            "optional": false,
+            "type": "string | null"
+          },
+          {
+            "name": "dirtyPaths",
+            "optional": false,
+            "type": "string[]"
+          },
+          {
+            "name": "openFiles",
+            "optional": false,
+            "type": "string[]"
+          },
+          {
+            "name": "viewedFile",
+            "optional": false,
+            "type": "string | null"
+          }
+        ],
+        "type": "EditorContext"
+      },
+      "sites": [
+        "src/editorContext.ts"
+      ]
+    },
+    "form-factor": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-form-factor",
+      "payload": {
+        "reads": [
+          "formFactor"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "class",
+            "optional": false,
+            "type": "FormFactorClass"
+          },
+          {
+            "name": "height",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "orientation",
+            "optional": false,
+            "type": "Orientation"
+          },
+          {
+            "name": "width",
+            "optional": false,
+            "type": "number"
+          }
+        ],
+        "type": "FormFactor"
+      },
+      "sites": [
+        "src/formFactor.ts"
+      ]
+    },
+    "fs-change": {
+      "kind": "push",
+      "direction": "host->app",
+      "payload": {
+        "reads": [
+          "epoch",
+          "paths"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "epoch",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "paths",
+            "optional": false,
+            "type": "string[]"
+          }
+        ],
+        "type": "FsChange"
+      },
+      "sites": [
+        "src/onFsChange.ts"
+      ]
+    },
+    "invitations": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-invitations",
+      "payload": {
+        "reads": [
+          "invites"
+        ]
+      },
+      "value": {
+        "array": {
+          "fields": [
+            {
+              "name": "avatarUrl",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "invitedAt",
+              "optional": true,
+              "type": "number | undefined"
+            },
+            {
+              "name": "invitedBy",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "login",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "name",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "owner",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "role",
+              "optional": false,
+              "type": "Role"
+            },
+            {
+              "name": "spaceId",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "uid",
+              "optional": false,
+              "type": "string"
+            }
+          ]
+        },
+        "type": "Invite[]"
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "launch-dismiss": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "fields": [
+          {
+            "name": "launchId",
+            "optional": false,
+            "type": "string"
+          }
+        ]
+      },
+      "sites": [
+        "src/launch.ts"
+      ]
+    },
+    "launch-ended": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "fields": [
+          {
+            "name": "launchId",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "optional": false,
+            "type": "\"dismissed\" | \"revoked\" | \"failed\""
+          }
+        ],
+        "reads": [
+          "launchId",
+          "status"
+        ]
+      },
+      "sites": [
+        "src/launch.ts"
+      ]
+    },
+    "llm-provider": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-llm-provider",
+      "payload": {
+        "reads": [
+          "provider"
+        ]
+      },
+      "value": {
+        "type": "ChatProviderInfo | null"
+      },
+      "sites": [
+        "src/llm.ts"
+      ]
+    },
+    "metadata-update": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "type": "Record<string, any>"
+      },
+      "sites": [
+        "src/boot.tsx"
+      ]
+    },
+    "mount-add": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "type": "Record<string, any>",
+        "reads": [
+          "mount"
+        ]
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "mount-remove": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "type": "Record<string, any>",
+        "reads": [
+          "id",
+          "path",
+          "reason"
+        ]
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "protocol-contribute": {
+      "kind": "stream",
+      "direction": "app->host",
+      "methods": {
+        "run": {
+          "payload": {
+            "fields": [
+              {
+                "name": "branchName",
+                "optional": true,
+                "type": "string | undefined"
+              },
+              {
+                "name": "commitMessage",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "mode",
+                "optional": true,
+                "type": "ContributeMode | undefined"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/contribute.ts"
+      ]
+    },
+    "protocol-dnd": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "startDrag": {
+          "payload": {
+            "fields": [
+              {
+                "name": "bytes",
+                "optional": true,
+                "type": "Uint8Array<ArrayBufferLike> | undefined"
+              },
+              {
+                "name": "kind",
+                "optional": false,
+                "type": "\"file\" | \"dir\""
+              },
+              {
+                "name": "mountId",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "relPath",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/dnd.ts"
+      ]
+    },
+    "protocol-editor": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "<dynamic>": {
+          "payload": {
+            "type": "Record<string, unknown>"
+          }
+        }
+      },
+      "sites": [
+        "src/editor.ts"
+      ]
+    },
+    "protocol-fetch": {
+      "kind": "request+stream",
+      "direction": "app->host",
+      "methods": {
+        "fetch": {
+          "payload": {
+            "fields": [
+              {
+                "name": "body",
+                "optional": false,
+                "type": "string | undefined"
+              },
+              {
+                "name": "headers",
+                "optional": false,
+                "type": "Record<string, string> | undefined"
+              },
+              {
+                "name": "method",
+                "optional": false,
+                "type": "string | undefined"
+              },
+              {
+                "name": "url",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "fetchStream": {
+          "payload": {
+            "fields": [
+              {
+                "name": "body",
+                "optional": false,
+                "type": "string | undefined"
+              },
+              {
+                "name": "headers",
+                "optional": false,
+                "type": "Record<string, string> | undefined"
+              },
+              {
+                "name": "method",
+                "optional": false,
+                "type": "string | undefined"
+              },
+              {
+                "name": "url",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/netFetch.ts"
+      ]
+    },
+    "protocol-ipc": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "post": {
+          "payload": {
+            "fields": [
+              {
+                "name": "msg",
+                "optional": false,
+                "type": "unknown"
+              },
+              {
+                "name": "to",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "reveal": {
+          "payload": {
+            "fields": [
+              {
+                "name": "to",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/ipc.ts"
+      ]
+    },
+    "protocol-launch": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "create": {
+          "payload": {
+            "fields": [
+              {
+                "name": "opts",
+                "optional": false,
+                "type": "LaunchOptions"
+              },
+              {
+                "name": "target",
+                "optional": false,
+                "type": "LaunchTarget"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/launch.ts"
+      ]
+    },
+    "protocol-llm": {
+      "kind": "stream",
+      "direction": "app->host",
+      "methods": {
+        "chat": {
+          "payload": {
+            "type": "Record<string, unknown>"
+          }
+        }
+      },
+      "sites": [
+        "src/llm.ts"
+      ]
+    },
+    "protocol-secrets": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "<dynamic>": {
+          "payload": {
+            "type": "object"
+          }
+        }
+      },
+      "sites": [
+        "src/secrets.ts"
+      ]
+    },
+    "protocol-settings": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "<dynamic>": {
+          "payload": {
+            "type": "Record<string, unknown>"
+          }
+        }
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "protocol-spaces": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "<dynamic>": {
+          "payload": {
+            "type": "Record<string, unknown>"
+          }
+        },
+        "grants": {
+          "payload": {
+            "type": "{}"
+          }
+        },
+        "invite": {
+          "payload": {
+            "fields": [
+              {
+                "name": "login",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "role",
+                "optional": false,
+                "type": "Role"
+              },
+              {
+                "name": "spaceId",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "list": {
+          "payload": {
+            "fields": [
+              {
+                "name": "app",
+                "optional": true,
+                "type": "boolean | undefined"
+              }
+            ]
+          }
+        },
+        "listAll": {
+          "payload": {
+            "type": "{}"
+          }
+        },
+        "lookupUser": {
+          "payload": {
+            "fields": [
+              {
+                "name": "login",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "members": {
+          "payload": {
+            "fields": [
+              {
+                "name": "spaceId",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "revokeGrant": {
+          "payload": {
+            "fields": [
+              {
+                "name": "appKey",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "spaceId",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "setRole": {
+          "payload": {
+            "fields": [
+              {
+                "name": "role",
+                "optional": false,
+                "type": "Role"
+              },
+              {
+                "name": "spaceId",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "uid",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "unshare": {
+          "payload": {
+            "fields": [
+              {
+                "name": "spaceId",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "uid",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/generated/spaces.ts",
+        "src/mounts.ts"
+      ]
+    },
+    "protocol-task": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "invoke": {
+          "payload": {
+            "fields": [
+              {
+                "name": "params",
+                "optional": false,
+                "type": "Record<string, unknown>"
+              },
+              {
+                "name": "task",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/tasks.ts"
+      ]
+    },
+    "protocol-theme": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "set": {
+          "payload": {
+            "fields": [
+              {
+                "name": "theme",
+                "optional": false,
+                "type": "HostTheme"
+              }
+            ]
+          }
+        }
+      },
+      "sites": [
+        "src/theme.ts"
+      ]
+    },
+    "protocol-vcs": {
+      "kind": "request",
+      "direction": "app->host",
+      "methods": {
+        "<dynamic>": {
+          "payload": {
+            "type": "Record<string, unknown>"
+          }
+        }
+      },
+      "sites": [
+        "src/vcs.ts"
+      ]
+    },
+    "region-message": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "fields": [
+          {
+            "name": "data",
+            "optional": false,
+            "type": "unknown"
+          },
+          {
+            "name": "from",
+            "optional": false,
+            "type": "string"
+          }
+        ],
+        "reads": [
+          "data",
+          "from"
+        ]
+      },
+      "sites": [
+        "src/ipc.ts"
+      ]
+    },
+    "request-api-catalog": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/catalog.ts"
+      ]
+    },
+    "request-auth-state": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/auth.ts"
+      ]
+    },
+    "request-debug-enabled": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/debug.ts"
+      ]
+    },
+    "request-diagnostics": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/diagnostics.ts"
+      ]
+    },
+    "request-editor-context": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/editorContext.ts"
+      ]
+    },
+    "request-form-factor": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/formFactor.ts"
+      ]
+    },
+    "request-handshake": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "type": "unknown"
+      },
+      "sites": [
+        "src/runtime.ts"
+      ]
+    },
+    "request-invitations": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "request-llm-provider": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/llm.ts"
+      ]
+    },
+    "request-mounts": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "request-secrets-metadata": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/secrets.ts"
+      ]
+    },
+    "request-session-mounts": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "request-theme": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/theme.ts"
+      ]
+    },
+    "request-vcs-state": {
+      "kind": "poll",
+      "direction": "app->host",
+      "payload": {
+        "fields": []
+      },
+      "sites": [
+        "src/vcs.ts"
+      ]
+    },
+    "sdk-handshake": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "type": "Record<string, unknown>"
+      },
+      "sites": [
+        "src/runtime.ts"
+      ]
+    },
+    "secrets-metadata": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-secrets-metadata",
+      "payload": {
+        "reads": [
+          "secrets"
+        ]
+      },
+      "value": {
+        "array": {
+          "fields": [
+            {
+              "name": "boundOrigin",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "description",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "family",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "id",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "lastUsedAt",
+              "optional": false,
+              "type": "string | null"
+            },
+            {
+              "name": "type",
+              "optional": false,
+              "type": "SecretType"
+            }
+          ]
+        },
+        "type": "SecretView[]"
+      },
+      "sites": [
+        "src/secrets.ts"
+      ]
+    },
+    "session-mounts": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-session-mounts",
+      "payload": {
+        "reads": [
+          "mounts"
+        ]
+      },
+      "value": {
+        "array": {
+          "fields": [
+            {
+              "name": "forwardedToApp",
+              "optional": false,
+              "type": "boolean"
+            },
+            {
+              "name": "id",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "mode",
+              "optional": true,
+              "type": "\"ro\" | \"rw\" | undefined"
+            },
+            {
+              "name": "name",
+              "optional": true,
+              "type": "string | undefined"
+            },
+            {
+              "name": "path",
+              "optional": false,
+              "type": "string"
+            },
+            {
+              "name": "rules",
+              "optional": true,
+              "type": "MountRule[] | undefined"
+            },
+            {
+              "name": "type",
+              "optional": false,
+              "type": "string"
+            }
+          ]
+        },
+        "type": "SessionMount[]"
+      },
+      "sites": [
+        "src/mounts.ts"
+      ]
+    },
+    "task-cancel": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "type": "{}"
+      },
+      "sites": [
+        "src/tasks.ts"
+      ]
+    },
+    "task-complete": {
+      "kind": "message",
+      "direction": "app->host",
+      "payload": {
+        "fields": [
+          {
+            "name": "result",
+            "optional": false,
+            "type": "unknown"
+          }
+        ]
+      },
+      "sites": [
+        "src/tasks.ts"
+      ]
+    },
+    "task-input": {
+      "kind": "message",
+      "direction": "host->app",
+      "payload": {
+        "fields": [
+          {
+            "name": "params",
+            "optional": true,
+            "type": "Record<string, unknown> | undefined"
+          },
+          {
+            "name": "task",
+            "optional": false,
+            "type": "string"
+          }
+        ],
+        "reads": [
+          "params",
+          "task"
+        ]
+      },
+      "sites": [
+        "src/tasks.ts"
+      ]
+    },
+    "theme": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-theme",
+      "payload": {
+        "reads": [
+          "theme"
+        ]
+      },
+      "value": {
+        "type": "HostTheme"
+      },
+      "sites": [
+        "src/theme.ts"
+      ]
+    },
+    "urlchange": {
+      "kind": "message",
+      "direction": "both",
+      "payload": {
+        "type": "any"
+      },
+      "sites": [
+        "src/boot.tsx",
+        "src/routing.tsx"
+      ]
+    },
+    "vcs-state": {
+      "kind": "push",
+      "direction": "host->app",
+      "poll": "request-vcs-state",
+      "payload": {
+        "reads": [
+          "branch",
+          "changes",
+          "diffLoading",
+          "prs"
+        ]
+      },
+      "value": {
+        "fields": [
+          {
+            "name": "branch",
+            "optional": false,
+            "type": "VcsBranch | null"
+          },
+          {
+            "name": "changes",
+            "optional": false,
+            "type": "VcsChange[]"
+          },
+          {
+            "name": "diffLoading",
+            "optional": false,
+            "type": "boolean"
+          },
+          {
+            "name": "prs",
+            "optional": false,
+            "type": "VcsPR[]"
+          }
+        ],
+        "type": "VcsState"
+      },
+      "sites": [
+        "src/vcs.ts"
+      ]
+    }
+  },
+  "dynamicFamilies": {
+    "protocol-<scheme>": {
+      "schemes": [
+        "contribute",
+        "dnd",
+        "editor",
+        "ipc",
+        "launch",
+        "llm",
+        "secrets",
+        "settings",
+        "spaces",
+        "task",
+        "theme",
+        "vcs"
+      ],
+      "sites": [
+        "src/catalog.ts"
+      ]
+    }
+  },
+  "envelopes": {
+    "frame": [
+      {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"event\""
+          },
+          {
+            "name": "value",
+            "optional": false,
+            "type": "unknown"
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"done\""
+          },
+          {
+            "name": "value",
+            "optional": false,
+            "type": "unknown"
+          }
+        ]
+      },
+      {
+        "fields": [
+          {
+            "name": "code",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "kind",
+            "optional": false,
+            "type": "\"error\""
+          },
+          {
+            "name": "message",
+            "optional": false,
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "send": [
+      {
+        "name": "msg",
+        "fields": [
+          {
+            "name": "method",
+            "optional": false,
+            "type": "string"
+          },
+          {
+            "name": "msgId",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "params",
+            "optional": false,
+            "type": "unknown[]"
+          },
+          {
+            "name": "stream",
+            "optional": false,
+            "type": "true"
+          },
+          {
+            "name": "type",
+            "optional": false,
+            "type": "string"
+          }
+        ]
+      }
+    ],
+    "subscribe": [
+      {
+        "name": "type",
+        "type": "string"
+      },
+      {
+        "name": "handler",
+        "type": "(msg: { msgId?: number | undefined; stream?: StreamFrame | undefined; }) => void"
+      }
+    ],
+    "cancel": [
+      {
+        "name": "msg",
+        "fields": [
+          {
+            "name": "cancel",
+            "optional": false,
+            "type": "true"
+          },
+          {
+            "name": "msgId",
+            "optional": false,
+            "type": "number"
+          },
+          {
+            "name": "type",
+            "optional": false,
+            "type": "string"
+          }
+        ]
+      }
+    ]
+  }
+}

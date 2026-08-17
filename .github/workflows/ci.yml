@@ -43,6 +43,16 @@ jobs:
       # forks depend on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after
       # build because it reads the emitted dist/*.d.ts.
       - run: npm run api:check
+      # R3-274 (PLATFORM_LAYERING_SPEC §2, Phase 1): the WIRE surface, which
+      # `api:check` never sees — it compares module exports, not message names.
+      # Renaming or reshaping a sandbox↔SDK message breaks every app pinned to an
+      # older SDK against a newer frame; before this gate any wire string could
+      # change with nothing firing (a live instance already exists: `fs-change`
+      # carries two shapes). Extracts from src/ with the TypeScript checker, so it
+      # runs without a build. `--self-test` runs alongside: a gate that finds zero
+      # names must fail, not pass.
+      - run: npm run protocol:check
+      - run: npm run protocol:selftest
       # R3-166: the gate-table→SDK descriptor set is the proposed single source for
       # the generated surface. This fails if it disagrees with what actually ships —
       # a descriptor naming an export the SDK doesn't have, or making a different
