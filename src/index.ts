@@ -9,6 +9,7 @@ export * from './components/Include';
 export { SafeInclude } from './components/SafeInclude';
 export * from './sourceCache';
 export * from './components/MDXComponents';
+export * from './linkSpace';
 export * from './components/MountImage';
 export * from './components/Routes';
 export * from './hooks'

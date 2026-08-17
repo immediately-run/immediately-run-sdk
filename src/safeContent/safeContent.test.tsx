@@ -177,6 +177,21 @@ describe('renderMdast — the render-as-data security properties', () => {
     unmount();
   });
 
+  it('R3-273: a malformed `$fs:` wikilink is inert BEFORE the resolver sees it', () => {
+    const calls: string[] = [];
+    const resolveWikiLink = (target: string) => {
+      calls.push(target);
+      return '/mnt/board/x.mdx'; // a maximally permissive resolver — must not matter
+    };
+    const tree = root(para(text('try [[$fs:javascript:alert(1)]] and [[$fs:/mnt/board/ok.mdx]]')));
+    const { container, unmount } = render(renderMdast(tree, { resolveWikiLink }));
+    // The smuggled-scheme target never reaches the resolver; the well-formed one does.
+    expect(calls).toEqual(['$fs:/mnt/board/ok.mdx']);
+    expect(container.querySelectorAll('a[data-wikilink]').length).toBe(1);
+    expect(container.textContent).toContain('$fs:javascript:alert(1)'); // inert text
+    unmount();
+  });
+
   // ── Host link/image overrides on the safe path ────────────────────────────────
   //
   // A raw `<a href>` performs a REAL navigation on click. Inside an app's sandboxed

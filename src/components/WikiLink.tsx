@@ -3,36 +3,12 @@ import { Link } from './Link';
 import { RenderExportedComponentContext } from './Include';
 import { TinkerableContext } from '../TinkerableContext';
 import { splitHash } from '../urlUtils';
+import { FS_PREFIX, LinkSpaceContext, resolveLinkTarget } from '../linkSpace';
 
 /** Derive a human label from a target path: basename without the extension. */
 const labelFromTarget = (target: string): string => {
   const base = target.split(/[\\/]/).pop() ?? target;
   return base.replace(/\.mdx?$/i, '') || target;
-};
-
-/** Collapse `.`/`..`/empty segments into a clean absolute path. */
-const normalize = (path: string): string => {
-  const out: string[] = [];
-  for (const seg of path.split('/')) {
-    if (seg === '' || seg === '.') continue;
-    if (seg === '..') out.pop();
-    else out.push(seg);
-  }
-  return '/' + out.join('/');
-};
-
-/**
- * Resolve a wiki-link target to an absolute sandbox path, or `undefined` when it
- * cannot be resolved (a relative target with no known current file). An
- * **absolute** target (`/…`) is taken verbatim; a **relative** target resolves
- * against the current file's directory. Pure path arithmetic (MARKDOWN_SYNTAX_SPEC
- * §13.2) — it never touches the filesystem or any other file.
- */
-const resolveWikiTarget = (target: string, currentFile?: string): string | undefined => {
-  if (target.startsWith('/')) return normalize(target);
-  if (!currentFile) return undefined;
-  const dir = currentFile.slice(0, currentFile.lastIndexOf('/'));
-  return normalize(`${dir}/${target}`);
 };
 
 /**
@@ -87,6 +63,7 @@ export const WikiLink = ({
   children?: ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>): ReactNode => {
   const { filesMetadata } = use(TinkerableContext);
+  const { corpusRoot } = use(LinkSpaceContext);
   const renderContext = use(RenderExportedComponentContext);
   const currentFile = renderContext?.evaluationContext?.evaluation?.module?.filepath;
 
@@ -114,7 +91,24 @@ export const WikiLink = ({
     );
   }
 
-  const resolved = resolveWikiTarget(pathPart, currentFile);
+  // R3-273 link spaces: resolution is the SHARED resolver (`linkSpace.ts`) —
+  // default space (corpus-rooted absolute targets when an enclosing provider
+  // declares a corpusRoot; fs-rooted otherwise) or the explicit `$fs:` prefix.
+  // A malformed `$fs:` target renders BROKEN, never an anchor.
+  const resolution = resolveLinkTarget(pathPart, { currentFile, corpusRoot });
+  if (resolution.state === 'invalid') {
+    return (
+      <span
+        className="ir-wikilink ir-wikilink-broken"
+        data-state="broken"
+        title={`Invalid ${FS_PREFIX} target: ${pathPart}`}
+        {...rest}
+      >
+        {text}
+      </span>
+    );
+  }
+  const resolved = resolution.state === 'resolved' ? resolution.path : undefined;
   const files = filesMetadata ?? {};
   const loaded = Object.keys(files).length > 0;
 
@@ -152,10 +146,17 @@ export const WikiLink = ({
       );
     }
   }
-  // Resolved cross-file target: route through <Link>, carrying the raw target so its
-  // `#fragment` rides through navigation to the scroll-after-nav effect (§13.5).
+  // Resolved cross-file target: route through <Link>. A space-translated target
+  // (`$fs:` prefix, or a corpus-rooted absolute) navigates to the RESOLVED path —
+  // the raw text is not a routable path in those shapes; everything else carries
+  // the raw target bit-for-bit so its `#fragment` rides through navigation to the
+  // scroll-after-nav effect (§13.5). The fragment is re-attached either way.
+  const translated =
+    pathPart.startsWith(FS_PREFIX) || (corpusRoot !== null && pathPart.startsWith('/'));
+  const href =
+    translated && resolved !== undefined ? `${resolved}${frag ? `#${frag}` : ''}` : rawTarget;
   return (
-    <Link href={rawTarget} className="ir-wikilink" data-state="resolved" {...rest}>
+    <Link href={href} className="ir-wikilink" data-state="resolved" {...rest}>
       {text}
     </Link>
   );
