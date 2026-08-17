@@ -109,7 +109,7 @@ export const getTaskInput = (): TaskInput | null => latestInput;
 export const completeTask = (result: unknown): void => sendMessage('task-complete', { result });
 
 /** Abort the task; the caller's `invokeTask` rejects with `cancelled`. */
-export const cancelTask = (): void => sendMessage('task-cancelled', {});
+export const cancelTask = (): void => sendMessage('task-cancel', {});
 
 /** React hook: the task input for this callee, re-rendering when it arrives. */
 export const useTaskInput = (): TaskInput | null => {
