@@ -112,30 +112,45 @@ const listSources = (dir) => {
 // ── type description ──────────────────────────────────────────────────────────
 const normalize = (s) => s.replace(/\s+/g, ' ').trim();
 
+const MAX_DEPTH = 2;
+
 /**
- * Structural fingerprint of a type: fields+optionality+type text, or the type text.
+ * Structural fingerprint of a type.
  *
- * Only *object-shaped* types are expanded field-by-field. Arrays and tuples are
- * described through their elements, and everything else (primitives, unions,
- * functions, `Record<…>`) is recorded as its type text — expanding a `string` or a
- * `T[]` would otherwise dump the entire `String`/`Array` prototype into the
- * snapshot, which is noise that also changes with the TypeScript lib version.
+ * Object types expand field by field; unions expand member by member; arrays and
+ * tuples expand through their elements. Everything else is its type text.
+ *
+ * WHY EXPAND INSTEAD OF PRINTING THE TYPE NAME. A field typed `HostTheme` prints
+ * as `"HostTheme"`, and then *adding a third theme* — a genuinely new value on the
+ * wire — changes nothing in the snapshot. The alias has to be resolved for the gate
+ * to mean "the shape", not "the spelling". Depth is capped at MAX_DEPTH so a field
+ * whose type reaches half the codebase does not drag it into the snapshot.
  */
 const describeType = (checker, type, node, depth = 0) => {
   if (!type) return { type: 'unknown' };
-  const text = () =>
-    normalize(checker.typeToString(type, undefined, ts.TypeFormatFlags.NoTruncation));
+  const text = (t = type) =>
+    normalize(checker.typeToString(t, undefined, ts.TypeFormatFlags.NoTruncation));
+  if (depth > MAX_DEPTH) return { type: text() };
   if (checker.isArrayType?.(type)) {
     const [el] = checker.getTypeArguments(type);
-    return { array: describeType(checker, el, node, depth) };
+    return { array: describeType(checker, el, node, depth + 1) };
   }
   if (checker.isTupleType?.(type)) {
-    return { tuple: checker.getTypeArguments(type).map((t) => describeType(checker, t, node, depth)) };
+    return {
+      tuple: checker.getTypeArguments(type).map((t) => describeType(checker, t, node, depth + 1)),
+    };
+  }
+  // `boolean` is internally `true | false`; keep it spelled as itself.
+  if (type.flags & ts.TypeFlags.Boolean) return { type: 'boolean' };
+  if (type.isUnion?.()) {
+    const members = type.types
+      .map((t) => describeType(checker, t, node, depth + 1))
+      .map((d) => JSON.stringify(d));
+    return { union: [...new Set(members)].sort().map((j) => JSON.parse(j)) };
   }
   const isObject = Boolean(type.flags & ts.TypeFlags.Object);
   const callable = checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0;
-  if (isObject && !callable && depth < 2) {
-    // `__@iterator@58` & co. are the lib's symbol-keyed members — not wire fields.
+  if (isObject && !callable) {
     const props = checker.getPropertiesOfType(type).filter((p) => !p.name.startsWith('__@'));
     if (props.length) {
       const fields = props
@@ -144,13 +159,7 @@ const describeType = (checker, type, node, depth = 0) => {
           return {
             name: p.name,
             optional: Boolean(p.flags & ts.SymbolFlags.Optional),
-            type: normalize(
-              checker.typeToString(
-                checker.getTypeOfSymbolAtLocation(p, decl),
-                undefined,
-                ts.TypeFormatFlags.NoTruncation,
-              ),
-            ),
+            ...describeType(checker, checker.getTypeOfSymbolAtLocation(p, decl), decl, depth + 1),
           };
         })
         .sort((a, b) => a.name.localeCompare(b.name));

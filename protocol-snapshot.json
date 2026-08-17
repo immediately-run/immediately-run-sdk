@@ -56,12 +56,29 @@
           {
             "name": "status",
             "optional": false,
-            "type": "AuthStatus"
+            "union": [
+              {
+                "type": "\"signed-in\""
+              },
+              {
+                "type": "\"signed-out\""
+              },
+              {
+                "type": "\"unknown\""
+              }
+            ]
           },
           {
             "name": "user",
             "optional": false,
-            "type": "SandboxUser | null"
+            "union": [
+              {
+                "type": "SandboxUser"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         ],
         "type": "AuthState"
@@ -109,7 +126,20 @@
           {
             "name": "level",
             "optional": false,
-            "type": "DebugLevel"
+            "union": [
+              {
+                "type": "\"debug\""
+              },
+              {
+                "type": "\"error\""
+              },
+              {
+                "type": "\"info\""
+              },
+              {
+                "type": "\"warn\""
+              }
+            ]
           },
           {
             "name": "message",
@@ -161,7 +191,14 @@
           {
             "name": "error",
             "optional": false,
-            "type": "string | undefined"
+            "union": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "undefined"
+              }
+            ]
           },
           {
             "name": "id",
@@ -200,17 +237,28 @@
           {
             "name": "buildErrors",
             "optional": false,
-            "type": "BuildError[]"
+            "array": {
+              "type": "BuildError"
+            }
           },
           {
             "name": "consoleEntries",
             "optional": false,
-            "type": "ConsoleEntry[]"
+            "array": {
+              "type": "ConsoleEntry"
+            }
           },
           {
             "name": "provenance",
             "optional": false,
-            "type": "DiagnosticsProvenance | null"
+            "union": [
+              {
+                "type": "DiagnosticsProvenance"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         ],
         "type": "Diagnostics"
@@ -242,12 +290,63 @@
           {
             "name": "item",
             "optional": false,
-            "type": "DraggableItem"
+            "fields": [
+              {
+                "name": "bytes",
+                "optional": true,
+                "union": [
+                  {
+                    "type": "Uint8Array<ArrayBufferLike>"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
+              },
+              {
+                "name": "kind",
+                "optional": false,
+                "union": [
+                  {
+                    "type": "\"dir\""
+                  },
+                  {
+                    "type": "\"file\""
+                  }
+                ]
+              },
+              {
+                "name": "mountId",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "name",
+                "optional": false,
+                "type": "string"
+              },
+              {
+                "name": "relPath",
+                "optional": false,
+                "type": "string"
+              }
+            ]
           },
           {
             "name": "position",
             "optional": false,
-            "type": "{ x: number; y: number; }"
+            "fields": [
+              {
+                "name": "x",
+                "optional": false,
+                "type": "number"
+              },
+              {
+                "name": "y",
+                "optional": false,
+                "type": "number"
+              }
+            ]
           }
         ],
         "reads": [
@@ -277,22 +376,40 @@
           {
             "name": "activeFile",
             "optional": false,
-            "type": "string | null"
+            "union": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           },
           {
             "name": "dirtyPaths",
             "optional": false,
-            "type": "string[]"
+            "array": {
+              "type": "string"
+            }
           },
           {
             "name": "openFiles",
             "optional": false,
-            "type": "string[]"
+            "array": {
+              "type": "string"
+            }
           },
           {
             "name": "viewedFile",
             "optional": false,
-            "type": "string | null"
+            "union": [
+              {
+                "type": "null"
+              },
+              {
+                "type": "string"
+              }
+            ]
           }
         ],
         "type": "EditorContext"
@@ -315,7 +432,17 @@
           {
             "name": "class",
             "optional": false,
-            "type": "FormFactorClass"
+            "union": [
+              {
+                "type": "\"desktop\""
+              },
+              {
+                "type": "\"mobile\""
+              },
+              {
+                "type": "\"tablet\""
+              }
+            ]
           },
           {
             "name": "height",
@@ -325,7 +452,14 @@
           {
             "name": "orientation",
             "optional": false,
-            "type": "Orientation"
+            "union": [
+              {
+                "type": "\"landscape\""
+              },
+              {
+                "type": "\"portrait\""
+              }
+            ]
           },
           {
             "name": "width",
@@ -358,7 +492,9 @@
           {
             "name": "paths",
             "optional": false,
-            "type": "string[]"
+            "array": {
+              "type": "string"
+            }
           }
         ],
         "type": "FsChange"
@@ -461,7 +597,17 @@
           {
             "name": "status",
             "optional": false,
-            "type": "\"dismissed\" | \"revoked\" | \"failed\""
+            "union": [
+              {
+                "type": "\"dismissed\""
+              },
+              {
+                "type": "\"failed\""
+              },
+              {
+                "type": "\"revoked\""
+              }
+            ]
           }
         ],
         "reads": [
@@ -483,6 +629,30 @@
         ]
       },
       "value": {
+        "union": [
+          {
+            "fields": [
+              {
+                "name": "features",
+                "optional": false,
+                "type": "ChatFeatures"
+              },
+              {
+                "name": "hostVouched",
+                "optional": false,
+                "type": "boolean"
+              },
+              {
+                "name": "providerId",
+                "optional": false,
+                "type": "string"
+              }
+            ]
+          },
+          {
+            "type": "null"
+          }
+        ],
         "type": "ChatProviderInfo | null"
       },
       "sites": [
@@ -537,7 +707,14 @@
               {
                 "name": "branchName",
                 "optional": true,
-                "type": "string | undefined"
+                "union": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "commitMessage",
@@ -547,7 +724,17 @@
               {
                 "name": "mode",
                 "optional": true,
-                "type": "ContributeMode | undefined"
+                "union": [
+                  {
+                    "type": "\"direct\""
+                  },
+                  {
+                    "type": "\"pr\""
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               }
             ]
           }
@@ -567,12 +754,182 @@
               {
                 "name": "bytes",
                 "optional": true,
-                "type": "Uint8Array<ArrayBufferLike> | undefined"
+                "union": [
+                  {
+                    "fields": [
+                      {
+                        "name": "buffer",
+                        "optional": false,
+                        "type": "ArrayBufferLike"
+                      },
+                      {
+                        "name": "byteLength",
+                        "optional": false,
+                        "type": "number"
+                      },
+                      {
+                        "name": "byteOffset",
+                        "optional": false,
+                        "type": "number"
+                      },
+                      {
+                        "name": "BYTES_PER_ELEMENT",
+                        "optional": false,
+                        "type": "number"
+                      },
+                      {
+                        "name": "copyWithin",
+                        "optional": false,
+                        "type": "(target: number, start: number, end?: number | undefined) => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "entries",
+                        "optional": false,
+                        "type": "() => ArrayIterator<[number, number]>"
+                      },
+                      {
+                        "name": "every",
+                        "optional": false,
+                        "type": "(predicate: (value: number, index: number, array: Uint8Array<ArrayBufferLike>) => unknown, thisArg?: any) => boolean"
+                      },
+                      {
+                        "name": "fill",
+                        "optional": false,
+                        "type": "(value: number, start?: number | undefined, end?: number | undefined) => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "filter",
+                        "optional": false,
+                        "type": "(predicate: (value: number, index: number, array: Uint8Array<ArrayBufferLike>) => any, thisArg?: any) => Uint8Array<ArrayBuffer>"
+                      },
+                      {
+                        "name": "find",
+                        "optional": false,
+                        "type": "(predicate: (value: number, index: number, obj: Uint8Array<ArrayBufferLike>) => boolean, thisArg?: any) => number | undefined"
+                      },
+                      {
+                        "name": "findIndex",
+                        "optional": false,
+                        "type": "(predicate: (value: number, index: number, obj: Uint8Array<ArrayBufferLike>) => boolean, thisArg?: any) => number"
+                      },
+                      {
+                        "name": "forEach",
+                        "optional": false,
+                        "type": "(callbackfn: (value: number, index: number, array: Uint8Array<ArrayBufferLike>) => void, thisArg?: any) => void"
+                      },
+                      {
+                        "name": "includes",
+                        "optional": false,
+                        "type": "(searchElement: number, fromIndex?: number | undefined) => boolean"
+                      },
+                      {
+                        "name": "indexOf",
+                        "optional": false,
+                        "type": "(searchElement: number, fromIndex?: number | undefined) => number"
+                      },
+                      {
+                        "name": "join",
+                        "optional": false,
+                        "type": "(separator?: string | undefined) => string"
+                      },
+                      {
+                        "name": "keys",
+                        "optional": false,
+                        "type": "() => ArrayIterator<number>"
+                      },
+                      {
+                        "name": "lastIndexOf",
+                        "optional": false,
+                        "type": "(searchElement: number, fromIndex?: number | undefined) => number"
+                      },
+                      {
+                        "name": "length",
+                        "optional": false,
+                        "type": "number"
+                      },
+                      {
+                        "name": "map",
+                        "optional": false,
+                        "type": "(callbackfn: (value: number, index: number, array: Uint8Array<ArrayBufferLike>) => number, thisArg?: any) => Uint8Array<ArrayBuffer>"
+                      },
+                      {
+                        "name": "reduce",
+                        "optional": false,
+                        "type": "{ (callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => number): number; (callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => number, initialValue: number): number; <U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => U, initialValue: U): U; }"
+                      },
+                      {
+                        "name": "reduceRight",
+                        "optional": false,
+                        "type": "{ (callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => number): number; (callbackfn: (previousValue: number, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => number, initialValue: number): number; <U>(callbackfn: (previousValue: U, currentValue: number, currentIndex: number, array: Uint8Array<ArrayBufferLike>) => U, initialValue: U): U; }"
+                      },
+                      {
+                        "name": "reverse",
+                        "optional": false,
+                        "type": "() => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "set",
+                        "optional": false,
+                        "type": "(array: ArrayLike<number>, offset?: number | undefined) => void"
+                      },
+                      {
+                        "name": "slice",
+                        "optional": false,
+                        "type": "(start?: number | undefined, end?: number | undefined) => Uint8Array<ArrayBuffer>"
+                      },
+                      {
+                        "name": "some",
+                        "optional": false,
+                        "type": "(predicate: (value: number, index: number, array: Uint8Array<ArrayBufferLike>) => unknown, thisArg?: any) => boolean"
+                      },
+                      {
+                        "name": "sort",
+                        "optional": false,
+                        "type": "(compareFn?: ((a: number, b: number) => number) | undefined) => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "subarray",
+                        "optional": false,
+                        "type": "(begin?: number | undefined, end?: number | undefined) => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "toLocaleString",
+                        "optional": false,
+                        "type": "{ (): string; (locales: string | string[], options?: NumberFormatOptions | undefined): string; }"
+                      },
+                      {
+                        "name": "toString",
+                        "optional": false,
+                        "type": "() => string"
+                      },
+                      {
+                        "name": "valueOf",
+                        "optional": false,
+                        "type": "() => Uint8Array<ArrayBufferLike>"
+                      },
+                      {
+                        "name": "values",
+                        "optional": false,
+                        "type": "() => ArrayIterator<number>"
+                      }
+                    ]
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "kind",
                 "optional": false,
-                "type": "\"file\" | \"dir\""
+                "union": [
+                  {
+                    "type": "\"dir\""
+                  },
+                  {
+                    "type": "\"file\""
+                  }
+                ]
               },
               {
                 "name": "mountId",
@@ -621,17 +978,38 @@
               {
                 "name": "body",
                 "optional": false,
-                "type": "string | undefined"
+                "union": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "headers",
                 "optional": false,
-                "type": "Record<string, string> | undefined"
+                "union": [
+                  {
+                    "type": "Record<string, string>"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "method",
                 "optional": false,
-                "type": "string | undefined"
+                "union": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "url",
@@ -647,17 +1025,38 @@
               {
                 "name": "body",
                 "optional": false,
-                "type": "string | undefined"
+                "union": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "headers",
                 "optional": false,
-                "type": "Record<string, string> | undefined"
+                "union": [
+                  {
+                    "type": "Record<string, string>"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "method",
                 "optional": false,
-                "type": "string | undefined"
+                "union": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               },
               {
                 "name": "url",
@@ -718,12 +1117,74 @@
               {
                 "name": "opts",
                 "optional": false,
-                "type": "LaunchOptions"
+                "fields": [
+                  {
+                    "name": "input",
+                    "optional": true,
+                    "union": [
+                      {
+                        "type": "Record<string, unknown>"
+                      },
+                      {
+                        "type": "undefined"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "region",
+                    "optional": false,
+                    "union": [
+                      {
+                        "type": "\"overlay\""
+                      },
+                      {
+                        "type": "\"stage\""
+                      }
+                    ]
+                  }
+                ]
               },
               {
                 "name": "target",
                 "optional": false,
-                "type": "LaunchTarget"
+                "fields": [
+                  {
+                    "name": "entryPoint",
+                    "optional": true,
+                    "union": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "undefined"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "task",
+                    "optional": true,
+                    "union": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "undefined"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "version",
+                    "optional": true,
+                    "union": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "undefined"
+                      }
+                    ]
+                  }
+                ]
               }
             ]
           }
@@ -800,7 +1261,17 @@
               {
                 "name": "role",
                 "optional": false,
-                "type": "Role"
+                "union": [
+                  {
+                    "type": "\"owner\""
+                  },
+                  {
+                    "type": "\"reader\""
+                  },
+                  {
+                    "type": "\"writer\""
+                  }
+                ]
               },
               {
                 "name": "spaceId",
@@ -816,7 +1287,17 @@
               {
                 "name": "app",
                 "optional": true,
-                "type": "boolean | undefined"
+                "union": [
+                  {
+                    "type": "false"
+                  },
+                  {
+                    "type": "true"
+                  },
+                  {
+                    "type": "undefined"
+                  }
+                ]
               }
             ]
           }
@@ -870,7 +1351,17 @@
               {
                 "name": "role",
                 "optional": false,
-                "type": "Role"
+                "union": [
+                  {
+                    "type": "\"owner\""
+                  },
+                  {
+                    "type": "\"reader\""
+                  },
+                  {
+                    "type": "\"writer\""
+                  }
+                ]
               },
               {
                 "name": "spaceId",
@@ -942,7 +1433,14 @@
               {
                 "name": "theme",
                 "optional": false,
-                "type": "HostTheme"
+                "union": [
+                  {
+                    "type": "\"dark\""
+                  },
+                  {
+                    "type": "\"light\""
+                  }
+                ]
               }
             ]
           }
@@ -1280,7 +1778,14 @@
           {
             "name": "params",
             "optional": true,
-            "type": "Record<string, unknown> | undefined"
+            "union": [
+              {
+                "type": "Record<string, unknown>"
+              },
+              {
+                "type": "undefined"
+              }
+            ]
           },
           {
             "name": "task",
@@ -1307,6 +1812,14 @@
         ]
       },
       "value": {
+        "union": [
+          {
+            "type": "\"dark\""
+          },
+          {
+            "type": "\"light\""
+          }
+        ],
         "type": "HostTheme"
       },
       "sites": [
@@ -1341,12 +1854,21 @@
           {
             "name": "branch",
             "optional": false,
-            "type": "VcsBranch | null"
+            "union": [
+              {
+                "type": "VcsBranch"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           {
             "name": "changes",
             "optional": false,
-            "type": "VcsChange[]"
+            "array": {
+              "type": "VcsChange"
+            }
           },
           {
             "name": "diffLoading",
@@ -1356,7 +1878,9 @@
           {
             "name": "prs",
             "optional": false,
-            "type": "VcsPR[]"
+            "array": {
+              "type": "VcsPR"
+            }
           }
         ],
         "type": "VcsState"
@@ -1454,7 +1978,9 @@
           {
             "name": "params",
             "optional": false,
-            "type": "unknown[]"
+            "array": {
+              "type": "unknown"
+            }
           },
           {
             "name": "stream",
