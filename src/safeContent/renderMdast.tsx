@@ -1,6 +1,7 @@
 import { createElement, Fragment, type ReactNode } from 'react';
 import { sanitizeUrl } from './sanitizeUrl';
 import { splitWikiLinks, type WikiLinkToken } from './wikilink';
+import { resolveLinkTarget } from '../linkSpace';
 import type { SafeMdastNode, SafeMdxAttribute } from './parseSafeMdast';
 
 // The mdast→React renderer for the safe content path (TRUST_MODES_SPEC §5.1). PURE
@@ -90,6 +91,11 @@ function elementFor(
  *  resolve (never a network call — resolution is the injected mount-scoped callback). */
 function renderWiki(token: WikiLinkToken, opts: RenderMdastOptions): ReactNode {
   const label = token.label ?? token.target;
+  // R3-273: a malformed `$fs:` target (not mount-absolute — catches scheme
+  // smuggling) is inert BEFORE the injected resolver ever sees it, so every
+  // consumer fails closed identically. Consumers implement their resolver on the
+  // same shared `resolveLinkTarget` for well-formed targets.
+  if (resolveLinkTarget(token.target).state === 'invalid') return label;
   const href = opts.resolveWikiLink?.(token.target);
   const safe = href !== undefined ? sanitizeUrl(href) : undefined;
   if (safe === undefined) return label; // inert text — unresolved or out-of-mount

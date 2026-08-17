@@ -10,6 +10,7 @@ import * as sandboxUtils from '../sandboxUtils';
 import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
 import { RenderExportedComponentContext } from './Include';
 import { Admonition, DEFAULT_MDX_COMPONENTS, HeadingAnchor, WikiLink } from './MDXComponents';
+import { LinkSpaceContext } from '../linkSpace';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -311,6 +312,155 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
     expect(a!.getAttribute('data-state')).toBe('anchor');
     expect(a!.getAttribute('href')).toBe('#sec-2');
     expect(container.querySelector('span.ir-wikilink-self')).toBeNull();
+    unmount();
+  });
+});
+
+// ---- R3-273 link spaces: `$fs:` prefix + corpus-rooted default space ----------
+describe('link spaces (R3-273)', () => {
+  const FILES = {
+    '/app/content/guide/setup.mdx': { title: 'Setup' },
+    '/app/content/intro.mdx': { title: 'Intro' },
+    '/app/content/sub/page.mdx': { title: 'Nested page' },
+    '/app/content/sub/other.mdx': { title: 'Nested sibling' },
+  } as TinkerableState['filesMetadata'];
+
+  const renderSpaced = (
+    ui: ReactNode,
+    {
+      currentFile,
+      corpusRoot = null,
+      files = FILES,
+    }: { currentFile?: string; corpusRoot?: string | null; files?: TinkerableState['filesMetadata'] } = {},
+  ) => {
+    const tctx: TinkerableState = { ...ctx, filesMetadata: files };
+    const rctx = currentFile
+      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ({ evaluationContext: { evaluation: { module: { filepath: currentFile, source: '' } } } } as any)
+      : null;
+    return render(
+      <TinkerableContext value={tctx}>
+        <LinkSpaceContext value={{ corpusRoot }}>
+          <RenderExportedComponentContext value={rctx}>{ui}</RenderExportedComponentContext>
+        </LinkSpaceContext>
+      </TinkerableContext>,
+    );
+  };
+
+  it('a `$fs:` wikilink resolves mount-absolute even under a corpusRoot', () => {
+    const { container, unmount } = renderSpaced(<WikiLink target="$fs:/app/content/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      corpusRoot: '/app/content',
+    });
+    const a = container.querySelector('a.ir-wikilink');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('a `$fs:` wikilink to a missing file renders broken', () => {
+    const { container, unmount } = renderSpaced(<WikiLink target="$fs:/nope.mdx" />, {
+      currentFile: '/app/content/intro.mdx',
+    });
+    const el = container.querySelector('.ir-wikilink-broken');
+    expect(el).not.toBeNull();
+    expect(container.querySelector('a')).toBeNull();
+    unmount();
+  });
+
+  it('a malformed `$fs:` wikilink (scheme smuggling) renders broken, never an anchor', () => {
+    const { container, unmount } = renderSpaced(
+      <WikiLink target="$fs:javascript:alert(1)" label="click me" />,
+      { currentFile: '/app/content/intro.mdx' },
+    );
+    expect(container.querySelector('a')).toBeNull();
+    const el = container.querySelector('.ir-wikilink-broken');
+    expect(el).not.toBeNull();
+    expect(el!.textContent).toBe('click me');
+    unmount();
+  });
+
+  it('an ABSOLUTE wikilink target resolves from the corpus root when one is declared', () => {
+    // Without the corpusRoot this would resolve to /intro.mdx (not in FILES → broken);
+    // the resolved state proves the corpus mapping applied.
+    const { container, unmount } = renderSpaced(<WikiLink target="/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      corpusRoot: '/app/content',
+    });
+    expect(container.querySelector('a.ir-wikilink')!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('without a corpusRoot, absolute targets keep the legacy fs-root meaning', () => {
+    const { container, unmount } = renderSpaced(<WikiLink target="/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      corpusRoot: null,
+    });
+    expect(container.querySelector('.ir-wikilink-broken')).not.toBeNull();
+    unmount();
+  });
+
+  it('nested LinkSpaceContext providers: the INNERMOST corpus wins (bundle rule)', () => {
+    const { container, unmount } = render(
+      <TinkerableContext value={{ ...ctx, filesMetadata: FILES }}>
+        <LinkSpaceContext value={{ corpusRoot: '/app/content' }}>
+          <LinkSpaceContext value={{ corpusRoot: '/app/content/sub' }}>
+            <RenderExportedComponentContext
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              value={{ evaluationContext: { evaluation: { module: { filepath: '/app/content/sub/page.mdx', source: '' } } } } as any}
+            >
+              <WikiLink target="/other.mdx" />
+            </RenderExportedComponentContext>
+          </LinkSpaceContext>
+        </LinkSpaceContext>
+      </TinkerableContext>,
+    );
+    // /other.mdx → /app/content/sub/other.mdx (inner, exists → resolved), NOT
+    // /app/content/other.mdx (outer, absent → would render broken).
+    expect(container.querySelector('a.ir-wikilink')!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('the default `a` translates a `$fs:` href to its mount path and routes it', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(
+      <A href="$fs:/app/content/intro.mdx#sec-2">read the intro</A>,
+      { corpusRoot: '/app/content' },
+    );
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    // In-app href: routed (outer URL form), never the raw `$fs:` text.
+    expect(a!.getAttribute('href')).not.toContain('$fs:');
+    expect(a!.getAttribute('href')).toContain('/app/content/intro.mdx');
+    expect(a!.getAttribute('href')).toContain('#sec-2');
+    unmount();
+  });
+
+  it('the default `a` renders a malformed `$fs:` href as broken text, not an anchor', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(<A href="$fs:javascript:alert(1)">x</A>, {});
+    expect(container.querySelector('a')).toBeNull();
+    expect(container.querySelector('.ir-link-broken')).not.toBeNull();
+    unmount();
+  });
+
+  it('the default `a` corpus-roots an absolute href when a corpusRoot is declared', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(<A href="/intro.mdx">intro</A>, {
+      corpusRoot: '/app/content',
+    });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).toContain('/app/content/intro.mdx');
+    unmount();
+  });
+
+  it('the default `a` is untouched with no corpusRoot (non-corpus apps, bit-for-bit)', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(<A href="/about">about</A>, { corpusRoot: null });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).not.toContain('/app/content');
     unmount();
   });
 });

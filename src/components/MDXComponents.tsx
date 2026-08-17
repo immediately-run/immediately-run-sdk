@@ -1,5 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, use } from 'react';
 import { Admonition } from './Admonition';
+import { FS_PREFIX, LinkSpaceContext, normalizeAbsolute, resolveLinkTarget } from '../linkSpace';
+import { splitHash } from '../urlUtils';
 import { HeadingAnchor } from './HeadingAnchor';
 import { Link } from './Link';
 import { WikiLink } from './WikiLink';
@@ -27,8 +29,28 @@ export const DEFAULT_MDX_COMPONENTS = {
     children,
     ...properties
   }: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>) {
+    // R3-273 link spaces, same shared resolver as WikiLink: an `$fs:` href is
+    // translated to its mount-absolute path; an ABSOLUTE href is corpus-rooted
+    // when an enclosing LinkSpaceContext declares a corpusRoot (a non-corpus app
+    // declares none and is untouched). Relative and external hrefs pass through —
+    // <Link> already routes same-app hrefs and renders the rest as plain anchors.
+    const { corpusRoot } = use(LinkSpaceContext);
+    let mapped = href;
+    if (href && (href.startsWith(FS_PREFIX) || (corpusRoot !== null && href.startsWith('/')))) {
+      const [pathPart, frag] = splitHash(href);
+      const resolution = resolveLinkTarget(pathPart, { corpusRoot });
+      if (resolution.state !== 'resolved') {
+        // Malformed `$fs:` (incl. scheme smuggling) — broken text, never an anchor.
+        return (
+          <span className="ir-link-broken" data-state="broken" title={`Invalid ${FS_PREFIX} link: ${href}`}>
+            {children}
+          </span>
+        );
+      }
+      mapped = `${resolution.path}${frag ? `#${frag}` : ''}`;
+    }
     return (
-      <Link href={href} {...properties}>
+      <Link href={mapped} {...properties}>
         {children}
       </Link>
     );
