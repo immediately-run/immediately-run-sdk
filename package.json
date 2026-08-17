@@ -31,12 +31,15 @@
     "test": "jest",
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
+    "protocol:check": "node scripts/check-protocol-snapshot.mjs",
     "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check && npm run verify:codegen-parity",
+    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run api:check && npm run protocol:check && npm run protocol:selftest && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
-    "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs"
+    "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
+    "protocol:update": "node scripts/check-protocol-snapshot.mjs --update",
+    "protocol:selftest": "node scripts/check-protocol-snapshot.mjs --self-test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
