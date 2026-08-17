@@ -418,7 +418,7 @@
         "src/editorContext.ts"
       ],
       "divergent": true,
-      "divergentNote": "declared-incomplete \u2014 the host (site-main channelBridge.ts) sends {dirtyPaths, openFiles, activeFile, viewedFile}; this side declares only {dirtyPaths, activeFile?} while the SDK reads all four. `viewedFile` (R3-268) and `openFiles` never entered this declaration. R3-274e picks one shape for both sides."
+      "divergentNote": "declared-incomplete — the host (site-main channelBridge.ts) sends {dirtyPaths, openFiles, activeFile, viewedFile}; this side declares only {dirtyPaths, activeFile?} while the SDK reads all four. `viewedFile` (R3-268) and `openFiles` never entered this declaration. R3-274e picks one shape for both sides."
     },
     "form-factor": {
       "kind": "push",
@@ -505,7 +505,7 @@
         "src/onFsChange.ts"
       ],
       "divergent": true,
-      "divergentNote": "subset-reads with no declared owner on either side \u2014 the host sends {paths, epoch}; this side reads only `paths`, the SDK reads both. Nothing forces the two to agree, which is the divergence PLATFORM_LAYERING_SPEC \u00a72 names as the exemplar. The `kind` also differs (message here, push channel in the SDK). R3-274e decides: keep `epoch` or drop it."
+      "divergentNote": "subset-reads with no declared owner on either side — the host sends {paths, epoch}; this side reads only `paths`, the SDK reads both. Nothing forces the two to agree, which is the divergence PLATFORM_LAYERING_SPEC §2 names as the exemplar. The `kind` also differs (message here, push channel in the SDK). R3-274e decides: keep `epoch` or drop it."
     },
     "invitations": {
       "kind": "push",
@@ -1729,7 +1729,7 @@
         "src/runtime.ts"
       ],
       "divergent": true,
-      "divergentNote": "divergent-declared \u2014 TWO producers of one name with different payloads: the frame announces {protocolVersion} (the SDK version baked in at build by gen-sdk-versions.mjs, read from a SIBLING checkout), the SDK announces {protocolVersion, sdkVersion}. R3-274d gives the frame its own SANDBOX_PROTOCOL_VERSION and retires the sibling read; R3-274e picks one shape."
+      "divergentNote": "divergent-declared — TWO producers of one name with different payloads: the frame announces {protocolVersion} (the SDK version baked in at build by gen-sdk-versions.mjs, read from a SIBLING checkout), the SDK announces {protocolVersion, sdkVersion}. R3-274d gives the frame its own SANDBOX_PROTOCOL_VERSION and retires the sibling read; R3-274e picks one shape."
     },
     "secrets-metadata": {
       "kind": "push",

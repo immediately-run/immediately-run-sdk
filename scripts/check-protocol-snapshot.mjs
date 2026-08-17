@@ -522,6 +522,44 @@ const compare = (current, snapshot) => {
   return { removed, added, changed };
 };
 
+// ── the generated protocol module ─────────────────────────────────────────────
+/*
+ * `src/generated/protocol.ts` is emitted by the SANDBOX repo's
+ * `scripts/protocol-codegen/generate.mjs` from the one descriptor set that owns the
+ * wire vocabulary (R3-274b), and copied here — the SDK does not depend on the
+ * sandbox, and a build that reads a sibling checkout is exactly what R3-274d
+ * retires, so the copy is a manual sync today (making it an automatic, versioned
+ * artifact is R3-274b1, which gates the R3-274c call-site migration).
+ *
+ * A manual sync can go stale, so this gate makes staleness LOUD in the case that
+ * matters here: the moment this repo's own wire surface changes, the copied module
+ * stops agreeing with the snapshot extracted from source, and CI fails. It cannot
+ * see a descriptor change that has not reached this repo at all — the sandbox's own
+ * drift gate owns that direction — so the module also carries a `descriptorsHash`
+ * stamp naming the descriptor set it came from.
+ */
+const generatedModulePath = join(root, 'src/generated/protocol.ts');
+
+const checkGeneratedModule = (current) => {
+  if (!existsSync(generatedModulePath)) {
+    return ['src/generated/protocol.ts is missing — copy it from the sandbox repo.'];
+  }
+  const text = readFileSync(generatedModulePath, 'utf8');
+  const declared = new Set(
+    [...text.matchAll(/^export const [A-Z0-9_]+ = '([^']+)';$/gm)].map((m) => m[1]),
+  );
+  const problems = [];
+  for (const name of Object.keys(current.channels)) {
+    if (!declared.has(name)) problems.push(`no constant for \`${name}\``);
+  }
+  for (const name of declared) {
+    if (!current.channels[name]) {
+      problems.push(`declares \`${name}\`, which this repo no longer speaks`);
+    }
+  }
+  return problems;
+};
+
 // ── main ──────────────────────────────────────────────────────────────────────
 const NON_VACUOUS_MIN = 10;
 
@@ -556,6 +594,18 @@ const main = () => {
   const { removed, added, changed } = compare(mergeHandKeys(current, snapshot), snapshot);
   if (!removed.length && !added.length && !changed.length) {
     console.log(`PASS  protocol-snapshot.json matches the source (${count} wire names).`);
+    const problems = checkGeneratedModule(current);
+    if (problems.length) {
+      console.error('\n✗ src/generated/protocol.ts is out of sync with the wire surface:\n');
+      for (const p of problems) console.error(`  - ${p}`);
+      console.error(
+        '\nThat module is GENERATED in the sandbox repo from the descriptor set that owns\n' +
+          'the vocabulary (R3-274b). Change the descriptors there, regenerate, and copy\n' +
+          '`generated/sdk/protocol.ts` here — do not hand-edit it.',
+      );
+      process.exit(1);
+    }
+    console.log(`PASS  src/generated/protocol.ts covers exactly this repo's wire surface.`);
     return;
   }
   if (removed.length) {
