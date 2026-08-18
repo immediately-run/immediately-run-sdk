@@ -92,7 +92,14 @@
  *   consumeStream(t, 'protocol-x', 'method',) → app->host  stream
  *   consumeStream(t, `protocol-${x}`, …)      → dynamic family (template + scheme list)
  *
- * Test files are excluded: they exercise the vocabulary, they do not define it.
+ * A wire-name argument may be a string literal OR a `const` that resolves to one —
+ * since R3-274c the call sites spell the names as the constants published by
+ * `@immediately-run/sandbox-protocol`, and the resolution is the type checker's, not a
+ * regex's (see `literal()` inside `extract`).
+ *
+ * Test files are excluded: they exercise the vocabulary, they do not define it. That is
+ * also why the tests keep spelling the names as raw literals: a test asserting
+ * `type === TASK_COMPLETE` could not tell you the constant still says `task-complete`.
  */
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
@@ -246,7 +253,6 @@ const paramNameOf = (fn) => {
   return p && ts.isIdentifier(p.name) ? p.name.text : undefined;
 };
 
-const literal = (node) => (node && ts.isStringLiteralLike(node) ? node.text : undefined);
 
 const objectProp = (obj, name) => {
   if (!obj || !ts.isObjectLiteralExpression(obj)) return undefined;
@@ -290,6 +296,29 @@ export const extract = (opts = {}) => {
 
   const program = ts.createProgram({ rootNames: files, options, host });
   const checker = program.getTypeChecker();
+
+  /**
+   * The string a wire-name argument evaluates to — a literal, or a `const` that
+   * resolves to one.
+   *
+   * Since R3-274c the call sites spell the names as the constants published by
+   * `@immediately-run/sandbox-protocol` (`sendMessage(TASK_COMPLETE, …)`), so a
+   * literal-only reader would extract nothing and this gate would report the whole
+   * vocabulary as REMOVED. The type checker is already here, and a `const` declared
+   * `= 'task-complete'` has the string-literal TYPE `"task-complete"` — so ask it,
+   * rather than re-implementing constant folding. Scheme constants derived from a
+   * wire name (`SCHEME_TASK`, a template-literal conditional over `PROTOCOL_TASK`)
+   * resolve the same way, which is what makes deriving them safe.
+   */
+  const literal = (node) => {
+    if (!node) return undefined;
+    if (ts.isStringLiteralLike(node)) return node.text;
+    if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) {
+      const t = checker.getTypeAtLocation(node);
+      if (t.isStringLiteral?.()) return t.value;
+    }
+    return undefined;
+  };
 
   const channels = {};
   const dynamicFamilies = {};
