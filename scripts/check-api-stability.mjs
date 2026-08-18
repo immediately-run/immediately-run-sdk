@@ -17,8 +17,11 @@
  * Self-contained (no api-extractor dependency); parses the regular tsup `.d.ts`.
  */
 import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+const require = createRequire(import.meta.url);
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const distDir = join(root, 'dist');
@@ -46,8 +49,15 @@ walk(distDir);
 //   export declare const|function|class|abstract class|enum|namespace NAME
 //   export interface NAME    export type NAME    export enum NAME
 //   export default ...   →   "default"
-// `export * from` is skipped: those names live in the target module's own .d.ts,
-// which is scanned too. `X as Y` records the exported name Y; `type ` is stripped.
+// `export * from './x'` is skipped: those names live in the target module's own
+// .d.ts, which is scanned too. `export * from '<package>'` is NOT — since R3-274b1
+// `generated/protocol.d.ts` re-exports the wire vocabulary from
+// `@immediately-run/sandbox-protocol`, whose .d.ts is in node_modules and therefore
+// outside this walk. Those names ARE public API (a consumer importing
+// `@immediately-run/sdk/generated/protocol` gets every one of them), so skipping
+// them would silently record ~58 removals and leave the real thing this gate exists
+// for — a rename breaking a pinned fork — unguarded on that module.
+// `X as Y` records the exported name Y; `type ` is stripped.
 const extractExports = (code) => {
   const names = new Set();
   for (const m of code.matchAll(/export\s*\{([^}]*)\}/g)) {
@@ -71,10 +81,47 @@ const extractExports = (code) => {
   return names;
 };
 
+/** The names a `export * from '<bare package>'` brings in, read from that package's
+ *  own types. Bounded to `@immediately-run/*`: a star re-export of a third-party
+ *  package would make this repo's public surface hostage to someone else's release,
+ *  which is a design problem to reject, not a resolution to implement. */
+const starReExportedNames = (code, fromFile) => {
+  const names = new Set();
+  for (const m of code.matchAll(/export\s*\*\s*from\s*['"]([^'"]+)['"]/g)) {
+    const spec = m[1];
+    if (spec.startsWith('.')) continue; // relative → its own .d.ts is in this walk
+    if (!spec.startsWith('@immediately-run/')) {
+      console.error(`error: ${relative(root, fromFile)} star-re-exports ${spec}.`);
+      console.error(
+        'Only @immediately-run/* packages may be re-exported wholesale — the public\n' +
+          'surface must not be hostage to a third-party release.',
+      );
+      process.exit(1);
+    }
+    let target;
+    try {
+      target = require.resolve(spec, { paths: [root] });
+    } catch {
+      console.error(`error: cannot resolve ${spec} (re-exported by ${relative(root, fromFile)}).`);
+      process.exit(1);
+    }
+    const dts = target.replace(/\.(c?js)$/, '.d.ts');
+    if (!existsSync(dts)) {
+      console.error(`error: ${spec} ships no .d.ts at ${dts}; its exports cannot be pinned.`);
+      process.exit(1);
+    }
+    for (const n of extractExports(readFileSync(dts, 'utf8'))) names.add(n);
+  }
+  return names;
+};
+
 const current = {};
 for (const file of dtsFiles) {
   const key = relative(distDir, file).replace(/\.d\.ts$/, '');
-  const names = [...extractExports(readFileSync(file, 'utf8'))].sort();
+  const code = readFileSync(file, 'utf8');
+  const names = [
+    ...new Set([...extractExports(code), ...starReExportedNames(code, file)]),
+  ].sort();
   if (names.length) current[key] = names;
 }
 

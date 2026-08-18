@@ -39,7 +39,6 @@
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
     "test:metadata-e2e": "node --test test/metadataHooks.e2e.mjs",
-    "protocol:update": "node scripts/check-protocol-snapshot.mjs --update",
     "protocol:selftest": "node scripts/check-protocol-snapshot.mjs --self-test"
   },
   "peerDependencies": {
@@ -48,6 +47,7 @@
   },
   "dependencies": {
     "@immediately-run/platform-constants": "0.2.0",
+    "@immediately-run/sandbox-protocol": "0.1.0",
     "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {
