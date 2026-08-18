@@ -15,7 +15,17 @@
  *   - A name in the source but not in the snapshot  → ADDITIVE       → fail with
  *     "run `npm run protocol:update`", so every wire change is reviewed in a diff.
  *
- * Usage: node scripts/check-protocol-snapshot.mjs [--update] [--self-test]
+ * Usage: node scripts/check-protocol-snapshot.mjs [--self-test]
+ *
+ * ── Where the snapshot comes from (R3-274b1) ──────────────────────────────────
+ * `@immediately-run/sandbox-protocol/snapshots/sdk` — the PUBLISHED contract,
+ * generated from the descriptor set that owns the wire. There is no `--update` any
+ * more, and that is the point: this repo can no longer bless its own wire change by
+ * rewriting a local file. A change goes descriptors → publish → bump the pin here.
+ *
+ * Iterating on an unpublished change: link a local checkout of the package
+ * (`npm link @immediately-run/sandbox-protocol`) and this reads whatever it resolves
+ * to. No env-var bypass exists, deliberately — a bypass would be reachable in CI.
  *
  * ── SNAPSHOT FORMAT (protocol-snapshot.json, formatVersion 1) ──────────────────
  * The sandbox repo lands the same file in the same format (roadmap R3-274a), and
@@ -84,7 +94,7 @@
  *
  * Test files are excluded: they exercise the vocabulary, they do not define it.
  */
-import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
@@ -94,7 +104,12 @@ const ts = require('typescript');
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const srcDir = join(root, 'src');
-const snapshotPath = join(root, 'protocol-snapshot.json');
+// The published contract, resolved through node so a linked local checkout works
+// for iteration without a bypass this gate would then have to trust.
+const snapshotPath = require.resolve('@immediately-run/sandbox-protocol/snapshots/sdk');
+const contractVersion = JSON.parse(
+  readFileSync(require.resolve('@immediately-run/sandbox-protocol/package.json'), 'utf8'),
+).version;
 const pkgName = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).name;
 
 // ── source enumeration ────────────────────────────────────────────────────────
@@ -522,49 +537,38 @@ const compare = (current, snapshot) => {
   return { removed, added, changed };
 };
 
-// ── the generated protocol module ─────────────────────────────────────────────
+// ── the re-exported protocol module ──────────────────────────────────────────
 /*
- * `src/generated/protocol.ts` is emitted by the SANDBOX repo's
- * `scripts/protocol-codegen/generate.mjs` from the one descriptor set that owns the
- * wire vocabulary (R3-274b), and copied here — the SDK does not depend on the
- * sandbox, and a build that reads a sibling checkout is exactly what R3-274d
- * retires, so the copy is a manual sync today (making it an automatic, versioned
- * artifact is R3-274b1, which gates the R3-274c call-site migration).
+ * `src/generated/protocol.ts` used to be a COPY of a module generated in the sandbox
+ * repo, and this file checked that the copy still covered exactly this repo's wire
+ * surface — the best a hand-copied artifact allowed.
  *
- * A manual sync can go stale, so this gate makes staleness LOUD in the case that
- * matters here: the moment this repo's own wire surface changes, the copied module
- * stops agreeing with the snapshot extracted from source, and CI fails. It cannot
- * see a descriptor change that has not reached this repo at all — the sandbox's own
- * drift gate owns that direction — so the module also carries a `descriptorsHash`
- * stamp naming the descriptor set it came from.
+ * Since R3-274b1 it re-exports `@immediately-run/sandbox-protocol/sdk`, so there is
+ * no copy to go stale: the check that matters is the one below, this repo's SOURCE
+ * against the PINNED CONTRACT. What is still worth asserting is that the file really
+ * is a re-export of that package — if someone re-inlines the constants here, the
+ * package stops being the source of truth silently, and every gate keeps passing.
  */
 const generatedModulePath = join(root, 'src/generated/protocol.ts');
 
-const checkGeneratedModule = (current) => {
+const checkGeneratedModule = () => {
   if (!existsSync(generatedModulePath)) {
-    return ['src/generated/protocol.ts is missing — copy it from the sandbox repo.'];
+    return ['src/generated/protocol.ts is missing — it re-exports the pinned contract.'];
   }
   const text = readFileSync(generatedModulePath, 'utf8');
-  const declared = new Set(
-    [...text.matchAll(/^export const [A-Z0-9_]+ = '([^']+)';$/gm)].map((m) => m[1]),
-  );
-  const problems = [];
-  for (const name of Object.keys(current.channels)) {
-    if (!declared.has(name)) problems.push(`no constant for \`${name}\``);
+  if (!/export \* from '@immediately-run\/sandbox-protocol\/sdk';/.test(text)) {
+    return [
+      'src/generated/protocol.ts no longer re-exports @immediately-run/sandbox-protocol/sdk ' +
+        '— the wire vocabulary must come from the published contract, not from a local copy',
+    ];
   }
-  for (const name of declared) {
-    if (!current.channels[name]) {
-      problems.push(`declares \`${name}\`, which this repo no longer speaks`);
-    }
-  }
-  return problems;
+  return [];
 };
 
 // ── main ──────────────────────────────────────────────────────────────────────
 const NON_VACUOUS_MIN = 10;
 
 const main = () => {
-  const update = process.argv.includes('--update');
   const current = extract();
   const count = Object.keys(current.channels).length;
   if (count < NON_VACUOUS_MIN) {
@@ -578,34 +582,32 @@ const main = () => {
   const snapshot = existsSync(snapshotPath)
     ? JSON.parse(readFileSync(snapshotPath, 'utf8'))
     : null;
-
-  if (update) {
-    const merged = mergeHandKeys(current, snapshot);
-    writeFileSync(snapshotPath, JSON.stringify(merged, null, 2) + '\n');
-    console.log(`✓ Wrote protocol-snapshot.json (${count} wire names).`);
-    return;
-  }
-
   if (!snapshot) {
-    console.error('error: protocol-snapshot.json missing — run `npm run protocol:update`.');
+    console.error(
+      'error: @immediately-run/sandbox-protocol is not installed — the wire contract\n' +
+        'lives there since R3-274b1. Run `npm ci`.',
+    );
     process.exit(1);
   }
 
   const { removed, added, changed } = compare(mergeHandKeys(current, snapshot), snapshot);
   if (!removed.length && !added.length && !changed.length) {
-    console.log(`PASS  protocol-snapshot.json matches the source (${count} wire names).`);
-    const problems = checkGeneratedModule(current);
+    console.log(
+      `PASS  this repo's source matches @immediately-run/sandbox-protocol@${contractVersion} ` +
+        `(${count} wire names).`,
+    );
+    const problems = checkGeneratedModule();
     if (problems.length) {
       console.error('\n✗ src/generated/protocol.ts is out of sync with the wire surface:\n');
       for (const p of problems) console.error(`  - ${p}`);
       console.error(
-        '\nThat module is GENERATED in the sandbox repo from the descriptor set that owns\n' +
-          'the vocabulary (R3-274b). Change the descriptors there, regenerate, and copy\n' +
-          '`generated/sdk/protocol.ts` here — do not hand-edit it.',
+        '\nThe vocabulary is OWNED by @immediately-run/sandbox-protocol (R3-274b1).\n' +
+          'Change the descriptors there, publish, and bump the pin — do not re-inline\n' +
+          'the constants here.',
       );
       process.exit(1);
     }
-    console.log(`PASS  src/generated/protocol.ts covers exactly this repo's wire surface.`);
+    console.log(`PASS  src/generated/protocol.ts re-exports the pinned contract.`);
     return;
   }
   if (removed.length) {
@@ -632,7 +634,9 @@ const main = () => {
     '\nThe sandbox↔SDK wire is additive-only (SDK_PACKAGING_SPEC §9,\n' +
       'PLATFORM_LAYERING_SPEC §2): renaming or reshaping a name breaks every app\n' +
       'pinned to an older SDK against a newer frame, and vice versa. If the change is\n' +
-      'genuinely additive, run `npm run protocol:update` and commit the snapshot diff.',
+      'genuinely additive: edit the descriptors in @immediately-run/sandbox-protocol,\n' +
+      'publish, and bump the pin here. This repo cannot bless its own wire change any\n' +
+      'more — that is the contract, not a chore.',
   );
   process.exit(1);
 };
