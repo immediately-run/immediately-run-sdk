@@ -47,7 +47,7 @@
   },
   "dependencies": {
     "@immediately-run/platform-constants": "0.2.0",
-    "@immediately-run/sandbox-protocol": "0.2.0",
+    "@immediately-run/sandbox-protocol": "0.3.0",
     "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {
