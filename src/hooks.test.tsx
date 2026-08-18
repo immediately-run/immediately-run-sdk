@@ -7,6 +7,7 @@ import { TinkerableContext } from './TinkerableContext';
 import type { TinkerableState } from './TinkerableContext';
 import type { FilesMetadata } from './sandboxTypes';
 import { useAllMetadata, useFileMetadata, useMetadataQuery } from './hooks';
+import { MetadataSource } from './metadataSource';
 
 // Opt in to React's act(...) testing semantics for this jsdom suite.
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -140,5 +141,169 @@ describe('useAllMetadata', () => {
     const h = renderHook(() => useAllMetadata(), files);
     expect(h.last).toBe(files);
     h.unmount();
+  });
+});
+
+// ── R3-276 ───────────────────────────────────────────────────────────────────
+// Records from queries, the app-rooted key space, and the MetadataSource provider
+// that replaces re-provisioning `TinkerableContext` wholesale in app code.
+
+/** Render inside a `MetadataSource`, with a host store behind it. */
+const renderWithSource = <R,>(
+  useHook: () => R,
+  source: FilesMetadata,
+  host: FilesMetadata = {},
+  mode?: 'replace' | 'merge',
+) => {
+  const renders: R[] = [];
+  const Probe = () => {
+    renders.push(useHook());
+    return null;
+  };
+  const container = document.createElement('div');
+  const root = createRoot(container);
+  const state = { filesMetadata: host } as TinkerableState;
+  const render = (withSource: boolean) =>
+    act(() => {
+      root.render(
+        <TinkerableContext value={state}>
+          {withSource ? (
+            <MetadataSource value={source} mode={mode}>
+              <Probe />
+            </MetadataSource>
+          ) : (
+            <Probe />
+          )}
+        </TinkerableContext>,
+      );
+    });
+  render(true);
+  return {
+    renders,
+    get last() {
+      return renders[renders.length - 1];
+    },
+    /** Unmount the provider but keep rendering — "unregister". */
+    dropSource: () => render(false),
+    unmount: () => act(() => root.unmount()),
+  };
+};
+
+describe('useMetadataQuery — record results (R3-276)', () => {
+  it('carries the extra fields a record-returning query computed', () => {
+    const h = renderHook(
+      () =>
+        useMetadataQuery<PostMeta, { upper: string }>((m) =>
+          Object.keys(m)
+            .filter((p) => !m[p].draft)
+            .map((path) => ({ path, upper: m[path].title.toUpperCase() })),
+        ),
+      files,
+    );
+    expect(h.last).toEqual([
+      { path: '/a.mdx', meta: files['/a.mdx'], upper: 'A' },
+      { path: '/c.mdx', meta: files['/c.mdx'], upper: 'C' },
+    ]);
+  });
+
+  it('does not let a record shadow `path` or `meta`', () => {
+    // The hook owns those two. A query that happens to compute a field called
+    // `meta` must not be able to hand the caller something that is not the
+    // frontmatter — every downstream consumer reads `entry.meta`.
+    const h = renderHook(
+      () =>
+        useMetadataQuery<PostMeta, { meta: string }>(() => [
+          { path: '/a.mdx', meta: 'not the frontmatter' } as never,
+        ]),
+      files,
+    );
+    expect((h.last as { meta: unknown }[])[0].meta).toBe(files['/a.mdx']);
+  });
+
+  it('re-renders when only an extra field changed, and holds identity when nothing did', () => {
+    // The extra fields are part of the result, so a change in them is a change —
+    // but an unchanged result must keep its reference, or every downstream
+    // dependency array fires on every render.
+    let salt = 'x';
+    const h = renderHook(
+      () => useMetadataQuery<PostMeta, { salt: string }>(() => [{ path: '/a.mdx', salt }]),
+      files,
+    );
+    const first = h.last;
+    h.rerender(files);
+    expect(h.last).toBe(first);
+    salt = 'y';
+    h.rerender({ ...files });
+    expect(h.last).not.toBe(first);
+    expect((h.last as { salt: string }[])[0].salt).toBe('y');
+  });
+});
+
+describe('useFileMetadata — the key space is absolute (R3-276)', () => {
+  const appRooted: FilesMetadata = { '/app/content/post.mdx': { title: 'Post' } };
+
+  it('reads by the absolute module path the store is actually keyed by', () => {
+    const h = renderHook(() => useFileMetadata('/app/content/post.mdx'), appRooted);
+    expect(h.last).toEqual({ title: 'Post' });
+  });
+
+  it('accepts the repo-relative form the old doc told people to pass', () => {
+    const h = renderHook(() => useFileMetadata('/content/post.mdx'), appRooted);
+    expect(h.last).toEqual({ title: 'Post' });
+  });
+
+  it('still returns undefined for a path that is in neither space', () => {
+    const h = renderHook(() => useFileMetadata('/content/missing.mdx'), appRooted);
+    expect(h.last).toBeUndefined();
+  });
+
+  it('does not double-root an already-rooted miss', () => {
+    // `/app/app/...` must never be consulted — a miss is a miss.
+    const h = renderHook(
+      () => useFileMetadata('/app/nope.mdx'),
+      { '/app/app/nope.mdx': { title: 'wrong' } },
+    );
+    expect(h.last).toBeUndefined();
+  });
+});
+
+describe('MetadataSource (R3-276)', () => {
+  const host: FilesMetadata = { '/app/h.mdx': { title: 'Host' } };
+  const provided: FilesMetadata = { '/corpus/x.mdx': { title: 'Provided' } };
+
+  it('register: the hooks read the provided store instead of the host one', () => {
+    const h = renderWithSource(() => useAllMetadata(), provided, host);
+    expect(h.last).toEqual(provided);
+  });
+
+  it('query: a query runs against the provided store', () => {
+    const h = renderWithSource(
+      () => useMetadataQuery((m) => Object.keys(m)),
+      provided,
+      host,
+    );
+    expect(h.last).toEqual([{ path: '/corpus/x.mdx', meta: provided['/corpus/x.mdx'] }]);
+  });
+
+  it('replace (the default) hides the host entries — a different file space, not an addition', () => {
+    const h = renderWithSource(() => useFileMetadata('/app/h.mdx'), provided, host);
+    expect(h.last).toBeUndefined();
+  });
+
+  it('merge layers over what is in scope: unnamed paths still resolve outward', () => {
+    const h = renderWithSource(() => useAllMetadata(), provided, host, 'merge');
+    expect(h.last).toEqual({ ...host, ...provided });
+  });
+
+  it('unregister: unmounting the provider restores the host store', () => {
+    const h = renderWithSource(() => useAllMetadata(), provided, host);
+    expect(h.last).toEqual(provided);
+    h.dropSource();
+    expect(h.last).toEqual(host);
+  });
+
+  it('an app with no provider is unaffected — the host store is still the store', () => {
+    const h = renderHook(() => useAllMetadata(), host);
+    expect(h.last).toEqual(host);
   });
 });
