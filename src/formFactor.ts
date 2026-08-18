@@ -1,4 +1,5 @@
 import { createPushChannel } from './pushChannel';
+import { FORM_FACTOR, REQUEST_FORM_FACTOR } from './generated/protocol';
 
 /**
  * The form factor of the surface your app is rendered into, mirrored from the
@@ -44,8 +45,8 @@ const isFormFactor = (v: unknown): v is FormFactor => {
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `form-factor`
 // and answers `request-form-factor` (wire format: site-main channelBridge.ts).
 const channel = createPushChannel<FormFactor>({
-  pushType: 'form-factor',
-  requestType: 'request-form-factor',
+  pushType: FORM_FACTOR,
+  requestType: REQUEST_FORM_FACTOR,
   initial: DEFAULT_FORM_FACTOR,
   parse: (msg) => (isFormFactor(msg.formFactor) ? (msg.formFactor as FormFactor) : undefined),
 });

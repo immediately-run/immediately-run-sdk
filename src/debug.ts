@@ -29,6 +29,7 @@
 
 import { createPushChannel } from './pushChannel';
 import { sendMessage, addListener } from './sandboxUtils';
+import { DEBUG_ENABLED, REQUEST_DEBUG_ENABLED } from './generated/protocol';
 
 /** Severity of a {@link debug.log} entry. */
 export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -37,8 +38,8 @@ export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
 // The host pushes `debug-enabled:true` only for a dev/override session. Until
 // then (and always in production) it stays false and every instrument is inert.
 const enabledChannel = createPushChannel<boolean>({
-  pushType: 'debug-enabled',
-  requestType: 'request-debug-enabled',
+  pushType: DEBUG_ENABLED,
+  requestType: REQUEST_DEBUG_ENABLED,
   initial: false,
   parse: (msg) => (typeof msg.enabled === 'boolean' ? msg.enabled : undefined),
 });

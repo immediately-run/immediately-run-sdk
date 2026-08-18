@@ -7,6 +7,7 @@ import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import type { StreamFrame, StreamTransport } from './protocolStream';
 import { consumeStream } from './protocolStream';
 import { createPushChannel } from './pushChannel';
+import { API_CATALOG, REQUEST_API_CATALOG } from './generated/protocol';
 
 /** One advertised method, as the host generated it from its gate table. */
 export interface ApiMethod {
@@ -86,8 +87,8 @@ export function invokeStream<T = unknown, R = unknown>(
 // and answers `request-api-catalog` with this app's grant-filtered methods (wire
 // format: site-main channelBridge.ts).
 const channel = createPushChannel<ApiMethod[]>({
-  pushType: 'api-catalog',
-  requestType: 'request-api-catalog',
+  pushType: API_CATALOG,
+  requestType: REQUEST_API_CATALOG,
   initial: [],
   parse: (msg) => (Array.isArray(msg.methods) ? (msg.methods as ApiMethod[]) : undefined),
 });

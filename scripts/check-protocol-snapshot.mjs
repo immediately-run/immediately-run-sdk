@@ -717,7 +717,7 @@ const selfTest = () => {
         [
           resolve(srcDir, 'theme.ts'),
           readFileSync(join(srcDir, 'theme.ts'), 'utf8').replace(
-            "requestType: 'request-theme',",
+            'requestType: REQUEST_THEME,',
             '',
           ),
         ],

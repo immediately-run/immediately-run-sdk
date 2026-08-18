@@ -15,6 +15,7 @@
 // (site-main `channelBridge`); the contract ships here so the agent app (P3-73) can
 // be written against it.
 import { createPushChannel } from './pushChannel';
+import { DIAGNOSTICS, REQUEST_DIAGNOSTICS } from './generated/protocol';
 
 /** One build/transpile error from the sandbox bundler's compile of the previewed
  *  app. `path` is repo-relative (leading slash) when the error is file-located. */
@@ -61,8 +62,8 @@ export interface Diagnostics {
 const EMPTY: Diagnostics = { buildErrors: [], consoleEntries: [], provenance: null };
 
 const channel = createPushChannel<Diagnostics>({
-  pushType: 'diagnostics',
-  requestType: 'request-diagnostics',
+  pushType: DIAGNOSTICS,
+  requestType: REQUEST_DIAGNOSTICS,
   initial: EMPTY,
   parse: (msg) => {
     // Require both arrays; tolerate an absent/partial provenance. A malformed push

@@ -15,6 +15,7 @@
 // of `protocol-secrets`.
 import { invokeStream } from './catalog';
 import { createPushChannel } from './pushChannel';
+import { LLM_PROVIDER, REQUEST_LLM_PROVIDER } from './generated/protocol';
 
 /** Who authored a {@link ChatMessage}. */
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -131,8 +132,8 @@ export interface ChatProviderInfo {
 // A message with no `provider` key is ignored; an explicit `null` means "no provider
 // bound" (distinct from "not yet answered", which keeps the `initial` null).
 const channel = createPushChannel<ChatProviderInfo | null>({
-  pushType: 'llm-provider',
-  requestType: 'request-llm-provider',
+  pushType: LLM_PROVIDER,
+  requestType: REQUEST_LLM_PROVIDER,
   initial: null,
   parse: (msg) =>
     'provider' in msg ? (msg.provider as ChatProviderInfo | null) : undefined,

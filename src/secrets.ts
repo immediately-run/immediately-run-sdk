@@ -13,6 +13,7 @@
 // apps (e.g. the in-browser coding agent, P3-73) can be written against it.
 import { protocolRequest } from './sandboxUtils';
 import { createPushChannel } from './pushChannel';
+import { REQUEST_SECRETS_METADATA, SECRETS_METADATA } from './generated/protocol';
 
 /** The closed secret-type vocabulary (SECRETS_SPEC §2). `api-key` is always
  *  origin-bound; `oauth-refresh` is reserved (no substitution in v1). */
@@ -122,8 +123,8 @@ export const revokeSecret = async (id: string): Promise<void> => {
 // current secret metadata on change and replays it on register-frame; gated by
 // `secrets:list`. NEVER carries a value (SECRETS_SPEC §4).
 const channel = createPushChannel<SecretView[]>({
-  pushType: 'secrets-metadata',
-  requestType: 'request-secrets-metadata',
+  pushType: SECRETS_METADATA,
+  requestType: REQUEST_SECRETS_METADATA,
   initial: [],
   parse: (msg) => (Array.isArray(msg.secrets) ? (msg.secrets as SecretView[]) : undefined),
 });

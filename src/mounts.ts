@@ -30,6 +30,12 @@ export {
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
 // FileCap SHAPE without pulling that side effect into every `mounts` importer.
 import type { FileCap } from './tasks';
+import {
+  INVITATIONS,
+  REQUEST_INVITATIONS,
+  REQUEST_SESSION_MOUNTS,
+  SESSION_MOUNTS,
+} from './generated/protocol';
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -347,8 +353,8 @@ export interface SessionMount extends SandboxMount {
 // push never arrives and `initial: []` stands — the Session lens is simply absent,
 // fail-closed. Mirrors the host's `session-mounts`/`request-session-mounts` wiring.
 const sessionMountsChannel = createPushChannel<SessionMount[]>({
-  pushType: 'session-mounts',
-  requestType: 'request-session-mounts',
+  pushType: SESSION_MOUNTS,
+  requestType: REQUEST_SESSION_MOUNTS,
   initial: [],
   parse: (msg) => (Array.isArray(msg.mounts) ? (msg.mounts as SessionMount[]) : undefined),
 });
@@ -682,8 +688,8 @@ export const declineInvite = async (spaceId: string): Promise<void> => {
 // So an invite that arrives (or an accepted/declined one leaving) reflects within one
 // snapshot — no poll. Mirrors the host's `invitations`/`request-invitations` wiring.
 const invitesChannel = createPushChannel<Invite[]>({
-  pushType: 'invitations',
-  requestType: 'request-invitations',
+  pushType: INVITATIONS,
+  requestType: REQUEST_INVITATIONS,
   initial: [],
   parse: (msg) => (Array.isArray(msg.invites) ? (msg.invites as Invite[]) : undefined),
 });

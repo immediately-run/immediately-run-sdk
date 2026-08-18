@@ -17,6 +17,7 @@
 // `refreshPRs` by `vcs:read`, `resetWorkingTree` by first-party-only `vcs:reset`.
 import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
+import { REQUEST_VCS_STATE, VCS_STATE } from './generated/protocol';
 
 /** One changed path in the working tree (vs. the loaded ref). `status` mirrors the
  *  host `DiffResult` change kinds; `path` is repo-relative. Contents are NOT
@@ -72,8 +73,8 @@ const isChangeArray = (v: unknown): v is VcsChange[] =>
   );
 
 const channel = createPushChannel<VcsState>({
-  pushType: 'vcs-state',
-  requestType: 'request-vcs-state',
+  pushType: VCS_STATE,
+  requestType: REQUEST_VCS_STATE,
   initial: EMPTY,
   parse: (msg) => {
     // Require a well-formed `changes` array; tolerate an absent branch/prs. A

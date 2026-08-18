@@ -1,5 +1,6 @@
 import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
+import { REQUEST_THEME, THEME } from './generated/protocol';
 
 /**
  * The host UI theme, mirrored from the immediately.run host window into the
@@ -16,8 +17,8 @@ export type HostTheme = 'light' | 'dark';
 // answers `request-theme` (wire format: site-main channelBridge.ts). The host's
 // default before it reports is `dark` (sandbox themeState.DEFAULT_THEME).
 const channel = createPushChannel<HostTheme>({
-  pushType: 'theme',
-  requestType: 'request-theme',
+  pushType: THEME,
+  requestType: REQUEST_THEME,
   initial: 'dark',
   parse: (msg) => (msg.theme === 'light' || msg.theme === 'dark' ? msg.theme : undefined),
 });
