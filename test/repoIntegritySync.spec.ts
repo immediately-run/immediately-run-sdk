@@ -12,8 +12,18 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
 const repo = join(__dirname, '..');
+// `stdio` is explicit because `execFileSync` ECHOES the child's stderr to the parent
+// by default while also capturing it. The immutability guard below deliberately writes
+// `::error::…` — a GitHub Actions workflow command — on its rejection path, so the echo
+// put that string into jest's output, and Actions scraped it into a run-level FAILURE
+// annotation on a fully green run (seen on the 0.45.0 release). A passing negative-path
+// test must not be able to make CI look red: capture stderr (these tests assert on it),
+// never re-emit it.
 const runNode = (script: string, args: string[]) =>
-  execFileSync('node', [join(repo, 'scripts', script), ...args], { encoding: 'utf8' });
+  execFileSync('node', [join(repo, 'scripts', script), ...args], {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
 
 const writeManifest = (pubDir: string, version: string, body: object) => {
   const f = join(pubDir, 'v', version, 'integrity.json');
