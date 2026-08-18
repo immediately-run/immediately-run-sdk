@@ -14,6 +14,7 @@
 // exists when app-pinned versions become real.
 import { sendMessage, addListener } from './sandboxUtils';
 import { SDK_VERSION } from './version';
+import type { SdkHandshakePayload } from './generated/protocol';
 
 // `getHostRuntime` + `ImmediatelyRunGlobal` live in the leaf `hostRuntime` module
 // (imports nothing) and are re-exported here for a stable public API. This breaks
@@ -53,7 +54,18 @@ export const sdkHandshake = (): SdkHandshake => ({
 export function announceHandshake(): () => void {
   const send = () => {
     try {
-      sendMessage('sdk-handshake', sdkHandshake() as unknown as Record<string, unknown>);
+      // R3-274e: annotate with the WIRE type, not this side's factory type.
+      // `sdk-handshake` has two legitimate producers — the frame announces the
+      // versions IT owns (`sandboxProtocolVersion`), this SDK announces the ones it
+      // owns (`sdkVersion`) — and they were declaring two different payloads under
+      // one name, which is the `divergent-declared` entry the R3-274a audit found.
+      // The resolution is the union with every field optional: one message shape,
+      // each producer populating what it knows, exactly as the host already reads it
+      // (`site-main/src/editor/SandboxListener.ts` treats each field as optional and
+      // fails open). `SdkHandshake` below is deliberately NOT weakened — it is public
+      // API describing what THIS side sends, and every field it names is still sent.
+      const payload: SdkHandshakePayload = sdkHandshake();
+      sendMessage('sdk-handshake', payload as unknown as Record<string, unknown>);
     } catch {
       /* transport not ready yet — the request-handshake reply covers it */
     }
