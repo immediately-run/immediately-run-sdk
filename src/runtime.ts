@@ -14,6 +14,7 @@
 // exists when app-pinned versions become real.
 import { sendMessage, addListener } from './sandboxUtils';
 import { SDK_VERSION } from './version';
+import { REQUEST_HANDSHAKE, SDK_HANDSHAKE } from './generated/protocol';
 
 // `getHostRuntime` + `ImmediatelyRunGlobal` live in the leaf `hostRuntime` module
 // (imports nothing) and are re-exported here for a stable public API. This breaks
@@ -53,11 +54,11 @@ export const sdkHandshake = (): SdkHandshake => ({
 export function announceHandshake(): () => void {
   const send = () => {
     try {
-      sendMessage('sdk-handshake', sdkHandshake() as unknown as Record<string, unknown>);
+      sendMessage(SDK_HANDSHAKE, sdkHandshake() as unknown as Record<string, unknown>);
     } catch {
       /* transport not ready yet — the request-handshake reply covers it */
     }
   };
   send();
-  return addListener('request-handshake', send);
+  return addListener(REQUEST_HANDSHAKE, send);
 }

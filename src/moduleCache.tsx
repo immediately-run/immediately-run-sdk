@@ -3,6 +3,7 @@
 import { createContext, ReactNode, useCallback, useState } from "react"
 import { EvaluationContext } from "./sandboxTypes";
 import { addListener } from "./sandboxUtils";
+import { COMPILE } from './generated/protocol';
 
 export class ModuleCache {
   nameResolutionPromises: Record<string, Promise<string>> = {}
@@ -10,7 +11,7 @@ export class ModuleCache {
 
   constructor() {
     // reset cache on compile
-    addListener('compile', () => {
+    addListener(COMPILE, () => {
       // NOTE: THIS CAUSES AN UNNECESSARY RELOAD
       // the <Include> component's module evaluation context promise is replaced
       // with a new promise for the same value when a compilation occurs which

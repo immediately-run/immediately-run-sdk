@@ -676,7 +676,7 @@ const selfTest = () => {
   const cases = [
     [
       'a RENAMED wire string',
-      new Map([[resolve(srcDir, 'tasks.ts'), readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace("'task-complete'", "'task-finished'")]]),
+      new Map([[resolve(srcDir, 'tasks.ts'), readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace('sendMessage(TASK_COMPLETE,', "sendMessage('task-finished',")]]),
     ],
     [
       'a payload field made OPTIONAL (name unchanged)',
@@ -684,8 +684,8 @@ const selfTest = () => {
         [
           resolve(srcDir, 'tasks.ts'),
           readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace(
-            'addListener(\'task-input\', (m: { task: string; params?: Record<string, unknown> })',
-            'addListener(\'task-input\', (m: { task?: string; params?: Record<string, unknown> })',
+            'addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> })',
+            'addListener(TASK_INPUT, (m: { task?: string; params?: Record<string, unknown> })',
           ),
         ],
       ]),
@@ -696,8 +696,8 @@ const selfTest = () => {
         [
           resolve(srcDir, 'tasks.ts'),
           readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace(
-            'addListener(\'task-input\', (m: { task: string; params?: Record<string, unknown> })',
-            'addListener(\'task-input\', (m: { task: number; params?: Record<string, unknown> })',
+            'addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> })',
+            'addListener(TASK_INPUT, (m: { task: number; params?: Record<string, unknown> })',
           ),
         ],
       ]),
@@ -707,7 +707,24 @@ const selfTest = () => {
       new Map([
         [
           resolve(srcDir, 'dnd.ts'),
-          readFileSync(join(srcDir, 'dnd.ts'), 'utf8').replace("sendMessage('dnd-cancel', {});", ''),
+          readFileSync(join(srcDir, 'dnd.ts'), 'utf8').replace('sendMessage(DND_CANCEL, {});', ''),
+        ],
+      ]),
+    ],
+    [
+      // The constant path is where R3-274c could have gone quietly wrong: an
+      // extractor that keyed off the IDENTIFIER rather than resolving its VALUE
+      // would still find 57 names and still report a clean tree, while a call site
+      // pointed at the wrong constant sent every `task-complete` to `task-cancel`.
+      // So poison a call site by swapping one constant for another real one.
+      'a call site re-pointed to a DIFFERENT wire constant',
+      new Map([
+        [
+          resolve(srcDir, 'tasks.ts'),
+          readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace(
+            'sendMessage(TASK_COMPLETE,',
+            'sendMessage(TASK_CANCEL,',
+          ),
         ],
       ]),
     ],

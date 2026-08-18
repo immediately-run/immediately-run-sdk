@@ -10,6 +10,7 @@
 // A caller that wants a typed value back uses `invokeTask` instead — the two are
 // siblings, not a replacement.
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { LAUNCH_DISMISS, LAUNCH_ENDED } from './generated/protocol';
 
 /** Where a launched program runs (§6). `overlay` covers the caller's own region
  *  with opaque host chrome; `stage` replaces the focal app (the elevated into-
@@ -91,7 +92,7 @@ const liveHandles = new Map<string, LaunchHandleImpl>();
 // The host delivers ONE `launch-ended` message per launch when it tears down —
 // the SAME message shape for self-exit, dismiss, and revoke (the host debounces
 // so the timing is not an oracle, §6.4). We fan it out to the matching handle.
-addListener('launch-ended', (m: LaunchEndedMessage) => {
+addListener(LAUNCH_ENDED, (m: LaunchEndedMessage) => {
   const h = liveHandles.get(m.launchId);
   if (h) h._end(m.status);
 });
@@ -114,7 +115,7 @@ class LaunchHandleImpl implements LaunchHandle {
     // Fire-and-forget: the host owns teardown and answers with `launch-ended`,
     // which drives `_end` (so status/onDismiss are host-authoritative, never
     // optimistically local — a dismiss the host refuses would otherwise desync).
-    sendMessage('launch-dismiss', { launchId: this.launchId });
+    sendMessage(LAUNCH_DISMISS, { launchId: this.launchId });
   }
 
   onDismiss(cb: () => void): () => void {

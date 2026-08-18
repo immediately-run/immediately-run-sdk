@@ -11,6 +11,7 @@
 //  - CALLEE: read `useTaskInput()`, then `completeTask(result)` / `cancelTask()`.
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
 
 // ── caller side ─────────────────────────────────────────────────────────────
 
@@ -93,7 +94,7 @@ const inputListeners = new Set<(i: TaskInput) => void>();
 
 // The host delivers a `task-input` message to the callee's iframe right after it
 // mounts the overlay (the §5.7 "params via the region's mount event").
-addListener('task-input', (m: { task: string; params?: Record<string, unknown> }) => {
+addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> }) => {
   latestInput = { task: m.task, params: m.params ?? {} };
   inputListeners.forEach((l) => l(latestInput!));
 });
@@ -106,10 +107,10 @@ export const getTaskInput = (): TaskInput | null => latestInput;
  * the contract's result schema before resolving the caller (`invalid-params` on
  * violation), then tears down this overlay.
  */
-export const completeTask = (result: unknown): void => sendMessage('task-complete', { result });
+export const completeTask = (result: unknown): void => sendMessage(TASK_COMPLETE, { result });
 
 /** Abort the task; the caller's `invokeTask` rejects with `cancelled`. */
-export const cancelTask = (): void => sendMessage('task-cancel', {});
+export const cancelTask = (): void => sendMessage(TASK_CANCEL, {});
 
 /** React hook: the task input for this callee, re-rendering when it arrives. */
 export const useTaskInput = (): TaskInput | null => {

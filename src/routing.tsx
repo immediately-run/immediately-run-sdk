@@ -7,6 +7,7 @@ import { RouteParams, RoutingRule, RoutingSpec } from './RoutingSpec';
 import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
+import { URLCHANGE } from './generated/protocol';
 
 /** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
 export type AppliedRoutingRule = {
@@ -139,7 +140,7 @@ export const navigate = (
       /* no declaration */
     }
   }
-  sendMessage('urlchange', {
+  sendMessage(URLCHANGE, {
     url: target,
     back: false,
     forward: false,

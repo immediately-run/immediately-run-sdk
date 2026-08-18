@@ -32,7 +32,10 @@ export {
 import type { FileCap } from './tasks';
 import {
   INVITATIONS,
+  MOUNT_ADD,
+  MOUNT_REMOVE,
   REQUEST_INVITATIONS,
+  REQUEST_MOUNTS,
   REQUEST_SESSION_MOUNTS,
   SESSION_MOUNTS,
 } from './generated/protocol';
@@ -177,14 +180,14 @@ const transportMountService = (): MountService => {
     for (const l of [...listeners]) l(mounts, removed);
   };
 
-  addListener('mount-add', (msg: Record<string, any>) => {
+  addListener(MOUNT_ADD, (msg: Record<string, any>) => {
     const mount: SandboxMount | undefined = msg.mount;
     if (!mount) return;
     const key = mountKey(mount);
     mounts = [...mounts.filter((m) => mountKey(m) !== key), mount];
     fire([]);
   });
-  addListener('mount-remove', (msg: Record<string, any>) => {
+  addListener(MOUNT_REMOVE, (msg: Record<string, any>) => {
     const key: string | undefined = msg.id ?? msg.path;
     if (key == null) return;
     const reason = asMountRemoveReason(msg.reason);
@@ -197,7 +200,7 @@ const transportMountService = (): MountService => {
   // Ask the host to replay the current set (the matching `mount-add`s may have been
   // sent before this SDK subscribed). Best-effort: a transport not yet ready throws.
   try {
-    sendMessage('request-mounts');
+    sendMessage(REQUEST_MOUNTS);
   } catch {
     /* transport not ready — the live mount-add stream still populates the cache */
   }

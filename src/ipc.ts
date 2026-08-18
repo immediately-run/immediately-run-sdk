@@ -4,6 +4,7 @@
 // and attaches an unspoofable `from`; you still treat the payload as untrusted.
 import { useEffect, useState } from 'react';
 import { protocolRequest, addListener } from './sandboxUtils';
+import { REGION_MESSAGE } from './generated/protocol';
 
 /** A message delivered to this region. `from` is the SENDER's region, attached by
  *  the host (unspoofable, T19); `data` is the sender-provided payload. */
@@ -71,7 +72,7 @@ export const revealRegion = async (region: string): Promise<void> => {
 
 /** Subscribe to inbound region messages. Returns an unsubscribe fn. */
 export const onRegionMessage = (listener: (msg: RegionMessage) => void): (() => void) =>
-  addListener('region-message', (m: { from: string; data: unknown }) =>
+  addListener(REGION_MESSAGE, (m: { from: string; data: unknown }) =>
     listener({ from: m.from, data: m.data }),
   );
 
