@@ -393,7 +393,11 @@
     "Metadata",
     "MetadataQueryEntry",
     "MetadataQueryFunction",
+    "MetadataQueryRecord",
     "MetadataQueryResult",
+    "MetadataSource",
+    "MetadataSourceMode",
+    "MetadataSourceProps",
     "ModuleExports",
     "MountFs",
     "MountImage",
@@ -602,6 +606,7 @@
     "useInvites",
     "useMDXComponents",
     "useMetadataQuery",
+    "useMetadataStore",
     "useMounts",
     "useObjectUrl",
     "useRegion",
@@ -686,6 +691,12 @@
     "__setMarkerDeps",
     "emitMarker",
     "emitMarkerOnce"
+  ],
+  "metadataSource": [
+    "MetadataSource",
+    "MetadataSourceMode",
+    "MetadataSourceProps",
+    "useMetadataStore"
   ],
   "moduleCache": [
     "ModuleCache",

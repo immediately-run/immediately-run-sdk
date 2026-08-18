@@ -13,6 +13,9 @@ export * from './linkSpace';
 export * from './components/MountImage';
 export * from './components/Routes';
 export * from './hooks'
+// R3-276: the supported way for a viewer app to provide its own metadata store,
+// replacing a wholesale re-provision of `TinkerableContext` in app code.
+export * from './metadataSource';
 export * from './auth';
 export * from './theme';
 export * from './editorContext';

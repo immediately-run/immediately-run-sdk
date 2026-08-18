@@ -1,6 +1,7 @@
-import { use, useEffect, useMemo, useRef, useState } from 'react';
-import { TinkerableContext } from './TinkerableContext';
+import { APP_ROOT, underAppRoot } from '@immediately-run/platform-constants';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { openFs, type FsError } from './fs';
+import { useMetadataStore } from './metadataSource';
 import type { SandboxMount } from './mounts';
 import {
   FilesMetadata,
@@ -10,7 +11,10 @@ import {
   MetadataQueryResult,
 } from './sandboxTypes';
 
-const entriesEqual = <T>(a: MetadataQueryEntry<T>[], b: MetadataQueryEntry<T>[]): boolean => {
+const entriesEqual = <T>(
+  a: MetadataQueryEntry<T, Record<string, unknown>>[],
+  b: MetadataQueryEntry<T, Record<string, unknown>>[],
+): boolean => {
   if (a.length !== b.length) {
     return false;
   }
@@ -19,6 +23,16 @@ const entriesEqual = <T>(a: MetadataQueryEntry<T>[], b: MetadataQueryEntry<T>[])
     // merges, so an identity check on `meta` is a sound "did this match change?".
     if (a[i].path !== b[i].path || a[i].meta !== b[i].meta) {
       return false;
+    }
+    // Extra fields a record-returning query computed (R3-276) are part of the
+    // result, so a change in them is a change in the result — compared by value,
+    // one level, because they are derived scalars, not the store's shared objects.
+    const ax = a[i] as Record<string, unknown>;
+    const bx = b[i] as Record<string, unknown>;
+    const keys = new Set([...Object.keys(ax), ...Object.keys(bx)]);
+    for (const k of keys) {
+      if (k === 'path' || k === 'meta') continue;
+      if (ax[k] !== bx[k]) return false;
     }
   }
   return true;
@@ -37,6 +51,16 @@ const entriesEqual = <T>(a: MetadataQueryEntry<T>[], b: MetadataQueryEntry<T>[])
  * returned array keeps its identity while the matches are unchanged, so it is safe
  * to use directly in downstream `useMemo`/`useEffect` dependency arrays.
  *
+ * A query may return RECORDS instead of bare paths (R3-276) — `{ path, ...extra }`
+ * — and the extra fields ride along on each entry, so something derived while
+ * selecting does not have to be recomputed downstream:
+ * ```ts
+ * const posts = useMetadataQuery<PostMeta, { year: string }>((files) =>
+ *   Object.entries(files).map(([path, m]) => ({ path, year: m.date.slice(0, 4) })),
+ * );
+ * ```
+ * The store it queries is the nearest {@link MetadataSource}, else the host's.
+ *
  * Pass a type parameter to get typed frontmatter throughout:
  * ```ts
  * interface PostMeta { title: string; date: string; draft?: boolean }
@@ -48,39 +72,61 @@ const entriesEqual = <T>(a: MetadataQueryEntry<T>[], b: MetadataQueryEntry<T>[])
  * );
  * ```
  */
-export const useMetadataQuery = <T = Metadata>(
+export const useMetadataQuery = <T = Metadata, E extends object = {}>(
   queryFunction: MetadataQueryFunction<T>,
-): MetadataQueryResult<T> => {
-  const { filesMetadata } = use(TinkerableContext);
-  const previous = useRef<MetadataQueryEntry<T>[]>([]);
-  return useMemo<MetadataQueryResult<T>>(() => {
-    const files = (filesMetadata ?? {}) as FilesMetadata<T>;
-    let entries: MetadataQueryEntry<T>[];
+): MetadataQueryResult<T, E> => {
+  const files = useMetadataStore<T>();
+  const previous = useRef<MetadataQueryEntry<T, Record<string, unknown>>[]>([]);
+  return useMemo<MetadataQueryResult<T, E>>(() => {
+    let entries: MetadataQueryEntry<T, Record<string, unknown>>[];
     try {
-      entries = queryFunction(files).map((path) => ({ path, meta: files[path] }));
+      // `path` and `meta` are applied AFTER the record's own fields: a query cannot
+      // shadow the two the hook is responsible for, whatever it happened to name.
+      entries = queryFunction(files).map((selected) =>
+        typeof selected === 'string'
+          ? { path: selected, meta: files[selected] }
+          : { ...selected, path: selected.path, meta: files[selected.path] },
+      );
     } catch (error) {
       return { error };
     }
     // Preserve the prior array reference when nothing matched differently.
     if (entriesEqual(entries, previous.current)) {
-      return previous.current;
+      return previous.current as MetadataQueryEntry<T, E>[];
     }
     previous.current = entries;
-    return entries;
-  }, [filesMetadata, queryFunction]);
+    return entries as MetadataQueryEntry<T, E>[];
+  }, [files, queryFunction]);
 };
 
 /**
- * Read one file's metadata (MDX frontmatter) by repo-relative path. Returns
- * `undefined` when the path has no metadata. Pass a type parameter for typed
- * field access.
+ * Read one file's metadata (MDX frontmatter) by path. Returns `undefined` when the
+ * path has no metadata. Pass a type parameter for typed field access.
+ *
+ * **The store is keyed by ABSOLUTE module path** — `/app/content/post.mdx`, the same
+ * identifier `fs`, `module.dynamicImport` and `<Include>` use — not by the
+ * repo-relative path this doc claimed until R3-276. Keeping metadata in the file
+ * space is what lets an app read a file's metadata and render that same file by the
+ * same path (`sandbox/src/bundler/metadataKey.test.ts` pins it).
+ *
+ * A repo-relative path (`/content/post.mdx`) is accepted as a fallback: if the path
+ * is not a key, it is retried under the app root via the shared
+ * `underAppRoot` helper (R3-275). That is additive — it only turns a previous
+ * `undefined` into a value — and it exists because the old doc told people to pass
+ * exactly that form. A path a {@link MetadataSource} provided in some other key
+ * space is looked up as given, unchanged.
  */
 export const useFileMetadata = <T = Metadata>(path: string): T | undefined => {
-  const { filesMetadata } = use(TinkerableContext);
-  return useMemo(
-    () => (filesMetadata ?? {})[path] as T | undefined,
-    [path, filesMetadata],
-  );
+  const files = useMetadataStore<T>();
+  return useMemo(() => {
+    const direct = files[path];
+    if (direct !== undefined) return direct;
+    // The fallback is for a path in the REPO-RELATIVE space. An already-app-rooted
+    // path that missed is simply a miss: retrying it would consult `/app/app/…`,
+    // which is not a key space anything writes — it would only ever hit by accident.
+    if (path === APP_ROOT || path.startsWith(`${APP_ROOT}/`)) return undefined;
+    return files[underAppRoot(path)];
+  }, [path, files]);
 };
 
 /**
@@ -88,10 +134,7 @@ export const useFileMetadata = <T = Metadata>(path: string): T | undefined => {
  * escape hatch for apps that want to render their own index rather than express it
  * as a path-returning query. Pass a type parameter for typed frontmatter values.
  */
-export const useAllMetadata = <T = Metadata>(): FilesMetadata<T> => {
-  const { filesMetadata } = use(TinkerableContext);
-  return (filesMetadata ?? {}) as FilesMetadata<T>;
-};
+export const useAllMetadata = <T = Metadata>(): FilesMetadata<T> => useMetadataStore<T>();
 
 /** The reactive state returned by {@link useObjectUrl}. */
 export interface ObjectUrlState {
