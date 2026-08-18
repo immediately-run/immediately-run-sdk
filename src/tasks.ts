@@ -11,7 +11,8 @@
 //  - CALLEE: read `useTaskInput()`, then `completeTask(result)` / `cancelTask()`.
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
-import { TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
+import { PROTOCOL_TASK, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 // ── caller side ─────────────────────────────────────────────────────────────
 
@@ -69,7 +70,7 @@ export const invokeTask = async <R = unknown>(
   task: string,
   params: Record<string, unknown> = {},
 ): Promise<R> => {
-  const res = (await protocolRequest('task', 'invoke', [{ task, params }])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_TASK], 'invoke', [{ task, params }])) as
     | { ok: true; data: R }
     | { ok: false; code?: string; message?: string }
     | undefined;

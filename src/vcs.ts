@@ -17,7 +17,8 @@
 // `refreshPRs` by `vcs:read`, `resetWorkingTree` by first-party-only `vcs:reset`.
 import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
-import { REQUEST_VCS_STATE, VCS_STATE } from './generated/protocol';
+import { PROTOCOL_VCS, REQUEST_VCS_STATE, VCS_STATE } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** One changed path in the working tree (vs. the loaded ref). `status` mirrors the
  *  host `DiffResult` change kinds; `path` is repo-relative. Contents are NOT
@@ -130,7 +131,7 @@ type VcsResult =
   | { ok: false; code: string; message: string };
 
 const vcsRequest = async (method: string, arg: Record<string, unknown> = {}): Promise<void> => {
-  const res = (await protocolRequest('vcs', method, [arg])) as VcsResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_VCS], method, [arg])) as VcsResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? `vcs ${method} failed`) as VcsActionError;
     err.code = (res?.code as VcsActionError['code']) ?? 'unknown';

@@ -780,6 +780,9 @@
     "absPath",
     "joinPaths"
   ],
+  "protocolSchemes": [
+    "SCHEMES"
+  ],
   "protocolStream": [
     "StreamError",
     "StreamFrame",

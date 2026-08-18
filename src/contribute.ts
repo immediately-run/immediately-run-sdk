@@ -7,6 +7,7 @@
 // commit message + save mode and watches stages go by; the host owns the token,
 // the GitHub API calls, and the user-facing consent.
 import { protocolStream } from './protocolStream';
+import { PROTOCOL_CONTRIBUTE } from './generated/protocol';
 
 /** The save strategy. `direct` requires the first-party `contribute:direct`
  *  capability and a scarier consent line — a `contribute:any` app asking for it
@@ -72,5 +73,5 @@ export interface ContributeOptions {
 export function contribute(
   opts: ContributeOptions
 ): AsyncGenerator<ContributionEvent, ContributionResult, void> {
-  return protocolStream<ContributionEvent, ContributionResult>('protocol-contribute', 'run', [opts]);
+  return protocolStream<ContributionEvent, ContributionResult>(PROTOCOL_CONTRIBUTE, 'run', [opts]);
 }

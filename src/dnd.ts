@@ -20,7 +20,8 @@
 // only relay data it can already read — no new read authority is minted).
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
-import { DND_CANCEL, DROPPED_ITEM } from './generated/protocol';
+import { DND_CANCEL, DROPPED_ITEM, PROTOCOL_DND } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** A file/dir being dragged out of an app. `bytes` is present only for a small file
  *  the source chose to inline (transferred zero-copy); a dir or an over-cap file
@@ -66,7 +67,7 @@ export interface ItemDragError extends Error {
  * sibling apps).
  */
 export const startItemDrag = async (item: DraggableItem): Promise<void> => {
-  const res = (await protocolRequest('dnd', 'startDrag', [item])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_DND], 'startDrag', [item])) as
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;

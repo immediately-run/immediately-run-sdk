@@ -34,11 +34,14 @@ import {
   INVITATIONS,
   MOUNT_ADD,
   MOUNT_REMOVE,
+  PROTOCOL_SETTINGS,
+  PROTOCOL_SPACES,
   REQUEST_INVITATIONS,
   REQUEST_MOUNTS,
   REQUEST_SESSION_MOUNTS,
   SESSION_MOUNTS,
 } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -410,7 +413,7 @@ const request = async <T = unknown>(
   method: string,
   query: Record<string, unknown> = {},
 ): Promise<T> => {
-  const res = (await protocolRequest('spaces', method, [query])) as SpaceResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'space request failed') as SpaceError;
     err.code = (res?.code as SpaceError['code']) ?? 'unknown';
@@ -547,7 +550,7 @@ const settingsRequest = async <T = unknown>(
   method: string,
   query: Record<string, unknown> = {},
 ): Promise<T> => {
-  const res = (await protocolRequest('settings', method, [query])) as SpaceResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_SETTINGS], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'settings request failed') as SpaceError;
     err.code = (res?.code as SpaceError['code']) ?? 'unknown';

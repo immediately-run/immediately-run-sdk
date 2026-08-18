@@ -10,7 +10,8 @@
 // A caller that wants a typed value back uses `invokeTask` instead — the two are
 // siblings, not a replacement.
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
-import { LAUNCH_DISMISS, LAUNCH_ENDED } from './generated/protocol';
+import { LAUNCH_DISMISS, LAUNCH_ENDED, PROTOCOL_LAUNCH } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** Where a launched program runs (§6). `overlay` covers the caller's own region
  *  with opaque host chrome; `stage` replaces the focal app (the elevated into-
@@ -169,7 +170,7 @@ export const launch = async (
 ): Promise<LaunchHandle | { ok: false; code: LaunchErrorCode }> => {
   // The host wraps a successful handler return as `{ ok:true, data }` (the same
   // Recipe-B framing `invokeTask` uses); a refusal is `{ ok:false, code }`.
-  const res = (await protocolRequest('launch', 'create', [{ target, opts }])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_LAUNCH], 'create', [{ target, opts }])) as
     | { ok: true; data: { launchId: string } }
     | { ok: false; code?: LaunchErrorCode }
     | undefined;

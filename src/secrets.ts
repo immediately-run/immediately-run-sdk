@@ -13,7 +13,8 @@
 // apps (e.g. the in-browser coding agent, P3-73) can be written against it.
 import { protocolRequest } from './sandboxUtils';
 import { createPushChannel } from './pushChannel';
-import { REQUEST_SECRETS_METADATA, SECRETS_METADATA } from './generated/protocol';
+import { PROTOCOL_SECRETS, REQUEST_SECRETS_METADATA, SECRETS_METADATA } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** The closed secret-type vocabulary (SECRETS_SPEC §2). `api-key` is always
  *  origin-bound; `oauth-refresh` is reserved (no substitution in v1). */
@@ -78,7 +79,7 @@ const request = async <T = unknown>(
   method: string,
   query: object = {},
 ): Promise<T> => {
-  const res = (await protocolRequest('secrets', method, [query])) as SecretResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_SECRETS], method, [query])) as SecretResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'secret request failed') as SecretError;
     err.code = (res?.code as SecretError['code']) ?? 'unknown';

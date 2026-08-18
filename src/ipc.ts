@@ -4,7 +4,8 @@
 // and attaches an unspoofable `from`; you still treat the payload as untrusted.
 import { useEffect, useState } from 'react';
 import { protocolRequest, addListener } from './sandboxUtils';
-import { REGION_MESSAGE } from './generated/protocol';
+import { PROTOCOL_IPC, REGION_MESSAGE } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** A message delivered to this region. `from` is the SENDER's region, attached by
  *  the host (unspoofable, T19); `data` is the sender-provided payload. */
@@ -19,7 +20,7 @@ export interface RegionMessage {
  * lacks the `ipc` capability.
  */
 export const postToRegion = async (region: string, data: unknown): Promise<void> => {
-  const res = (await protocolRequest('ipc', 'post', [{ to: region, msg: data }])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_IPC], 'post', [{ to: region, msg: data }])) as
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;
@@ -59,7 +60,7 @@ export const postToRegion = async (region: string, data: unknown): Promise<void>
  * capability, or no declared edge to `region`.
  */
 export const revealRegion = async (region: string): Promise<void> => {
-  const res = (await protocolRequest('ipc', 'reveal', [{ to: region }])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_IPC], 'reveal', [{ to: region }])) as
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;

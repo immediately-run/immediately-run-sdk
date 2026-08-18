@@ -1,6 +1,7 @@
 import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
-import { REQUEST_THEME, THEME } from './generated/protocol';
+import { PROTOCOL_THEME, REQUEST_THEME, THEME } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /**
  * The host UI theme, mirrored from the immediately.run host window into the
@@ -53,7 +54,7 @@ export const useHostTheme = (): HostTheme => channel.use();
  * optimistically and let the re-push confirm.
  */
 export const setHostTheme = async (theme: HostTheme): Promise<void> => {
-  const res = (await protocolRequest('theme', 'set', [{ theme }])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_THEME], 'set', [{ theme }])) as
     | { ok: true; data?: unknown }
     | { ok: false; code?: string; message?: string }
     | undefined;

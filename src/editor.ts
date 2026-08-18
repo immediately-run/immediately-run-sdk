@@ -1,4 +1,6 @@
 import { protocolRequest } from './sandboxUtils';
+import { SCHEMES } from './protocolSchemes';
+import { PROTOCOL_EDITOR } from './generated/protocol';
 
 /**
  * Open a working-tree file in the immediately.run host editor (UI_AS_APPS_SPEC §4 —
@@ -30,7 +32,7 @@ const editorRequest = async (
   method: string,
   arg: Record<string, unknown>,
 ): Promise<void> => {
-  const res = (await protocolRequest('editor', method, [arg])) as EditorResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_EDITOR], method, [arg])) as EditorResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? `editor ${method} failed`) as EditorWriteError;
     err.code = (res?.code as EditorWriteError['code']) ?? 'unknown';

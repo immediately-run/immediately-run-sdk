@@ -307,13 +307,17 @@ export const extract = (opts = {}) => {
    * vocabulary as REMOVED. The type checker is already here, and a `const` declared
    * `= 'task-complete'` has the string-literal TYPE `"task-complete"` — so ask it,
    * rather than re-implementing constant folding. Scheme constants derived from a
-   * wire name (`SCHEME_TASK`, a template-literal conditional over `PROTOCOL_TASK`)
-   * resolve the same way, which is what makes deriving them safe.
+   * wire name — `SCHEMES[PROTOCOL_TASK]`, a template-literal conditional keyed by the
+   * constant — resolve the same way, which is what makes deriving them safe.
    */
   const literal = (node) => {
     if (!node) return undefined;
     if (ts.isStringLiteralLike(node)) return node.text;
-    if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) {
+    if (
+      ts.isIdentifier(node) ||
+      ts.isPropertyAccessExpression(node) ||
+      ts.isElementAccessExpression(node)
+    ) {
       const t = checker.getTypeAtLocation(node);
       if (t.isStringLiteral?.()) return t.value;
     }
