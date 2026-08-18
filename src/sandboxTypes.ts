@@ -21,6 +21,15 @@ export type EvaluationContext = {
  * The parsed frontmatter of a single file. Apps can supply their own shape as the
  * `T` type parameter on the metadata hooks for typed field access; it defaults to
  * an open record.
+ *
+ * The ENVELOPE this widens is `Frontmatter` from
+ * `@immediately-run/platform-constants` (R3-275): string keys, JSON-serializable
+ * values, the emitter's object-identity semantics, and the empty-frontmatter drop —
+ * one statement of the contract, shared with the CLI that writes the sidecar and the
+ * sandbox that reads it. This alias stays `any`-valued deliberately: app code
+ * indexes frontmatter fields directly (`meta.title.length`), and tightening it to
+ * `JsonValue` would turn every such access into a type error for a guarantee the
+ * *values* never made (they are open by the spec's §6 decision).
  */
 export type Metadata = Record<string, any>;
 

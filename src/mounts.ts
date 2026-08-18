@@ -1,3 +1,5 @@
+import { APP_ROOT } from '@immediately-run/platform-constants';
+
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { createPushChannel } from './pushChannel';
@@ -37,7 +39,7 @@ import type { FileCap } from './tasks';
  * `/app` when the host hasn't reported a canonical path (older host / before the
  * report arrives) — both paths are live, so either resolves the same files.
  */
-export const getAppMountPath = (): string => getHostRuntime()?.appMountPath ?? '/app';
+export const getAppMountPath = (): string => getHostRuntime()?.appMountPath ?? APP_ROOT;
 
 /**
  * A filesystem mount available to the sandbox, mirrored from the host window.

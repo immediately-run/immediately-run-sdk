@@ -1,19 +1,26 @@
+import { APP_ROOT, underAppRoot } from "@immediately-run/platform-constants";
+
 import { joinPaths } from "./pathUtils";
 import { NavigationState, PathState } from "./TinkerableContext";
 
 export const FILES_PREFIX = '/files';
 
 /**
- * Mount point of the Git repository inside the sandbox filesystem. The sandbox
- * fs is rooted at `/` (so apps can reach dynamic mounts like `/firestore`), with
- * the repo mounted here. URL subpaths are repo-relative, so the file router
- * resolves them under `APP_ROOT`.
+ * Mount point of the Git repository inside the sandbox filesystem, and the join
+ * into it — both now defined ONCE in `@immediately-run/platform-constants` (R3-275)
+ * and re-exported here so every import site is unchanged.
+ *
+ * They were declared here AND in `sandbox/src/fsLayout.ts`, with two different
+ * implementations of the join (this one over `joinPaths`, the sandbox's hand-rolled).
+ * The two agreed; nothing made them agree — and the metadata key space is derived
+ * from this constant on both sides, so a drift would have split that key space
+ * silently. The package's tests replicate BOTH implementations, quirks included.
+ *
+ * The sandbox fs is rooted at `/` (so apps can reach dynamic mounts like
+ * `/firestore`), with the repo mounted at `APP_ROOT`. URL subpaths are
+ * repo-relative, so the file router resolves them under it.
  */
-export const APP_ROOT = '/app';
-
-/** Resolve a repo-relative path (e.g. a URL subpath) to its absolute sandbox path. */
-export const underAppRoot = (repoRelativePath: string): string =>
-  joinPaths(APP_ROOT, repoRelativePath);
+export { APP_ROOT, underAppRoot };
 
 /**
  * The origin every outer URL is rebuilt on — `protocol//host`, **port included**.
