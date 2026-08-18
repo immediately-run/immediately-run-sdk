@@ -29,6 +29,13 @@
 
 import { createPushChannel } from './pushChannel';
 import { sendMessage, addListener } from './sandboxUtils';
+import {
+  DEBUG_ENABLED,
+  DEBUG_LOG,
+  DEBUG_QUERY,
+  DEBUG_QUERY_RESULT,
+  REQUEST_DEBUG_ENABLED,
+} from './generated/protocol';
 
 /** Severity of a {@link debug.log} entry. */
 export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -37,8 +44,8 @@ export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
 // The host pushes `debug-enabled:true` only for a dev/override session. Until
 // then (and always in production) it stays false and every instrument is inert.
 const enabledChannel = createPushChannel<boolean>({
-  pushType: 'debug-enabled',
-  requestType: 'request-debug-enabled',
+  pushType: DEBUG_ENABLED,
+  requestType: REQUEST_DEBUG_ENABLED,
   initial: false,
   parse: (msg) => (typeof msg.enabled === 'boolean' ? msg.enabled : undefined),
 });
@@ -77,7 +84,7 @@ function safeData(data: unknown): unknown {
 export function log(level: DebugLevel, message: string, data?: unknown): void {
   if (!enabledChannel.get()) return; // inert in prod / non-dev sessions
   try {
-    sendMessage('debug-log', { level, message: String(message), data: safeData(data) });
+    sendMessage(DEBUG_LOG, { level, message: String(message), data: safeData(data) });
   } catch {
     /* transport not ready — drop silently; logging must never throw */
   }
@@ -183,7 +190,7 @@ let responderStarted = false;
 function startResponder(): void {
   if (responderStarted || typeof window === 'undefined') return;
   responderStarted = true;
-  addListener('debug-query', (msg: { id?: unknown; method?: unknown; params?: unknown }) => {
+  addListener(DEBUG_QUERY, (msg: { id?: unknown; method?: unknown; params?: unknown }) => {
     if (!enabledChannel.get()) return; // gate: ignore unless dev-enabled
     const id = msg.id;
     const method = msg.method;
@@ -211,7 +218,7 @@ function startResponder(): void {
       error = e instanceof Error ? e.message : String(e);
     }
     try {
-      sendMessage('debug-query-result', { id, ok, result, error });
+      sendMessage(DEBUG_QUERY_RESULT, { id, ok, result, error });
     } catch {
       /* transport gone — nothing to do */
     }

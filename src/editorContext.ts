@@ -1,4 +1,5 @@
 import { createPushChannel } from './pushChannel';
+import { EDITOR_CONTEXT, REQUEST_EDITOR_CONTEXT } from './generated/protocol';
 
 /**
  * The editor "dirty set" mirrored from the immediately.run host into the sandbox
@@ -44,8 +45,8 @@ const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((p) => typeof p === 'string');
 
 const channel = createPushChannel<EditorContext>({
-  pushType: 'editor-context',
-  requestType: 'request-editor-context',
+  pushType: EDITOR_CONTEXT,
+  requestType: REQUEST_EDITOR_CONTEXT,
   initial: { dirtyPaths: [], openFiles: [], activeFile: null, viewedFile: null },
   parse: (msg) =>
     isStringArray(msg.dirtyPaths)

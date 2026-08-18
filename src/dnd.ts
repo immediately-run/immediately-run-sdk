@@ -20,6 +20,8 @@
 // only relay data it can already read — no new read authority is minted).
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { DND_CANCEL, DROPPED_ITEM, PROTOCOL_DND } from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /** A file/dir being dragged out of an app. `bytes` is present only for a small file
  *  the source chose to inline (transferred zero-copy); a dir or an over-cap file
@@ -65,7 +67,7 @@ export interface ItemDragError extends Error {
  * sibling apps).
  */
 export const startItemDrag = async (item: DraggableItem): Promise<void> => {
-  const res = (await protocolRequest('dnd', 'startDrag', [item])) as
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_DND], 'startDrag', [item])) as
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;
@@ -79,14 +81,14 @@ export const startItemDrag = async (item: DraggableItem): Promise<void> => {
 /** Abort an in-progress host-mediated drag this app started (e.g. the user pressed
  *  Escape, or the gesture was cancelled). Best-effort and fire-and-forget. */
 export const cancelItemDrag = (): void => {
-  sendMessage('dnd-cancel', {});
+  sendMessage(DND_CANCEL, {});
 };
 
 /** Subscribe to items dropped onto this app by a host-mediated cross-app drag.
  *  Returns an unsubscribe fn. Subscribing is the opt-in: an app that never subscribes
  *  receives nothing (the host shows a "not accepted" cue and the drop is a no-op). */
 export const onItemDrop = (listener: (d: DroppedItem) => void): (() => void) =>
-  addListener('dropped-item', (m: { item: DraggableItem; from: string; position: { x: number; y: number } }) =>
+  addListener(DROPPED_ITEM, (m: { item: DraggableItem; from: string; position: { x: number; y: number } }) =>
     listener({ item: m.item, from: m.from, position: m.position }),
   );
 

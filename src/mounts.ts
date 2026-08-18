@@ -30,6 +30,18 @@ export {
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
 // FileCap SHAPE without pulling that side effect into every `mounts` importer.
 import type { FileCap } from './tasks';
+import {
+  INVITATIONS,
+  MOUNT_ADD,
+  MOUNT_REMOVE,
+  PROTOCOL_SETTINGS,
+  PROTOCOL_SPACES,
+  REQUEST_INVITATIONS,
+  REQUEST_MOUNTS,
+  REQUEST_SESSION_MOUNTS,
+  SESSION_MOUNTS,
+} from './generated/protocol';
+import { SCHEMES } from './protocolSchemes';
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -171,14 +183,14 @@ const transportMountService = (): MountService => {
     for (const l of [...listeners]) l(mounts, removed);
   };
 
-  addListener('mount-add', (msg: Record<string, any>) => {
+  addListener(MOUNT_ADD, (msg: Record<string, any>) => {
     const mount: SandboxMount | undefined = msg.mount;
     if (!mount) return;
     const key = mountKey(mount);
     mounts = [...mounts.filter((m) => mountKey(m) !== key), mount];
     fire([]);
   });
-  addListener('mount-remove', (msg: Record<string, any>) => {
+  addListener(MOUNT_REMOVE, (msg: Record<string, any>) => {
     const key: string | undefined = msg.id ?? msg.path;
     if (key == null) return;
     const reason = asMountRemoveReason(msg.reason);
@@ -191,7 +203,7 @@ const transportMountService = (): MountService => {
   // Ask the host to replay the current set (the matching `mount-add`s may have been
   // sent before this SDK subscribed). Best-effort: a transport not yet ready throws.
   try {
-    sendMessage('request-mounts');
+    sendMessage(REQUEST_MOUNTS);
   } catch {
     /* transport not ready — the live mount-add stream still populates the cache */
   }
@@ -347,8 +359,8 @@ export interface SessionMount extends SandboxMount {
 // push never arrives and `initial: []` stands — the Session lens is simply absent,
 // fail-closed. Mirrors the host's `session-mounts`/`request-session-mounts` wiring.
 const sessionMountsChannel = createPushChannel<SessionMount[]>({
-  pushType: 'session-mounts',
-  requestType: 'request-session-mounts',
+  pushType: SESSION_MOUNTS,
+  requestType: REQUEST_SESSION_MOUNTS,
   initial: [],
   parse: (msg) => (Array.isArray(msg.mounts) ? (msg.mounts as SessionMount[]) : undefined),
 });
@@ -401,7 +413,7 @@ const request = async <T = unknown>(
   method: string,
   query: Record<string, unknown> = {},
 ): Promise<T> => {
-  const res = (await protocolRequest('spaces', method, [query])) as SpaceResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'space request failed') as SpaceError;
     err.code = (res?.code as SpaceError['code']) ?? 'unknown';
@@ -538,7 +550,7 @@ const settingsRequest = async <T = unknown>(
   method: string,
   query: Record<string, unknown> = {},
 ): Promise<T> => {
-  const res = (await protocolRequest('settings', method, [query])) as SpaceResult;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_SETTINGS], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'settings request failed') as SpaceError;
     err.code = (res?.code as SpaceError['code']) ?? 'unknown';
@@ -682,8 +694,8 @@ export const declineInvite = async (spaceId: string): Promise<void> => {
 // So an invite that arrives (or an accepted/declined one leaving) reflects within one
 // snapshot — no poll. Mirrors the host's `invitations`/`request-invitations` wiring.
 const invitesChannel = createPushChannel<Invite[]>({
-  pushType: 'invitations',
-  requestType: 'request-invitations',
+  pushType: INVITATIONS,
+  requestType: REQUEST_INVITATIONS,
   initial: [],
   parse: (msg) => (Array.isArray(msg.invites) ? (msg.invites as Invite[]) : undefined),
 });

@@ -8,6 +8,8 @@
 
 import { protocolRequest } from './sandboxUtils';
 import { protocolStream } from './protocolStream';
+import { SCHEMES } from './protocolSchemes';
+import { PROTOCOL_FETCH } from './generated/protocol';
 
 /** Request options for {@link hostFetch}: method, headers, and a string body. */
 export interface HostFetchInit {
@@ -42,7 +44,7 @@ export const hostFetch = async (
   url: string,
   init: HostFetchInit = {},
 ): Promise<HostFetchResponse> => {
-  const res = (await protocolRequest('fetch', 'fetch', [
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_FETCH], 'fetch', [
     { url, method: init.method, headers: init.headers, body: init.body },
   ])) as
     | { ok: true; data: HostFetchResponse }
@@ -109,7 +111,7 @@ export function hostFetchStream(
   init: HostFetchInit = {},
 ): AsyncGenerator<HostFetchStreamEvent, HostFetchStreamResult, void> {
   return protocolStream<HostFetchStreamEvent, HostFetchStreamResult>(
-    'protocol-fetch',
+    PROTOCOL_FETCH,
     'fetchStream',
     [{ url, method: init.method, headers: init.headers, body: init.body }],
   );

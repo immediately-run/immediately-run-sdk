@@ -18,6 +18,7 @@ import { FilesMetadata } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
 import { TinkerableContext, TinkerableState } from './TinkerableContext';
 import { FILES_PREFIX } from './urlUtils';
+import { METADATA_UPDATE, URLCHANGE } from './generated/protocol';
 
 /** A map of MDX component overrides, or a function that receives the platform
  *  {@link DEFAULT_MDX_COMPONENTS} and returns the full map to use. */
@@ -81,7 +82,7 @@ export const TinkerableApp = ({
 }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
-    const removeListener = addListener('urlchange', ({ url }) => {
+    const removeListener = addListener(URLCHANGE, ({ url }) => {
       setContext((context) => {
         const updatedContext = updateContext(context, url);
         if (updatedContext !== context) {
@@ -101,7 +102,7 @@ export const TinkerableApp = ({
     // 'metadata-update' over the §4 transport instead, and `enable` is a no-op.
     const source = resolveMetadataSource(getInjectedMetadataEmitter());
     const dispose = addListener(
-      'metadata-update',
+      METADATA_UPDATE,
       ({ update }: Record<string, any>) => {
         setContext((prevContext) =>
           updateAlreadyApplied(prevContext.filesMetadata, update)

@@ -13,6 +13,7 @@
 // "external" would surface a false conflict). Compare the changed file's bytes to
 // what you last wrote; if they match, it is your echo, not an external change.
 import { createPushChannel } from './pushChannel';
+import { FS_CHANGE } from './generated/protocol';
 
 /** One working-tree change batch the host pushes: the changed paths plus an epoch. */
 export interface FsChange {
@@ -30,7 +31,7 @@ const isStringArray = (v: unknown): v is string[] =>
   Array.isArray(v) && v.every((p) => typeof p === 'string');
 
 const channel = createPushChannel<FsChange>({
-  pushType: 'fs-change',
+  pushType: FS_CHANGE,
   initial: { paths: [], epoch: 0 },
   parse: (msg) =>
     isStringArray(msg.paths) && typeof msg.epoch === 'number'

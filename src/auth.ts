@@ -1,4 +1,5 @@
 import { createPushChannel } from './pushChannel';
+import { AUTH_STATE, REQUEST_AUTH_STATE } from './generated/protocol';
 
 /**
  * Login / account state of the immediately.run user, mirrored from the host
@@ -33,8 +34,8 @@ const isAuthState = (v: unknown): v is AuthState => {
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `auth-state`
 // and answers `request-auth-state` (wire format: site-main channelBridge.ts).
 const channel = createPushChannel<AuthState>({
-  pushType: 'auth-state',
-  requestType: 'request-auth-state',
+  pushType: AUTH_STATE,
+  requestType: REQUEST_AUTH_STATE,
   initial: { status: 'unknown', user: null },
   parse: (msg) => (isAuthState(msg.state) ? (msg.state as AuthState) : undefined),
 });
