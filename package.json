@@ -34,12 +34,14 @@
     "protocol:check": "node scripts/check-protocol-snapshot.mjs",
     "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run protocol:check && npm run protocol:selftest && npm run verify:codegen-parity",
+    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
     "test:metadata-e2e": "node --test test/metadataHooks.e2e.mjs",
-    "protocol:selftest": "node scripts/check-protocol-snapshot.mjs --self-test"
+    "protocol:selftest": "node scripts/check-protocol-snapshot.mjs --self-test",
+    "compat:previous": "node scripts/check-previous-sdk-compat.mjs",
+    "compat:selftest": "node scripts/check-previous-sdk-compat.mjs --self-test"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -47,7 +49,7 @@
   },
   "dependencies": {
     "@immediately-run/platform-constants": "0.2.0",
-    "@immediately-run/sandbox-protocol": "0.1.0",
+    "@immediately-run/sandbox-protocol": "0.3.1",
     "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {

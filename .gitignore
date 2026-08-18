@@ -7,3 +7,6 @@ test/.artifacts/
 
 # `npm pack` output — a local verification artifact, never a repo file.
 *.tgz
+
+# Previously-published SDK tarballs unpacked by scripts/check-previous-sdk-compat.mjs
+.compat-sdk/

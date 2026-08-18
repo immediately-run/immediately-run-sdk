@@ -53,6 +53,16 @@ jobs:
       # names must fail, not pass.
       - run: npm run protocol:check
       - run: npm run protocol:selftest
+      # R3-274e1: `protocol:check` proves THIS source matches the pinned contract.
+      # It says nothing about the SDKs already on npm, which is the population that
+      # actually matters — apps pin their own version (SDK_PACKAGING_SPEC §9), so a
+      # wire change breaks artifacts nobody can edit any more. This unpacks real
+      # published tarballs and drives their `dist/` against the shared fixture, so
+      # the verdict is measured, not reasoned about. Listed here and not left to
+      # `verify` alone: this job enumerates the gates rather than running `verify`,
+      # so a gate that is only in `verify` is a gate CI does not have.
+      - run: npm run compat:selftest
+      - run: npm run compat:previous
       # R3-166: the gate-table→SDK descriptor set is the proposed single source for
       # the generated surface. This fails if it disagrees with what actually ships —
       # a descriptor naming an export the SDK doesn't have, or making a different
