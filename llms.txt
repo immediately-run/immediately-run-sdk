@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.44.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.45.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -29,7 +29,7 @@ Import: `@immediately-run/sdk/hooks`
 
 - `ObjectUrlState` (interface) — The reactive state returned by useObjectUrl.
 - `useAllMetadata` (function) — The raw, reactive metadata store: a map from file path to frontmatter.
-- `useFileMetadata` (function) — Read one file's metadata (MDX frontmatter) by repo-relative path.
+- `useFileMetadata` (function) — Read one file's metadata (MDX frontmatter) by path.
 - `useMetadataQuery` (function) — Query the file metadata store (MDX frontmatter) with a plain JS function.
 - `useObjectUrl` (function) — Read a file from a mount into an **object URL** for `<img src>`, revoking it automatically on unmount or when `mount`/`relPath` changes.
 
@@ -469,6 +469,15 @@ Import: `@immediately-run/sdk/loading`
 - `SkeletonRow` (function) — A single placeholder bar — compose these into a custom skeleton shape.
 - `Spinner` (function) — An indeterminate spinner for waits where a shaped skeleton doesn't fit (a pending button, a small inline fetch).
 
+## metadataSource
+
+Import: `@immediately-run/sdk/metadataSource`
+
+- `MetadataSource` (function) — Provide a metadata store to `useMetadataQuery`, `useFileMetadata` and `useAllMetadata` for everything rendered inside.
+- `MetadataSourceMode` (type) — How a provided store combines with the one already in scope.
+- `MetadataSourceProps` (interface)
+- `useMetadataStore` (function) — The metadata store in scope: the nearest MetadataSource, else the host's.
+
 ## protocolStream
 
 Import: `@immediately-run/sdk/protocolStream`
@@ -532,11 +541,12 @@ Import: `@immediately-run/sdk/safeContent/wikilink`
 Import: `@immediately-run/sdk/sandboxTypes`
 
 - `EvaluationContext` (type) — The sandbox runtime's per-module evaluation context: a module's exports plus the helpers to dynamically import, resolve, and re-evaluate other modules.
-- `FileQueryResult` (type) — The paths a MetadataQueryFunction selected.
+- `FileQueryResult` (type) — What a MetadataQueryFunction selected: paths, or MetadataQueryRecords.
 - `FilesMetadata` (type) — The whole metadata store: a map from repo-relative file path to its frontmatter.
 - `Metadata` (type) — The parsed frontmatter of a single file.
-- `MetadataQueryEntry` (type) — One match from MetadataQueryFunction: the file path paired with its frontmatter.
+- `MetadataQueryEntry` (type) — One match from MetadataQueryFunction: the file path paired with its frontmatter, plus any extra fields the query returned as a MetadataQueryRecord.
 - `MetadataQueryFunction` (type) — A query over the metadata store: receive every file's frontmatter keyed by path and return the paths that match.
+- `MetadataQueryRecord` (type) — A record a query may return INSTEAD of a bare path (R3-276): the path plus whatever the query computed on the way to selecting it.
 - `MetadataQueryResult` (type) — The result of running a metadata query: the matched entries (path + frontmatter), or the error a throwing query produced.
 - `ModuleExports` (type) — The exports object of an evaluated sandbox module (untyped — shape depends on the module).
 
