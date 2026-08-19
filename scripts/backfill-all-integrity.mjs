@@ -79,11 +79,26 @@ if (isMain) {
   console.log(
     `Backfilling integrity for ${targets.length} version(s) >= ${floor}: ${targets.join(', ')}`,
   );
-  let written = 0;
+  // R3-286: the per-version SOURCE is printed, not just "written". The failure this
+  // replaces was visible in the old log only as a 3.9s outlier among 80ms lines —
+  // one version had silently taken the re-derive path. Name the path instead.
+  const tally = {};
   for (const version of targets) {
-    const result = await backfillVersion(version, outBase);
-    if (result === 'written') written++;
+    let result;
+    try {
+      result = await backfillVersion(version, outBase);
+    } catch (err) {
+      // Fail the release HERE, before the trust-root sync turns an origin problem
+      // into an "immutability violation — bump the version" that misdirects.
+      console.error(`::error::v${version}: ${err.message}`);
+      process.exit(1);
+    }
+    tally[result] = (tally[result] ?? 0) + 1;
     console.log(`  v/${version}: ${result}`);
   }
-  console.log(`Done — ${written} written, ${targets.length - written} already present.`);
+  console.log(
+    `Done — ${Object.entries(tally)
+      .map(([k, n]) => `${n} ${k}`)
+      .join(', ')}.`,
+  );
 }
