@@ -145,14 +145,44 @@ export type PathSegment = {
   // slash, no sub-path) must still parse, otherwise the regex matches nothing
   // and every segment comes back empty.
   optionalLeadingSlash?: boolean
+  // Inverse of `transform`, applied when BUILDING a url (`constructUrl`). Without it a
+  // decoded ref would be written back raw and split into two segments again.
+  encode?: (value: string) => string
 }
+
+// One URL path segment is "anything but a slash". The previous patterns instead
+// ENUMERATED the allowed characters (`[a-zA-Z0-9-_]+`), which silently rejected three
+// real shapes — and rejection here is not an error, it is a whole-match failure that
+// makes `parsePath` return every field EMPTY, so the app's navigation state just goes
+// blank with nothing logged:
+//
+//   /…/repo/v1.2.3/…      a semver TAG              (dot)
+//   /…/foo.js/main/…      a dotted REPOSITORY name  (dot — very common)
+//   /…/repo/claude%2Fx/…  a `/`-containing REF, percent-encoded as one segment
+//
+// The third is the one that motivated this (a ref may contain `/`; the host now encodes
+// it — see site-main `encodeRef`), but the first two were already broken and are the
+// same mistake. `[^/]+` is both the fix and the accurate description of a segment.
+/** Percent-decode one path segment, tolerating a malformed escape: this is untrusted
+ *  URL input, and `decodeURIComponent('%zz')` throws. A bad ref must not blank out the
+ *  whole navigation state. */
+const decodeSegment = (value: string): string => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
 
 const PATH_SEGMENTS: PathSegment[] = [
   { name: 'mode', pattern: '\\w+' },
-  { name: 'provider', pattern: '[a-zA-Z0-9-_]+' },
-  { name: 'namespace', pattern: '[a-zA-Z0-9-_]+' },
-  { name: 'repository', pattern: '[a-zA-Z0-9-_]+' },
-  { name: 'ref', pattern: '[a-zA-Z0-9-_]+' },
+  { name: 'provider', pattern: '[^/]+' },
+  { name: 'namespace', pattern: '[^/]+' },
+  { name: 'repository', pattern: '[^/]+' },
+  // The ref is percent-encoded by the host so a `/` inside it stays ONE segment; decode
+  // on the way in and re-encode on the way out (`encode`), so app code always sees the
+  // real ref (`claude/x`) and never the wire form.
+  { name: 'ref', pattern: '[^/]+', transform: decodeSegment, encode: encodeURIComponent },
   { name: 'sandboxPath', pattern: '.*', transform: s => `/${s}`, optionalLeadingSlash: true }
 ];
 
@@ -198,9 +228,11 @@ export const parseHref = (href: string): NavigationState => {
 const stripSlashPrefix = (s: string): string => s.startsWith('/') ? s.substring(1) : s;
 
 export const constructUrl = (outerHref:string, navigationState: NavigationState): string => {
-  const path = PATH_SEGMENTS.map(({ name }) => {
-    let value = navigationState[name];
-    return stripSlashPrefix(value ?? '');
+  const path = PATH_SEGMENTS.map(({ name, encode }) => {
+    const value = stripSlashPrefix(navigationState[name] ?? '');
+    // Encode AFTER stripping the delimiter slash: `encode` is per-segment, and the
+    // sandboxPath (which has no `encode`) keeps its own internal slashes.
+    return encode ? encode(value) : value;
   }).join('/');
   const host = getOuterHostname(outerHref);
   let url = `${host}/${path}`
