@@ -37,6 +37,8 @@ import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { build } from 'esbuild';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -84,11 +86,31 @@ const APP_PROVIDED = ['react', 'react-dom', 'react-error-boundary'];
 
 const workspaceDir = join(dest, '_workspace');
 mkdirSync(workspaceDir, { recursive: true });
+const requireFromRoot = createRequire(join(root, 'package.json'));
 for (const { spec, file } of INLINE_WORKSPACE) {
   const out = join(workspaceDir, file);
+  // NAMED re-exports, enumerated from the package itself — never `export * from`.
+  // Both packages are CommonJS, and esbuild cannot statically enumerate a CJS
+  // module's names, so `export *` emits the namespace object and NO export
+  // statement at all: every importer then reads `undefined`. That shipped as
+  // 0.45.2 and turned the module-not-found into `Cannot read properties of
+  // undefined`, which is worse — the resolver is satisfied and the failure moves
+  // to first use. Reading the names here keeps the single source of truth (add an
+  // export to the package and the next build carries it) and the assertion below
+  // makes the emitted file prove it.
+  const names = Object.keys(requireFromRoot(spec)).filter((n) => n !== 'default' && n !== '__esModule');
+  if (names.length === 0) {
+    console.error(`::error::build-selfhost: ${spec} exposes no named exports to inline.`);
+    process.exit(1);
+  }
+  const stub =
+    `import * as __ns from ${JSON.stringify(spec)};\n` +
+    `const __m = __ns.default ?? __ns;\n` +
+    names.map((n) => `export const ${n} = __m[${JSON.stringify(n)}];`).join('\n') +
+    '\n';
   await build({
     stdin: {
-      contents: `export * from ${JSON.stringify(spec)};\n`,
+      contents: stub,
       resolveDir: root,
       sourcefile: `inline-${file}`,
       loader: 'js',
@@ -103,6 +125,19 @@ for (const { spec, file } of INLINE_WORKSPACE) {
     logLevel: 'warning',
   });
   jsFiles.push(`_workspace/${file}`);
+
+  // Prove the emitted module actually EXPORTS those names, by loading it — not by
+  // inspecting the source that was meant to produce them. This is the assertion
+  // 0.45.2 lacked: the payload was resolvable and every value in it was undefined.
+  const loaded = await import(pathToFileURL(out).href);
+  const missing = names.filter((n) => !(n in loaded) || loaded[n] === undefined);
+  if (missing.length) {
+    console.error(
+      `::error::build-selfhost: ${file} does not export ${missing.length} name(s) it must ` +
+        `(${missing.slice(0, 6).join(', ')}…). An importer would read \`undefined\`.`,
+    );
+    process.exit(1);
+  }
 
   // Rewrite the bare specifier to a relative path, per importing file (the depth
   // differs: `hooks.js` → `./_workspace/…`, `generated/protocol.js` → `../_workspace/…`).

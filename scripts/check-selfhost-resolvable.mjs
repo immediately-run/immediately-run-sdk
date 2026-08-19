@@ -95,6 +95,85 @@ const jsFiles = (dir, rel = '') => {
   return out;
 };
 
+// --- named imports must actually BE exported (R3-288, second pass) -----------
+//
+// Resolvability is not correctness. 0.45.2 fixed the bare specifiers by inlining
+// the two workspace packages with `export * from '<cjs pkg>'` — which esbuild
+// cannot statically enumerate, so the emitted module carried the namespace object
+// and NO export statement. Every importer then read `undefined`, and the crash
+// moved from the resolver ("Cannot find module") to first use ("Cannot read
+// properties of undefined"), which is strictly harder to trace. This check asks
+// the question the first pass did not: does the file being imported from export
+// the names being imported?
+
+/** The names a file exports. `null` means "cannot tell" — a `export * from './x'`
+ *  chain, where a static answer would be a guess; those targets are skipped rather
+ *  than failed, so this never invents a finding. */
+export const exportedNames = (source) => {
+  if (/(?:^|[\s;}])export\s*\*\s*from\s*["']/m.test(source)) return null;
+  const names = new Set();
+  for (const m of source.matchAll(/(?:^|[\s;}])export\s*\{([^}]*)\}/g)) {
+    for (const part of m[1].split(',')) {
+      const piece = part.trim();
+      if (!piece) continue;
+      const as = piece.split(/\s+as\s+/);
+      names.add((as[1] ?? as[0]).trim());
+    }
+  }
+  for (const m of source.matchAll(
+    /(?:^|[\s;}])export\s+(?:declare\s+)?(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/g,
+  )) names.add(m[1]);
+  if (/(?:^|[\s;}])export\s+default\b/.test(source)) names.add('default');
+  return names;
+};
+
+/** The named imports a file takes from RELATIVE specifiers: [{ spec, names }]. */
+export const relativeNamedImports = (source) => {
+  const out = [];
+  for (const m of source.matchAll(
+    /(?:^|[\s;}])import\s*\{([^}]*)\}\s*from\s*["'](\.[^"']*)["']/g,
+  )) {
+    const names = m[1]
+      .split(',')
+      .map((p) => p.trim().split(/\s+as\s+/)[0].trim())
+      .filter(Boolean);
+    out.push({ spec: m[2], names });
+  }
+  return out;
+};
+
+/** Findings for a payload: [{ file, spec, name }] for every named import of a
+ *  symbol the target file does not export. */
+export const scanNamedImports = (readFile, files) => {
+  const present = new Set(files);
+  const exportsOf = new Map();
+  const nameSet = (rel) => {
+    if (!exportsOf.has(rel)) exportsOf.set(rel, exportedNames(readFile(rel)));
+    return exportsOf.get(rel);
+  };
+  const findings = [];
+  for (const file of files) {
+    const dir = file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '';
+    for (const { spec, names } of relativeNamedImports(readFile(file))) {
+      // Resolve the relative specifier against the payload's flat file list.
+      const parts = (dir ? `${dir}/${spec}` : spec).split('/');
+      const stack = [];
+      for (const seg of parts) {
+        if (!seg || seg === '.') continue;
+        if (seg === '..') stack.pop();
+        else stack.push(seg);
+      }
+      let target = stack.join('/');
+      if (!present.has(target)) target = `${target}.js`;
+      if (!present.has(target)) continue; // extension-less/ambiguous — not this check's job
+      const exported = nameSet(target);
+      if (exported === null) continue; // `export *` chain: unknowable statically
+      for (const name of names) if (!exported.has(name)) findings.push({ file, spec: target, name });
+    }
+  }
+  return findings;
+};
+
 /** Findings for a payload: [{ file, spec }] for every unresolvable specifier. */
 export const scanPayload = (readFile, files) => {
   const findings = [];
@@ -126,6 +205,20 @@ const report = (label, findings, fileCount) => {
   return false;
 };
 
+const reportNames = (label, findings) => {
+  if (findings.length === 0) {
+    console.log(`OK: ${label} — every named import resolves to a real export.`);
+    return true;
+  }
+  console.error(`::error::${label}: ${findings.length} named import(s) of a symbol the target does not export.`);
+  console.error(
+    'The importer reads `undefined` and fails at FIRST USE, not at load — which is how\n' +
+      '0.45.2 turned a module-not-found into `Cannot read properties of undefined`.\n',
+  );
+  for (const f of findings) console.error(`  ${f.file} imports { ${f.name} } from ${f.spec}`);
+  return false;
+};
+
 // --- audit a published payload over the wire --------------------------------
 const auditPublished = async (version) => {
   const base = `${ORIGIN}/v/${version}`;
@@ -133,7 +226,10 @@ const auditPublished = async (version) => {
   const files = manifest.files.filter((f) => f.endsWith('.js'));
   const cache = new Map();
   for (const f of files) cache.set(f, await (await fetch(`${base}/${f}`)).text());
-  return report(`published v${version}`, scanPayload((f) => cache.get(f), files), files.length);
+  const read = (f) => cache.get(f);
+  const ok = report(`published v${version}`, scanPayload(read, files), files.length);
+  const okNames = reportNames(`published v${version}`, scanNamedImports(read, files));
+  return ok && okNames;
 };
 
 // --- self-test ---------------------------------------------------------------
@@ -160,6 +256,55 @@ const selfTest = () => {
     if (!ok) failed++;
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.name} (expected ${c.want}, got ${got})`);
   }
+  // The 0.45.2 shape: the specifier resolves, the NAME does not exist.
+  const namedCases = [
+    {
+      name: 'THE 0.45.2 REGRESSION: `export *` from a CJS bundle exports nothing',
+      target: 'var mod = {};\nvar ns = {};\n__reExport(ns, mod);\n',
+      importer: 'import { APP_ROOT } from "./_workspace/pc.js";\n',
+      want: 1,
+    },
+    {
+      name: 'a real named export satisfies it',
+      target: 'var APP_ROOT = "/app";\nexport { APP_ROOT };\n',
+      importer: 'import { APP_ROOT } from "./_workspace/pc.js";\n',
+      want: 0,
+    },
+    {
+      name: '`export const` counts',
+      target: 'export const APP_ROOT = "/app";\n',
+      importer: 'import { APP_ROOT } from "./_workspace/pc.js";\n',
+      want: 0,
+    },
+    {
+      name: 'a renamed export counts under its EXTERNAL name',
+      target: 'var a = 1;\nexport { a as APP_ROOT };\n',
+      importer: 'import { APP_ROOT } from "./_workspace/pc.js";\n',
+      want: 0,
+    },
+    {
+      name: 'an `export *` chain is unknowable, so it is skipped rather than failed',
+      target: 'export * from "./other.js";\n',
+      importer: 'import { APP_ROOT } from "./_workspace/pc.js";\n',
+      want: 0,
+    },
+    {
+      name: 'a ../ path from a nested file resolves to the same target',
+      target: 'export const APP_ROOT = "/app";\n',
+      importer: 'import { APP_ROOT } from "../_workspace/pc.js";\n',
+      want: 0,
+      importerPath: 'generated/protocol.js',
+    },
+  ];
+  for (const c of namedCases) {
+    const files = ['_workspace/pc.js', c.importerPath ?? 'urlUtils.js'];
+    const read = (f) => (f === '_workspace/pc.js' ? c.target : c.importer);
+    const got = scanNamedImports(read, files).length;
+    const ok = got === c.want;
+    if (!ok) failed++;
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${c.name} (expected ${c.want}, got ${got})`);
+  }
+
   // Fault injection over a REAL payload shape: a clean tree plus one poisoned file.
   const dir = mkdtempSync(join(tmpdir(), 'sdk-payload-'));
   try {
@@ -175,7 +320,8 @@ const selfTest = () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  console.log(`\n${cases.length + 1 - failed}/${cases.length + 1} self-test cases.`);
+  const total = cases.length + namedCases.length + 1;
+  console.log(`\n${total - failed}/${total} self-test cases.`);
   return failed === 0;
 };
 
@@ -210,6 +356,9 @@ if (argv.includes('--self-test')) {
     dir = join(versionsDir, versions[0]);
   }
   const files = jsFiles(dir);
-  const findings = scanPayload((f) => readFileSync(join(dir, f), 'utf8'), files);
-  process.exit(report(relative(ROOT, dir) || dir, findings, files.length) ? 0 : 1);
+  const read = (f) => readFileSync(join(dir, f), 'utf8');
+  const label = relative(ROOT, dir) || dir;
+  const ok = report(label, scanPayload(read, files), files.length);
+  const okNames = reportNames(label, scanNamedImports(read, files));
+  process.exit(ok && okNames ? 0 : 1);
 }
