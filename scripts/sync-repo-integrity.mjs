@@ -46,7 +46,13 @@ export class ImmutabilityViolation extends Error {
         `version(s) [${versions.join(', ')}] would change. A published SDK version ` +
         `is immutable — its gh-pages bytes, git-tag integrity, and npm tarball must ` +
         `never change once released. Bump the package version instead of re-publishing ` +
-        `${versions.length > 1 ? 'these versions' : 'this version'} with different bytes.`,
+        `${versions.length > 1 ? 'these versions' : 'this version'} with different bytes.\n` +
+        `\nThis means THIS BUILD produced different bytes for ${versions.length > 1 ? 'those versions' : 'that version'}. ` +
+        `It does NOT mean the serving origin drifted — since R3-286 a version the trust ` +
+        `root already pins is carried from the repo, and an origin that disagrees is ` +
+        `reported by \`backfill-integrity\` as an OriginDivergence, before this runs. ` +
+        `If the version listed here is one you did not touch, look at what regenerated ` +
+        `its payload, not at the origin.`,
     );
     this.name = 'ImmutabilityViolation';
     this.versions = versions;
