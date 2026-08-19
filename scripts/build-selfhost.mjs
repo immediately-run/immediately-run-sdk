@@ -14,11 +14,29 @@
  * Idempotent: a version dir is immutable, so re-running for an already-published
  * version reproduces identical bytes. Publishing uses keep_files so prior
  * versions accumulate.
+ *
+ * R3-288 — WORKSPACE PACKAGES ARE INLINED HERE, and only here. The sandbox loads
+ * this payload as a FLAT set of files with no dependency tree: a bare specifier
+ * resolves only if the consuming APP already provides that package (react,
+ * react-dom, react-error-boundary — the sandbox's own dep set). `tsup` runs
+ * `bundle: false` to preserve subpath imports, so every bare specifier in source
+ * survives verbatim into `dist/` — which is CORRECT for the npm channel, where
+ * `@immediately-run/platform-constants` and `@immediately-run/sandbox-protocol`
+ * are ordinary dependencies a bundler resolves. It is fatal for THIS channel: 0.45.0
+ * and 0.45.1 shipped four files importing those two packages, and every app pinning
+ * either version died at boot with `Cannot find module …`, blank-framed.
+ *
+ * So the payload — not `dist/` — is where they are inlined: each package is bundled
+ * once into `_workspace/`, and the bare specifier in every copied file is rewritten
+ * to a relative path. npm consumers keep normal module identity; the sandbox gets a
+ * self-contained tree. `scripts/check-selfhost-resolvable.mjs` runs over the RESULT
+ * and fails the build if anything unresolvable survives.
  */
 import { readdirSync, mkdirSync, copyFileSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { build } from 'esbuild';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -51,6 +69,58 @@ const walk = (dir, rel = '') => {
   }
 };
 walk(dist);
+
+// --- R3-288: inline the workspace packages (see the header) ------------------
+//
+// Bundled ONE FILE PER PACKAGE (not per importer): bundling the importers instead
+// would inline their relative imports too, duplicating the SDK graph and breaking
+// the per-file subpath identity `bundle: false` exists to preserve.
+const INLINE_WORKSPACE = [
+  { spec: '@immediately-run/platform-constants', file: 'platform-constants.js' },
+  { spec: '@immediately-run/sandbox-protocol/sdk', file: 'sandbox-protocol-sdk.js' },
+];
+// What the sandbox itself provides; anything else must end up inlined.
+const APP_PROVIDED = ['react', 'react-dom', 'react-error-boundary'];
+
+const workspaceDir = join(dest, '_workspace');
+mkdirSync(workspaceDir, { recursive: true });
+for (const { spec, file } of INLINE_WORKSPACE) {
+  const out = join(workspaceDir, file);
+  await build({
+    stdin: {
+      contents: `export * from ${JSON.stringify(spec)};\n`,
+      resolveDir: root,
+      sourcefile: `inline-${file}`,
+      loader: 'js',
+    },
+    outfile: out,
+    bundle: true,
+    format: 'esm',
+    platform: 'browser',
+    target: 'es2020',
+    external: APP_PROVIDED,
+    legalComments: 'none',
+    logLevel: 'warning',
+  });
+  jsFiles.push(`_workspace/${file}`);
+
+  // Rewrite the bare specifier to a relative path, per importing file (the depth
+  // differs: `hooks.js` → `./_workspace/…`, `generated/protocol.js` → `../_workspace/…`).
+  for (const rel of jsFiles) {
+    if (rel.startsWith('_workspace/')) continue;
+    const target = join(dest, rel);
+    const source = readFileSync(target, 'utf8');
+    if (!source.includes(spec)) continue;
+    let relPath = relative(dirname(rel) === '.' ? '' : dirname(rel), `_workspace/${file}`)
+      .split(sep)
+      .join('/');
+    if (!relPath.startsWith('.')) relPath = `./${relPath}`;
+    writeFileSync(
+      target,
+      source.replaceAll(`"${spec}"`, `"${relPath}"`).replaceAll(`'${spec}'`, `'${relPath}'`),
+    );
+  }
+}
 
 // Minimal package.json so the in-sandbox resolver maps the bare specifier to
 // the flattened ESM entrypoint (identical to copy-sdk.sh).

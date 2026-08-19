@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.45.1",
+  "version": "0.45.2",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -34,14 +34,16 @@
     "protocol:check": "node scripts/check-protocol-snapshot.mjs",
     "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run verify:codegen-parity",
+    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run check:selfhost:selftest && npm run check:selfhost && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
     "test:metadata-e2e": "node --test test/metadataHooks.e2e.mjs",
     "protocol:selftest": "node scripts/check-protocol-snapshot.mjs --self-test",
     "compat:previous": "node scripts/check-previous-sdk-compat.mjs",
-    "compat:selftest": "node scripts/check-previous-sdk-compat.mjs --self-test"
+    "compat:selftest": "node scripts/check-previous-sdk-compat.mjs --self-test",
+    "check:selfhost": "node scripts/build-selfhost.mjs .selfhost-check && node scripts/check-selfhost-resolvable.mjs --dir .selfhost-check",
+    "check:selfhost:selftest": "node scripts/check-selfhost-resolvable.mjs --self-test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

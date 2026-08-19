@@ -146,6 +146,18 @@ jobs:
           node scripts/build-selfhost.mjs gh-pages-publish
           node scripts/backfill-all-integrity.mjs 0.2.8 gh-pages-publish
 
+      # R3-288: the payload the sandbox loads has no dependency tree, so a bare
+      # specifier that is not app-provided is a module-not-found at boot — a blank
+      # frame for every app on that version. 0.45.0/0.45.1 shipped four such files
+      # past a green `api:check`, a valid integrity manifest and a green `verify`:
+      # those check the SHAPE of the surface and the INTEGRITY of the bytes, and
+      # neither asks whether the bytes can load. Runs BEFORE the deploy, so a
+      # payload that cannot load never reaches the origin.
+      - name: Assert the self-hosted payload is resolvable in the sandbox
+        run: |
+          node scripts/check-selfhost-resolvable.mjs --self-test
+          node scripts/check-selfhost-resolvable.mjs --dir "gh-pages-publish/v/$(node -p "require('./package.json').version")"
+
       # SDK trust root (SDK_PACKAGING_SPEC §5.2.1 / SP2-2, decision #6): the hashes
       # site-main pins must come from a surface INDEPENDENT of the gh-pages origin
       # they verify. So commit the per-version integrity.json into the REPO
