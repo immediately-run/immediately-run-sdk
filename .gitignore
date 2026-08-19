@@ -10,3 +10,4 @@ test/.artifacts/
 
 # Previously-published SDK tarballs unpacked by scripts/check-previous-sdk-compat.mjs
 .compat-sdk/
+.selfhost-check/
