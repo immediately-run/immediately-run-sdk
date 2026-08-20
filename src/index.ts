@@ -42,5 +42,6 @@ export * from './irMarkers';
 export * from './ready';
 export * from './loading';
 export * from './protocolStream';
+export * from './protocolDeadline';
 export * from './sandboxTypes';
 export * from './safeContent';

@@ -311,13 +311,17 @@
     "getHostRuntime"
   ],
   "index": [
+    "ATTENDED_FIRST_FRAME_MS",
+    "ATTENDED_TIMEOUT_MS",
     "Admonition",
     "AdmonitionType",
     "ApiMethod",
     "AppliedRoutingRule",
+    "Attendance",
     "AuthState",
     "AuthStatus",
     "BootProps",
+    "BoundedCallOptions",
     "BuildError",
     "CATCH_ALL_ROUTING_SPEC",
     "ChatDelta",
@@ -405,9 +409,14 @@
     "MountQuery",
     "MountRemoveReason",
     "MountRule",
+    "NETWORK_TIMEOUT_MS",
     "ObjectUrlState",
     "Orientation",
+    "PENDING_NOTICE_MS",
     "ParseSafeMdastOptions",
+    "PendingState",
+    "ProtocolCancelledError",
+    "ProtocolTimeoutError",
     "ReadyState",
     "RegionMessage",
     "RemovedMount",
@@ -425,6 +434,7 @@
     "Routes",
     "SDK_PROTOCOL_VERSION",
     "SDK_VERSION",
+    "STREAM_IDLE_TIMEOUT_MS",
     "SafeContent",
     "SafeContentComponents",
     "SafeContentProps",
@@ -456,6 +466,7 @@
     "TaskInput",
     "TinkerableApp",
     "ToolDef",
+    "UNATTENDED_TIMEOUT_MS",
     "VcsActionError",
     "VcsBranch",
     "VcsChange",
@@ -469,6 +480,8 @@
     "acceptInvite",
     "announceHandshake",
     "applyRoutingRule",
+    "attendanceOf",
+    "attendanceReason",
     "awaitMatchingMount",
     "boot",
     "cancelItemDrag",
@@ -489,6 +502,7 @@
     "deleteEntry",
     "describeChat",
     "findMount",
+    "firstFrameTimeoutFor",
     "fsAvailable",
     "getAppMountPath",
     "getAuthState",
@@ -588,6 +602,7 @@
     "setViewedDocumentResolver",
     "splitWikiLinks",
     "startItemDrag",
+    "timeoutFor",
     "unmountSpace",
     "unshareSpace",
     "uploadFile",
@@ -780,6 +795,23 @@
     "absPath",
     "joinPaths"
   ],
+  "protocolDeadline": [
+    "ATTENDED_FIRST_FRAME_MS",
+    "ATTENDED_TIMEOUT_MS",
+    "Attendance",
+    "BoundedCallOptions",
+    "NETWORK_TIMEOUT_MS",
+    "PENDING_NOTICE_MS",
+    "PendingState",
+    "ProtocolCancelledError",
+    "ProtocolTimeoutError",
+    "STREAM_IDLE_TIMEOUT_MS",
+    "UNATTENDED_TIMEOUT_MS",
+    "attendanceOf",
+    "attendanceReason",
+    "firstFrameTimeoutFor",
+    "timeoutFor"
+  ],
   "protocolSchemes": [
     "SCHEMES"
   ],
@@ -875,7 +907,8 @@
   "sandboxUtils": [
     "addListener",
     "protocolRequest",
-    "sendMessage"
+    "sendMessage",
+    "withDeadline"
   ],
   "scrollToId": [
     "scrollToId"
