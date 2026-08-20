@@ -125,23 +125,68 @@ export interface ChatProviderInfo {
    *  whose `features` are an untrusted claim. */
   hostVouched: boolean;
   features: ChatFeatures;
+  // NOTE (R3-300): `displayName`, `executor` and the resolved per-tier `models` belong
+  // here — an app rendering provider state wants all three. They are NOT added yet,
+  // deliberately: this interface IS the `llm-provider` channel's declared value, so
+  // adding a field is a WIRE change, and the wire is owned by
+  // `@immediately-run/sandbox-protocol` (descriptor edit → publish → pin bump on both
+  // sides). The protocol snapshot gate enforces exactly that, and it is right to. The
+  // enrichment rides R3-307's publish, which already has to touch those descriptors —
+  // one publish for two additions rather than two.
 }
+
+/**
+ * Whether the host has told us about a provider yet, and if so whether one is bound.
+ *
+ * THREE states, because two is the bug (R3-300). `describeChat()` returns `null` both
+ * when no provider is configured AND when the channel has not answered — so an app
+ * cannot tell "you need a key" from "ask again in a moment", and consuming apps
+ * rendered a misleading "connect a key" banner at users who had one. `unknown` is the
+ * state before the host answers; it is not an error and not a prompt to act.
+ */
+export type ChatProviderState =
+  | { status: 'unknown' }
+  | { status: 'not-configured' }
+  | { status: 'configured'; provider: ChatProviderInfo };
 
 // The `llm-provider` describe channel (Recipe A): the host pushes the resolved
 // provider info on change and replays it on register-frame, gated by `llm:chat`.
 // A message with no `provider` key is ignored; an explicit `null` means "no provider
-// bound" (distinct from "not yet answered", which keeps the `initial` null).
+// bound", which is now REPRESENTABLE as distinct from "not yet answered".
+// The channel's VALUE stays exactly what the wire carries — `ChatProviderInfo | null` —
+// because the wire did not change here and the protocol snapshot gate reads this type as
+// the channel's shape. The three-state lives BESIDE it: `answered` records whether the host
+// has ever spoken on this channel, which is the one bit `null` cannot carry. Deriving the
+// state rather than widening the channel keeps the wire contract byte-identical, which it
+// is (SDK_PACKAGING_SPEC §9: the wire is additive-only, and this is not a wire change).
+let answered = false;
 const channel = createPushChannel<ChatProviderInfo | null>({
   pushType: LLM_PROVIDER,
   requestType: REQUEST_LLM_PROVIDER,
   initial: null,
-  parse: (msg) =>
-    'provider' in msg ? (msg.provider as ChatProviderInfo | null) : undefined,
+  parse: (msg) => {
+    if (!('provider' in msg)) return undefined;
+    answered = true;
+    return (msg.provider as ChatProviderInfo | null) ?? null;
+  },
 });
 
-/** The provider the host resolved for this app (or `null` if none bound). Poll for a
- *  one-off read; use {@link onChatProviderChange}/{@link useChatProvider} to react. */
+/** Derive the three-state from the wire value plus whether the host has answered. */
+const stateOf = (provider: ChatProviderInfo | null): ChatProviderState =>
+  !answered ? { status: 'unknown' } : provider ? { status: 'configured', provider } : { status: 'not-configured' };
+
+/**
+ * The provider the host resolved for this app, or `null`.
+ *
+ * Kept for compatibility (`ways_of_working §6`, additive-only): it collapses `unknown`
+ * and `not-configured` to `null`. Prefer {@link describeChatState} when the difference
+ * matters — which is any time you would render "connect a key", because doing that in
+ * the `unknown` state is exactly the false banner R3-300 fixes.
+ */
 export const describeChat = (): ChatProviderInfo | null => channel.get();
+
+/** The three-state read: `unknown` before the host answers, then configured or not. */
+export const describeChatState = (): ChatProviderState => stateOf(channel.get());
 
 /** Subscribe to provider changes (key added/revoked, preference changed). Invoked
  *  immediately with the current value, then on every change. Returns unsubscribe. */
@@ -149,6 +194,20 @@ export const onChatProviderChange = (
   listener: (provider: ChatProviderInfo | null) => void,
 ): (() => void) => channel.onChange(listener);
 
+/** Subscribe to the three-state provider description. */
+export const onChatProviderStateChange = (
+  listener: (state: ChatProviderState) => void,
+): (() => void) => channel.onChange((p) => listener(stateOf(p)));
+
 /** React hook returning the resolved chat provider (or `null`), re-rendering on
  *  change — gate the summarize affordance on `provider !== null`. */
 export const useChatProvider = (): ChatProviderInfo | null => channel.use();
+
+/**
+ * React hook returning the three-state description.
+ *
+ * Use this to render provider state honestly: show nothing (or a neutral placeholder)
+ * while `unknown`, the connect affordance only on `not-configured`, and the provider's
+ * name on `configured`.
+ */
+export const useChatProviderState = (): ChatProviderState => stateOf(channel.use());
