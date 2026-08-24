@@ -10,7 +10,7 @@
 // Every state helper (formFactor, auth, editorContext, theme, catalog) is a thin
 // wrapper over one of these — the get / onChange / use trio is identical.
 import { useEffect, useState } from 'react';
-import { sendMessage as defaultSend, addListener as defaultAddListener } from './sandboxUtils';
+import { sendMessage as defaultSend, addListener as defaultAddListener } from './hostTransport';
 
 export interface PushChannel<T> {
   /** Pollable snapshot of the current value. */
@@ -49,14 +49,24 @@ export function createPushChannel<T>(
   // read is simply never answered → `initial` stands.
   const start = () => {
     if (started) return;
+    try {
+      transport.addListener(opts.pushType, (msg) => {
+        const next = opts.parse(msg);
+        if (next !== undefined) {
+          current = next;
+          listeners.forEach((l) => l(current));
+        }
+      });
+    } catch {
+      // No host transport in this realm yet (the resolver throws when neither the injected
+      // bundler bus nor the §4 discovery global is present). Leave `started` false so the
+      // NEXT read retries, and let `initial` stand meanwhile — which is exactly the
+      // documented behaviour for a channel the host never answers. Throwing here instead
+      // would make a plain `getHostTheme()` fatal outside a sandbox, and since R3-307 the
+      // deadline on every host call reads a channel, so one throw would be every call.
+      return;
+    }
     started = true;
-    transport.addListener(opts.pushType, (msg) => {
-      const next = opts.parse(msg);
-      if (next !== undefined) {
-        current = next;
-        listeners.forEach((l) => l(current));
-      }
-    });
     if (opts.requestType) {
       try {
         transport.sendMessage(opts.requestType);

@@ -21,6 +21,7 @@ export * from './theme';
 export * from './editorContext';
 export * from './editor';
 export * from './formFactor';
+export * from './hostAttention';
 export * from './region';
 export * from './mounts';
 export * from './contribute';

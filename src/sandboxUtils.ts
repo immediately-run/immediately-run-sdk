@@ -1,49 +1,24 @@
-// Host transport access (SDK_PACKAGING_SPEC §4, expose-transport). All host comms
-// (sendMessage / protocolRequest / onMessage) go through ONE resolver so the SDK is
-// transport-agnostic: it works whether it was INJECTED into the bundler's evaluation
-// context (the current path — `module.evaluation.module.bundler.messageBus`) OR
-// fetched from npm as an ordinary dependency, in which case the sandbox runtime hands
-// it the transport via the §4 discovery global (`globalThis.__immediatelyRun__`).
+// Bounded host calls (R3-298) + the host-attention-aware deadline (R3-307).
 //
-// Dual-mode (§8): injection wins while it's active, so existing behaviour is
-// byte-for-byte preserved; the global is the fallback the npm-fetched SDK uses. When
-// injection is removed (phase 3), only the global path remains — `bundler.*` stops
-// being API, which is the whole point.
-import { getHostRuntime } from './hostRuntime';
+// The transport primitives this builds on moved to `hostTransport.ts` — see that file for
+// why. `sendMessage` and `addListener` are re-exported here unchanged, so every existing
+// import site (and this module's api-snapshot entry) is exactly as it was.
+import { transport } from './hostTransport';
+import { onHostAttentionChange, type HostAttention } from './hostAttention';
+
 import {
   attendanceOf,
   attendanceReason,
+  boundsFor,
+  createSuspendableDeadline,
   PENDING_NOTICE_MS,
   ProtocolCancelledError,
   ProtocolTimeoutError,
-  timeoutFor,
   type BoundedCallOptions,
+  type CallBounds,
 } from './protocolDeadline';
 
-interface HostTransport {
-  sendMessage(type: string, data?: Record<string, any>): void;
-  protocolRequest(protocolName: string, method: string, params: Array<any>): Promise<any>;
-  onMessage(handler: (msg: any) => void): { dispose(): void };
-}
-
-function transport(): HostTransport {
-  // Injected bundler messageBus first — the current path, unchanged.
-  try {
-    // @ts-ignore - `module.evaluation` is injected by the sandbox runtime
-    const injected = module?.evaluation?.module?.bundler?.messageBus;
-    if (injected && typeof injected.sendMessage === 'function') return injected;
-  } catch {
-    /* no injection in this realm — fall through to the §4 global */
-  }
-  // §4 runtime-discovery transport (the npm-fetched SDK path).
-  const t = getHostRuntime()?.transport as HostTransport | undefined;
-  if (t && typeof t.sendMessage === 'function') return t;
-  throw new Error('immediately.run: no host transport (neither injected nor __immediatelyRun__)');
-}
-
-export const sendMessage = (type: string, data: Record<string, any> = {}) => {
-  transport().sendMessage(type, data);
-};
+export { sendMessage, addListener } from './hostTransport';
 
 /**
  * One host protocol request, BOUNDED (R3-298).
@@ -51,6 +26,11 @@ export const sendMessage = (type: string, data: Record<string, any> = {}) => {
  * The bound comes from the call's classification (`protocolDeadline.ts`): an unattended
  * channel round-trip gets tens of seconds, a call that may draw host chrome and wait for a
  * person gets minutes. Nothing is unbounded — an unbounded wait is the failure this fixes.
+ *
+ * Since R3-307 a call whose prompts the host actually announces runs on the SHORT bound and
+ * is suspended only while the host says a person is being asked, so the common
+ * grant-already-held path reports a fault in seconds instead of minutes. The absolute
+ * ceiling still applies: the signal may extend a deadline, never remove it.
  *
  * The host's own work is NOT cancelled by `signal` or by the deadline. The one-shot
  * transport allocates its `msgId` internally, so the SDK has no handle to send the host a
@@ -78,6 +58,10 @@ export const protocolRequest = (
  * Kept separate from the transport so it is unit-testable against a promise that simply
  * never settles — which is the whole scenario, and one no live transport reproduces on
  * demand.
+ *
+ * An explicit `opts.timeoutMs` is the WHOLE bound and is never suspended: a caller that
+ * names a number owns the wait, and silently stretching it past what they asked for would
+ * be the same class of surprise this machinery exists to remove.
  */
 export async function withDeadline<T>(
   scheme: string,
@@ -87,7 +71,10 @@ export async function withDeadline<T>(
 ): Promise<T> {
   const call = `${scheme}:${method}`;
   const attendance = attendanceOf(scheme, method);
-  const timeoutMs = opts?.timeoutMs ?? timeoutFor(scheme, method);
+  const bounds: CallBounds =
+    opts?.timeoutMs !== undefined
+      ? { idleMs: opts.timeoutMs, ceilingMs: opts.timeoutMs }
+      : boundsFor(scheme, method);
   const signal = opts?.signal;
 
   if (signal?.aborted) throw new ProtocolCancelledError(call);
@@ -95,10 +82,11 @@ export async function withDeadline<T>(
   const work = start();
   // No bound and no abort wanted: hand back the untouched promise rather than wrapping it
   // in timers that would never fire.
-  if (!Number.isFinite(timeoutMs) && !signal && !opts?.onPending) return work;
+  if (!Number.isFinite(bounds.ceilingMs) && !signal && !opts?.onPending) return work;
 
-  let deadline: ReturnType<typeof setTimeout> | undefined;
+  let deadline: { setAwaiting: (a: boolean) => void; dispose: () => void } | undefined;
   let notice: ReturnType<typeof setTimeout> | undefined;
+  let unsubscribeAttention: (() => void) | undefined;
   let onAbort: (() => void) | undefined;
   const started = Date.now();
 
@@ -108,53 +96,74 @@ export async function withDeadline<T>(
       // deadline must not be reported as a timeout.
       work.then(resolve, reject);
 
-      if (Number.isFinite(timeoutMs)) {
-        deadline = setTimeout(
-          () => reject(new ProtocolTimeoutError(call, timeoutMs, attendance)),
-          timeoutMs,
-        );
-      }
+      // The host's live "a person is being asked" signal. Read defensively: a host that
+      // never pushes the channel leaves this at "not awaiting", which is exactly the
+      // pre-R3-307 behaviour for a call on its idle bound.
+      let attention: HostAttention | undefined;
+      let noticeFired = false;
+      const fireNotice = () => {
+        try {
+          opts?.onPending?.({
+            call,
+            attendance,
+            elapsedMs: Date.now() - started,
+            ...(attendanceReason(scheme, method)
+              ? { reason: attendanceReason(scheme, method) as string }
+              : {}),
+            ...(attention?.awaiting
+              ? { awaiting: { kind: attention.kind, since: attention.since } }
+              : {}),
+          });
+        } catch {
+          /* a caller's render callback must never break the call it describes */
+        }
+      };
+
+      deadline = createSuspendableDeadline({
+        bounds,
+        onExpire: (bound, elapsedBoundMs) =>
+          reject(new ProtocolTimeoutError(call, elapsedBoundMs, attendance, bound)),
+      });
+
       if (opts?.onPending) {
         notice = setTimeout(() => {
-          try {
-            opts.onPending?.({
-              call,
-              attendance,
-              elapsedMs: Date.now() - started,
-              ...(attendanceReason(scheme, method)
-                ? { reason: attendanceReason(scheme, method) as string }
-                : {}),
-            });
-          } catch {
-            /* a caller's render callback must never break the call it describes */
-          }
+          noticeFired = true;
+          fireNotice();
         }, PENDING_NOTICE_MS);
       }
+
+      // Subscribing invokes the listener immediately with the current value, so the
+      // deadline starts in the right state even if a prompt was already up.
+      //
+      // Guarded because this sits on the path of EVERY host call: a fault in the attention
+      // channel must degrade to "no signal" (the pre-R3-307 behaviour, bounds unsuspended),
+      // never take down every request in the SDK.
+      try {
+        unsubscribeAttention = onHostAttentionChange((next) => {
+          const wasAwaiting = attention?.awaiting ?? false;
+          attention = next;
+          deadline?.setAwaiting(next.awaiting);
+          // Re-notify once the notice has fired: "still waiting" → "tap your passkey" is
+          // the whole point, and a caller rendering a waiting state wants the live
+          // sentence, not the one that was true three seconds in.
+          if (noticeFired && next.awaiting !== wasAwaiting) fireNotice();
+        });
+      } catch {
+        /* no attention signal available — the bounds simply never suspend */
+      }
+
       if (signal) {
         onAbort = () => reject(new ProtocolCancelledError(call));
         signal.addEventListener('abort', onAbort, { once: true });
       }
     });
   } finally {
-    if (deadline !== undefined) clearTimeout(deadline);
+    deadline?.dispose();
     if (notice !== undefined) clearTimeout(notice);
+    unsubscribeAttention?.();
     if (signal && onAbort) signal.removeEventListener('abort', onAbort);
     // The host may still answer after we stopped waiting; swallow it so a late rejection
     // does not surface as an unhandled promise rejection in the app's console.
     work.catch(() => undefined);
   }
 }
-
-export const addListener = (
-  msgType: string,
-  handler: (msg: any) => void,
-  event?: any,
-): (() => void) => {
-  const onMessage = event ?? transport().onMessage;
-  const disposable = onMessage((msg: any) => {
-    if (msg.type === msgType) {
-      handler(msg);
-    }
-  });
-  return () => disposable.dispose();
-};
