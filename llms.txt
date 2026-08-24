@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.45.3)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.46.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -229,15 +229,19 @@ Import: `@immediately-run/sdk/llm`
 - `ChatFeatures` (interface) — The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read to branch/degrade (offer image upload only when `vision`).
 - `ChatMessage` (interface) — One message in a ChatRequest: a role plus its content parts.
 - `ChatProviderInfo` (interface) — Info about the provider the host resolved for this app.
+- `ChatProviderState` (type) — Whether the host has told us about a provider yet, and if so whether one is bound.
 - `ChatRequest` (interface) — A host-brokered chat completion request: the messages plus optional tools, response format, and model hint (each honored per the provider's features).
 - `ChatResult` (interface) — The terminal value of the chat stream.
 - `ChatRole` (type) — Who authored a ChatMessage.
 - `ChatStopReason` (type) — Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`.
 - `ContentPart` (type) — A part of a message.
-- `describeChat` (function) — The provider the host resolved for this app (or `null` if none bound).
+- `describeChat` (function) — The provider the host resolved for this app, or `null`.
+- `describeChatState` (function) — The three-state read: `unknown` before the host answers, then configured or not.
 - `onChatProviderChange` (function) — Subscribe to provider changes (key added/revoked, preference changed).
+- `onChatProviderStateChange` (function) — Subscribe to the three-state provider description.
 - `ToolDef` (interface) — A tool the model may call — honored only when `features.tools`.
 - `useChatProvider` (function) — React hook returning the resolved chat provider (or `null`), re-rendering on change — gate the summarize affordance on `provider !== null`.
+- `useChatProviderState` (function) — React hook returning the three-state description.
 
 ## netFetch
 
@@ -406,6 +410,17 @@ Import: `@immediately-run/sdk/generated/spaces`
 - `SpaceInfo` (interface) — Summary of a space, as returned by listSpaces.
 - `unshareSpace` (function) — Remove a member from a space.
 
+## hostAttention
+
+Import: `@immediately-run/sdk/hostAttention`
+
+- `getHostAttention` (function) — Returns what the host is waiting for right now.
+- `HostAttention` (interface) — Whether the host is waiting on the user right now, and for what.
+- `HostAttentionKind` (type) — What kind of host prompt is up.
+- `NO_HOST_ATTENTION` (const) — Assumed before the host reports, and the value on a host that never pushes this channel at all: nobody is being asked.
+- `onHostAttentionChange` (function) — Subscribe to host-attention changes.
+- `useHostAttention` (function) — React hook returning what the host is waiting for, re-rendering on change.
+
 ## hostRuntime
 
 Import: `@immediately-run/sdk/hostRuntime`
@@ -477,6 +492,33 @@ Import: `@immediately-run/sdk/metadataSource`
 - `MetadataSourceMode` (type) — How a provided store combines with the one already in scope.
 - `MetadataSourceProps` (interface)
 - `useMetadataStore` (function) — The metadata store in scope: the nearest MetadataSource, else the host's.
+
+## protocolDeadline
+
+Import: `@immediately-run/sdk/protocolDeadline`
+
+- `Attendance` (type) — Whether a call may block on a human being asked something.
+- `attendanceOf` (function) — Whether a call may block on a human.
+- `attendanceReason` (function) — Why a call is classified attended, or `undefined` when it is not.
+- `ATTENDED_FIRST_FRAME_MS` (const) — A stream's first frame may be behind an unseal, so it gets an attended-scale bound of its own.
+- `ATTENDED_TIMEOUT_MS` (const) — Far beyond human reaction time — this exists only so an ABANDONED prompt releases the caller.
+- `BoundedCallOptions` (interface) — Options accepted by every bounded host call.
+- `boundsFor` (function) — The bounds for a one-shot `protocolRequest`.
+- `CallBounds` (interface) — The two bounds a call runs under (R3-307).
+- `createSuspendableDeadline` (function) — A deadline with a suspendable idle leg and an unsuspendable ceiling.
+- `DeadlineBound` (type) — Which of a call's two bounds elapsed.
+- `firstFrameBoundsFor` (function) — The bounds for a stream's time-to-first-frame.
+- `firstFrameTimeoutFor` (function) — The default TIME-TO-FIRST-FRAME bound for a stream.
+- `NETWORK_TIMEOUT_MS` (const) — Network calls reach arbitrary upstreams; the host bounds the fetch itself, so this is a backstop against the host never replying, not a request budget.
+- `PENDING_NOTICE_MS` (const) — When a call passes this, `onPending` fires so a caller can render a waiting state instead of an unexplained stall.
+- `PendingAttention` (interface) — What the host is waiting for at this moment, as reported on the host-attention channel (R3-307).
+- `PendingState` (interface) — What `onPending` is told when a call is taking a while.
+- `ProtocolCancelledError` (class) — The error a cancelled call rejects with.
+- `ProtocolTimeoutError` (class) — The error a bounded call rejects with.
+- `STREAM_IDLE_TIMEOUT_MS` (const) — After the first frame, silence this long means the stream is wedged: the host is no longer producing and no human is being asked.
+- `SuspendableDeadline` (interface) — A live deadline that the host-attention signal can suspend.
+- `timeoutFor` (function) — The default deadline for a one-shot `protocolRequest`.
+- `UNATTENDED_TIMEOUT_MS` (const) — Milliseconds.
 
 ## protocolStream
 
