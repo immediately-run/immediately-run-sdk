@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.45.3",
+  "version": "0.46.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -51,7 +51,7 @@
   },
   "dependencies": {
     "@immediately-run/platform-constants": "0.2.0",
-    "@immediately-run/sandbox-protocol": "0.3.1",
+    "@immediately-run/sandbox-protocol": "0.4.0",
     "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {

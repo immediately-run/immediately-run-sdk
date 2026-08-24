@@ -5,6 +5,7 @@
 // reproduces on demand. Fake timers keep them instant.
 import { jest } from '@jest/globals';
 import {
+  ATTENDED_FIRST_FRAME_MS,
   ATTENDED_TIMEOUT_MS,
   NETWORK_TIMEOUT_MS,
   ProtocolCancelledError,
@@ -13,6 +14,7 @@ import {
   UNATTENDED_TIMEOUT_MS,
   attendanceOf,
   attendanceReason,
+  boundsFor,
   firstFrameTimeoutFor,
   timeoutFor,
 } from './protocolDeadline';
@@ -21,7 +23,46 @@ import { consumeStream, StreamError, type StreamFrame, type StreamTransport } fr
 
 const never = () => new Promise<never>(() => {});
 
-beforeEach(() => jest.useFakeTimers());
+/**
+ * A fake host transport, installed on the §4 discovery global so the REAL host-attention
+ * push channel (`hostAttention.ts`) resolves through it. Driving the real channel — rather
+ * than injecting a stub source into `withDeadline` — is the point: the suspension only
+ * matters if the wire, the parse, and the deadline agree, and a stub would prove none of
+ * that.
+ *
+ * Installed ONCE, at module scope, and never swapped. The channel registers its listener
+ * with whatever transport it first resolved and caches `started`, so a per-test transport
+ * would be silently ignored from the second test onward — a fixture that looks like it
+ * works and asserts nothing. `beforeEach` resets the VALUE instead.
+ */
+type HostMsg = Record<string, unknown>;
+const attentionHandlers = new Set<(msg: HostMsg) => void>();
+const polled: string[] = [];
+(globalThis as Record<string, unknown>).__immediatelyRun__ = {
+  transport: {
+    sendMessage: (type: string) => polled.push(type),
+    protocolRequest: () => new Promise<never>(() => {}),
+    onMessage: (handler: (msg: HostMsg) => void) => {
+      attentionHandlers.add(handler);
+      return { dispose: () => attentionHandlers.delete(handler) };
+    },
+  },
+};
+const pushAttention = (attention: HostMsg) =>
+  [...attentionHandlers].forEach((h) => h({ type: 'host-attention', attention }));
+const host = {
+  /** The host raises a prompt of `kind`. */
+  prompt: (kind: string) => pushAttention({ awaiting: true, kind, since: Date.now() }),
+  /** The prompt goes away (dismissed, answered, or cancelled). */
+  clear: () => pushAttention({ awaiting: false, kind: null, since: null }),
+  /** Poll types the SDK sent — proves the channel asked for a snapshot on first read. */
+  polls: () => [...polled],
+};
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  host.clear(); // the channel outlives a test; never inherit the last one's prompt
+});
 afterEach(() => jest.useRealTimers());
 
 describe('the classification (R3-298 step 1)', () => {
@@ -98,10 +139,14 @@ describe('withDeadline — one-shot calls (criteria 1 and 2)', () => {
     await assertion;
   });
 
-  it('does NOT abort an attended call at the unattended deadline (criterion 2)', async () => {
+  it('does NOT abort an attended call at the unattended deadline WHILE THE HOST IS ASKING', async () => {
     // The recorded hazard: a flat deadline aborts a passkey tap or a consent decision.
+    // R3-307 narrowed the protection from "any may-prompt method, always" to "while the
+    // host says a person is actually being asked" — so this test now supplies the signal.
+    // Its counterpart below asserts the other half: no signal, no long wait.
     let settle: (v: string) => void = () => {};
     const p = withDeadline('secrets', 'requestSecret', () => new Promise<string>((r) => (settle = r)));
+    host.prompt('passkey');
     // Far past the unattended bound — a human is still deciding.
     await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS * 5);
     settle('the user finally tapped');
@@ -181,6 +226,127 @@ describe('withDeadline — one-shot calls (criteria 1 and 2)', () => {
     await jest.advanceTimersByTimeAsync(5_000);
     settle('unaffected');
     await expect(p).resolves.toBe('unaffected');
+  });
+});
+
+describe('the host-attention signal makes the attended bound a fact, not a guess (R3-307)', () => {
+  it('reports a fault on the UNATTENDED bound when the grant is already held', async () => {
+    // The correctness gain, half one. Nothing prompts, so nobody is being asked, so a
+    // `spaces:mount` that never answers is a FAULT — and R3-298 made the caller wait ten
+    // minutes to hear it, because the table could not tell this path from a first use.
+    const p = withDeadline('spaces', 'mount', never);
+    const assertion = expect(p).rejects.toMatchObject({
+      code: 'timeout',
+      call: 'spaces:mount',
+      // Still classified attended — the METHOD may prompt. What changed is which of its two
+      // bounds elapsed, and `bound` is how a reader tells those apart.
+      attendance: 'attended',
+      bound: 'idle',
+      timeoutMs: UNATTENDED_TIMEOUT_MS,
+    });
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS + 1);
+    await assertion;
+  });
+
+  it('suspends the SAME call for as long as the first-use consent prompt is up', async () => {
+    // The correctness gain, half two: same scheme, same method, opposite outcome — decided
+    // by the host's live signal rather than by a table that cannot see the difference.
+    let settle: (v: string) => void = () => {};
+    const p = withDeadline('spaces', 'mount', () => new Promise<string>((r) => (settle = r)));
+    host.prompt('consent');
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS * 8);
+    host.clear();
+    settle('the user allowed it');
+    await expect(p).resolves.toBe('the user allowed it');
+  });
+
+  it('restarts the idle bound when the prompt clears — so a post-consent hang is still caught', async () => {
+    const p = withDeadline('spaces', 'mount', never);
+    const assertion = expect(p).rejects.toMatchObject({ bound: 'idle' });
+    host.prompt('consent');
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS * 3); // deciding — no fault
+    host.clear();
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS + 1); // host went quiet — fault
+    await assertion;
+  });
+
+  it('still releases an ABANDONED prompt at the absolute ceiling (criterion 3)', async () => {
+    // The signal may EXTEND a deadline, never remove it. A prompt nobody ever answers must
+    // not pin the caller forever, or R3-307 would have reintroduced the hang R3-298 fixed.
+    const p = withDeadline('spaces', 'mount', never);
+    const assertion = expect(p).rejects.toMatchObject({
+      code: 'timeout',
+      attendance: 'attended',
+      bound: 'ceiling',
+      timeoutMs: ATTENDED_TIMEOUT_MS,
+    });
+    host.prompt('consent'); // …and the user walks away. The prompt stays up forever.
+    await jest.advanceTimersByTimeAsync(ATTENDED_TIMEOUT_MS + 1);
+    await assertion;
+  });
+
+  it('names the passkey in onPending, and re-fires when the prompt appears (criterion 1)', async () => {
+    // "Waiting for your passkey…" instead of a spinner is most of the user's ability to
+    // act — the exact gap on the setup wizard's Test-connection step.
+    const seen: Array<{ awaiting?: { kind: string | null } }> = [];
+    const p = withDeadline('llm', 'chat', never, { onPending: (st) => seen.push(st) });
+    const assertion = expect(p).rejects.toBeInstanceOf(ProtocolTimeoutError);
+
+    await jest.advanceTimersByTimeAsync(5_000);
+    expect(seen).toHaveLength(1);
+    expect(seen[0].awaiting).toBeUndefined(); // nothing on screen yet — a generic wait
+
+    host.prompt('passkey');
+    await jest.advanceTimersByTimeAsync(1);
+    expect(seen).toHaveLength(2);
+    expect(seen[1].awaiting).toEqual({ kind: 'passkey', since: expect.any(Number) });
+
+    host.clear();
+    await jest.advanceTimersByTimeAsync(1);
+    expect(seen[2].awaiting).toBeUndefined(); // tapped — back to a plain wait
+
+    await jest.advanceTimersByTimeAsync(ATTENDED_FIRST_FRAME_MS + NETWORK_TIMEOUT_MS);
+    await assertion;
+  });
+
+  it('polls the host for a snapshot, so a call started mid-prompt is not left guessing', async () => {
+    const p = withDeadline('spaces', 'mount', never);
+    const assertion = expect(p).rejects.toBeInstanceOf(ProtocolTimeoutError);
+    expect(host.polls()).toContain('request-host-attention');
+    await jest.advanceTimersByTimeAsync(ATTENDED_TIMEOUT_MS + 1);
+    await assertion;
+  });
+
+  it('does NOT shorten a bound the signal could never cover', () => {
+    // A task app's interaction and the contribute diff-approval are human-paced, but they
+    // are not HOST prompts — no attention frame is ever pushed for them. Dropping them to
+    // the short bound would abort a person mid-decision with no signal able to save them.
+    for (const scheme of ['task', 'contribute', 'launch', 'dnd'] as const) {
+      expect(boundsFor(scheme, 'anything')).toEqual({
+        idleMs: ATTENDED_TIMEOUT_MS,
+        ceilingMs: ATTENDED_TIMEOUT_MS,
+      });
+    }
+    // The covered schemes DO drop — that is the whole point.
+    expect(boundsFor('spaces', 'mount').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
+    expect(boundsFor('secrets', 'requestSecret').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
+    // …except llm, whose idle case is an upstream model call, not a channel round-trip.
+    expect(boundsFor('llm', 'chat').idleMs).toBe(NETWORK_TIMEOUT_MS);
+    // An unattended call has one bound, not two — nothing to suspend.
+    expect(boundsFor('theme', 'set')).toEqual({
+      idleMs: UNATTENDED_TIMEOUT_MS,
+      ceilingMs: UNATTENDED_TIMEOUT_MS,
+    });
+  });
+
+  it('never lets the signal stretch a bound the CALLER named', async () => {
+    // An explicit `timeoutMs` is the whole bound. Silently extending it past what a caller
+    // asked for would be the same class of surprise this machinery exists to remove.
+    const p = withDeadline('spaces', 'mount', never, { timeoutMs: 1_000 });
+    const assertion = expect(p).rejects.toMatchObject({ code: 'timeout', timeoutMs: 1_000 });
+    host.prompt('consent');
+    await jest.advanceTimersByTimeAsync(1_001);
+    await assertion;
   });
 });
 

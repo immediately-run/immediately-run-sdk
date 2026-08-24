@@ -7,7 +7,7 @@ type Listener = (msg: Record<string, unknown>) => void;
 const listeners: Record<string, Listener[]> = {};
 const sendMessage = jest.fn();
 
-jest.mock('./sandboxUtils', () => ({
+jest.mock('./hostTransport', () => ({
   sendMessage: (...args: unknown[]) => sendMessage(...args),
   addListener: (type: string, h: Listener) => {
     (listeners[type] ||= []).push(h);

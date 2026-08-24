@@ -17,6 +17,19 @@ jest.mock('./sandboxUtils', () => ({
   },
 }));
 
+// R3-307 moved the transport primitives to `hostTransport`, which is what `pushChannel`
+// now reads — so the push-channel legs are mocked THERE while `protocolRequest` stays here.
+jest.mock('./hostTransport', () => ({
+  sendMessage: jest.fn(),
+  addListener: (type: string, h: Listener) => {
+    (listeners[type] ||= []).push(h);
+    return () => {
+      listeners[type] = (listeners[type] || []).filter((x) => x !== h);
+    };
+  },
+}));
+
+
 import {
   requestAddSecret,
   requestSecret,

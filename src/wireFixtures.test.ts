@@ -14,11 +14,11 @@
  * trips two independent things on this side alone — `value.fields` declares it, and
  * `payload.reads` names it — plus the frame's `payload.fields`.
  *
- * `./sandboxUtils` is mocked so host pushes are deterministic, which lets the REAL
+ * `./hostTransport` is mocked so host pushes are deterministic, which lets the REAL
  * `parse` inside each channel run. Mocking the channel itself would prove nothing:
  * `parse` is the code that decides whether the fixture is understood.
  */
-jest.mock('./sandboxUtils', () => {
+jest.mock('./hostTransport', () => {
   const handlers = new Map<string, (msg: Record<string, unknown>) => void>();
   return {
     sendMessage: jest.fn(),
@@ -50,7 +50,7 @@ import { sdkHandshake } from './runtime';
 import { EDITOR_CONTEXT, FS_CHANGE, SDK_HANDSHAKE } from './generated/protocol';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const bus = jest.requireMock('./sandboxUtils') as any as {
+const bus = jest.requireMock('./hostTransport') as any as {
   __push: (type: string, msg: Record<string, unknown>) => void;
 };
 
