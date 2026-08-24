@@ -9,6 +9,15 @@
 // fake send/subscribe — no bundler. `protocolStream`/`contribute` below wire it to
 // the real sandbox messageBus via sandboxUtils.
 import { addListener, sendMessage } from './sandboxUtils';
+import {
+  attendanceOf,
+  attendanceReason,
+  firstFrameTimeoutFor,
+  PENDING_NOTICE_MS,
+  ProtocolTimeoutError,
+  STREAM_IDLE_TIMEOUT_MS,
+  type BoundedCallOptions,
+} from './protocolDeadline';
 
 /** One frame of a host stream: an `event` value, the terminal `done` value, or an `error`. */
 export type StreamFrame =
@@ -75,7 +84,8 @@ export async function* consumeStream<T = unknown, R = unknown>(
   method: string,
   params: unknown[],
   msgId: number = nextMsgId(),
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  opts?: BoundedCallOptions & { idleTimeoutMs?: number }
 ): AsyncGenerator<T, R, void> {
   const queue: StreamFrame[] = [];
   let wake: (() => void) | null = null;
@@ -106,6 +116,69 @@ export async function* consumeStream<T = unknown, R = unknown>(
   };
   if (signal) signal.addEventListener('abort', onAbort);
 
+  // R3-298 — a stream is bounded by SILENCE, not by duration.
+  //
+  // A total-duration deadline would be wrong here: a long generation that is streaming
+  // normally is healthy, and aborting it would be a worse bug than the hang. The hang has a
+  // distinct shape — no frames at all — so that is what is bounded: a time-to-FIRST-FRAME
+  // deadline, then an idle-gap deadline once frames are flowing. Together they fire exactly
+  // on a wedged stream and never on a slow one.
+  //
+  // The scheme's `type` is `protocol-llm`; the classification table is keyed on the bare
+  // scheme, so strip the prefix. The chat stream is classified ATTENDED because its first
+  // frame can sit behind the session's first passkey unseal — the dogfood hang.
+  const scheme = type.startsWith('protocol-') ? type.slice('protocol-'.length) : type;
+  const call = `${scheme}:${method}`;
+  const attendance = attendanceOf(scheme, method);
+  const firstFrameMs = opts?.timeoutMs ?? firstFrameTimeoutFor(scheme, method);
+  const idleMs = opts?.idleTimeoutMs ?? STREAM_IDLE_TIMEOUT_MS;
+  let sawFrame = false;
+  let noticed = false;
+
+  /** Wait for the next frame, bounded. Rejects with a typed timeout rather than parking. */
+  const awaitFrame = async (): Promise<void> => {
+    const budget = sawFrame ? idleMs : firstFrameMs;
+    if (!Number.isFinite(budget)) {
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+      });
+      return;
+    }
+    const startedAt = Date.now();
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    let notice: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        wake = resolve;
+        deadline = setTimeout(
+          () => reject(new ProtocolTimeoutError(call, budget, attendance)),
+          budget,
+        );
+        if (opts?.onPending && !noticed) {
+          notice = setTimeout(() => {
+            noticed = true;
+            try {
+              opts.onPending?.({
+                call,
+                attendance,
+                elapsedMs: Date.now() - startedAt,
+                ...(attendanceReason(scheme, method)
+                  ? { reason: attendanceReason(scheme, method) as string }
+                  : {}),
+              });
+            } catch {
+              /* a caller's render callback must never break the stream it describes */
+            }
+          }, PENDING_NOTICE_MS);
+        }
+      });
+    } finally {
+      if (deadline !== undefined) clearTimeout(deadline);
+      if (notice !== undefined) clearTimeout(notice);
+      wake = null;
+    }
+  };
+
   try {
     if (signal?.aborted) throw new StreamError('aborted', 'stream aborted before start');
     transport.send({ type, method, params, msgId, stream: true });
@@ -113,11 +186,13 @@ export async function* consumeStream<T = unknown, R = unknown>(
     while (true) {
       if (signal?.aborted) throw new StreamError('aborted', 'stream aborted');
       if (queue.length === 0) {
-        await new Promise<void>((resolve) => {
-          wake = resolve;
-        });
+        // A timeout throws out of here into the `finally`, which sends the host a real
+        // cancel frame — so a wedged stream stops generating and BILLING rather than being
+        // merely abandoned by the app. Streams can do this because they own their `msgId`.
+        await awaitFrame();
         continue;
       }
+      sawFrame = true;
       const frame = queue.shift() as StreamFrame;
       if (frame.kind === 'event') {
         yield frame.value as T;
@@ -159,7 +234,16 @@ export function protocolStream<T = unknown, R = unknown>(
   protocolName: string,
   method: string,
   params: unknown[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  opts?: BoundedCallOptions & { idleTimeoutMs?: number }
 ): AsyncGenerator<T, R, void> {
-  return consumeStream<T, R>(bundlerTransport, protocolName, method, params, undefined, signal);
+  return consumeStream<T, R>(
+    bundlerTransport,
+    protocolName,
+    method,
+    params,
+    undefined,
+    signal,
+    opts
+  );
 }
