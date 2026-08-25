@@ -277,7 +277,22 @@ jobs:
           # One definition, used both to RUN the dispatch and to PRINT it in every
           # failure message — so the command an operator is told to run by hand
           # cannot drift from the one CI actually attempted.
-          DISPATCH=(gh workflow run deploy.yml --repo immediately-run/deploy
+          # `--ref main` is load-bearing, not decoration. Without it `gh workflow
+          # run` first RESOLVES the repo's default branch, which is a GraphQL read
+          # of `repository.defaultBranchRef` — a Contents/Metadata read, not an
+          # Actions one. A token scoped to exactly the authority this step needs
+          # (Actions: read+write on immediately-run/deploy, and nothing else) is
+          # therefore refused before the dispatch is even attempted:
+          #
+          #   unable to determine default branch for immediately-run/deploy:
+          #   GraphQL: Resource not accessible by personal access token
+          #   (repository.defaultBranchRef)
+          #
+          # Naming the ref removes the lookup, so the credential can stay as narrow
+          # as the job actually is. Widening the PAT to Contents: read would have
+          # "fixed" it by handing a release job read access to a private repo's
+          # source to save one flag — the wrong direction (value 1).
+          DISPATCH=(gh workflow run deploy.yml --repo immediately-run/deploy --ref main
                     -f sdk_ref=main -f sandpack_ref=main -f sandbox_ref=main
                     -f site_ref=main -f backend_ref=main)
           MANUAL="${DISPATCH[*]}"
@@ -290,8 +305,18 @@ jobs:
           # The newest run BEFORE dispatching. Polling for "a run exists" would
           # match the previous deploy and report success without anything having
           # been queued — the confirmation has to be that the newest id CHANGED.
-          before=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
-                   --limit 1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)
+          #
+          # A FAILED read is a third outcome, not "id 0": swallowing the error into
+          # a baseline of 0 makes every later id look new, so the confirmation
+          # would pass vacuously in exactly the case where it can see least. Track
+          # whether the baseline is known and skip the check honestly when it isn't.
+          if before=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
+                      --limit 1 --json databaseId --jq '.[0].databaseId // "none"' 2>&1); then
+            baseline_known=1
+          else
+            baseline_known=0
+            echo "::warning::Could not read the deploy repo's run list (${before}); the dispatch below cannot be confirmed, only attempted."
+          fi
 
           if ! "${DISPATCH[@]}"; then
             echo "::error::Dispatching the production deploy failed after publishing v${VERSION}. Until a deploy runs, any app pinning ${VERSION} fails closed on the missing integrity entry. Run it by hand: ${MANUAL}"
@@ -305,12 +330,16 @@ jobs:
           # must not fail an otherwise-good release — so an unobserved run is a
           # warning naming the manual command, never a silent pass claiming
           # success.
+          if [ "$baseline_known" = "0" ]; then
+            echo "::warning::Dispatch was accepted for v${VERSION} but could not be confirmed (no baseline). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
+            exit 0
+          fi
           for _ in $(seq 1 12); do
             sleep 5
             after=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
                     --limit 1 --json databaseId,url --jq '.[0]' 2>/dev/null || true)
-            id=$(printf '%s' "${after:-}" | jq -r '.databaseId // 0' 2>/dev/null || echo 0)
-            if [ "${id:-0}" != "0" ] && [ "${id}" != "${before}" ]; then
+            id=$(printf '%s' "${after:-}" | jq -r '.databaseId // "none"' 2>/dev/null || echo none)
+            if [ "${id}" != "none" ] && [ "${id}" != "${before}" ]; then
               echo "::notice::Deploy run: $(printf '%s' "$after" | jq -r '.url')"
               exit 0
             fi
