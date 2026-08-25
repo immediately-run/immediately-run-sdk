@@ -47,11 +47,10 @@ const regenerate = () => {
     // The generator writes relative to its own location, so it needs the script +
     // descriptors, and it creates `<tmp>/src/generated/`.
     cpSync(here, join(tmp, 'scripts', 'codegen-prototype'), { recursive: true });
-    execFileSync(
-      process.execPath,
-      ['generate.mjs', './descriptors.spaces.mjs', '--emit-src'],
-      { cwd: join(tmp, 'scripts', 'codegen-prototype'), stdio: 'pipe' },
-    );
+    execFileSync(process.execPath, ['generate.mjs', './descriptors.spaces.mjs', '--emit-src'], {
+      cwd: join(tmp, 'scripts', 'codegen-prototype'),
+      stdio: 'pipe',
+    });
     return readFileSync(join(tmp, 'src', 'generated', 'spaces.ts'), 'utf8');
   } finally {
     rmSync(tmp, { recursive: true, force: true });
@@ -97,7 +96,13 @@ const selfTest = () => {
   const real = readFileSync(shippedPath, 'utf8');
   const cases = [
     ['a hand-edited line', real.replace('export const listGrants', 'export const listGrantsEdited')],
-    ['a deleted line', real.split('\n').filter((_, i) => i !== 20).join('\n')],
+    [
+      'a deleted line',
+      real
+        .split('\n')
+        .filter((_, i) => i !== 20)
+        .join('\n'),
+    ],
     ['an appended line', real + '\nexport const sneaked = 1;\n'],
   ];
   let ok = 0;

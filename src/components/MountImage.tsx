@@ -37,15 +37,7 @@ export interface MountImageProps extends Omit<ImgHTMLAttributes<HTMLImageElement
  * />
  * ```
  */
-export function MountImage({
-  mount,
-  relPath,
-  type,
-  placeholder,
-  fallback,
-  alt = '',
-  ...imgProps
-}: MountImageProps) {
+export function MountImage({ mount, relPath, type, placeholder, fallback, alt = '', ...imgProps }: MountImageProps) {
   const { url, loading, error } = useObjectUrl(mount, relPath, type ? { type } : undefined);
   if (loading) return <>{placeholder ?? null}</>;
   if (error || !url) return <>{fallback ?? null}</>;

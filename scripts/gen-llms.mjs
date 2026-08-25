@@ -45,20 +45,40 @@ const summary = (c) => {
   const parts = c.comment?.summary ?? c.signatures?.find((s) => s.comment)?.comment?.summary;
   if (!parts) return '';
   const text = parts.map((p) => p.text ?? '').join('');
-  return text.replace(/\s+/g, ' ').split(/(?<=[.!?])\s/)[0].trim();
+  return text
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s/)[0]
+    .trim();
 };
 
 // Module = repo-relative source path without extension (e.g. `auth`, `components/Routes`).
-const moduleOf = (c) => (c.sources?.[0]?.fileName ?? '')
-  .replace(/^src\//, '')
-  .replace(/\.tsx?$/, '');
+const moduleOf = (c) => (c.sources?.[0]?.fileName ?? '').replace(/^src\//, '').replace(/\.tsx?$/, '');
 
 // Common modules first (the ones an app reaches for), the rest alphabetical.
 const PRIORITY = [
-  'boot', 'hooks', 'routing', 'components/Routes', 'components/Include',
-  'components/MDXComponents', 'MDXProvider', 'auth', 'mounts', 'tasks', 'catalog',
-  'theme', 'region', 'formFactor', 'editor', 'secrets', 'llm', 'netFetch',
-  'contribute', 'dnd', 'onFsChange', 'diagnostics', 'ready',
+  'boot',
+  'hooks',
+  'routing',
+  'components/Routes',
+  'components/Include',
+  'components/MDXComponents',
+  'MDXProvider',
+  'auth',
+  'mounts',
+  'tasks',
+  'catalog',
+  'theme',
+  'region',
+  'formFactor',
+  'editor',
+  'secrets',
+  'llm',
+  'netFetch',
+  'contribute',
+  'dnd',
+  'onFsChange',
+  'diagnostics',
+  'ready',
 ];
 const moduleRank = (m) => {
   const i = PRIORITY.indexOf(m);
@@ -73,9 +93,7 @@ for (const c of api.children ?? []) {
   groups.get(m).push(c);
 }
 
-const modules = [...groups.keys()].sort(
-  (a, b) => moduleRank(a) - moduleRank(b) || a.localeCompare(b),
-);
+const modules = [...groups.keys()].sort((a, b) => moduleRank(a) - moduleRank(b) || a.localeCompare(b));
 
 const lines = [];
 lines.push(`# ${pkg.name}`);
@@ -84,18 +102,22 @@ lines.push(`> ${pkg.description} (v${pkg.version})`);
 lines.push('');
 lines.push(
   'Runtime SDK imported by code running inside an immediately.run sandboxed iframe. ' +
-  'Every export below is importable from the package root `@immediately-run/sdk` ' +
-  'or from its per-module subpath shown in the heading (e.g. ' +
-  '`@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies ' +
-  'the host provides. All platform interaction goes through this SDK.',
+    'Every export below is importable from the package root `@immediately-run/sdk` ' +
+    'or from its per-module subpath shown in the heading (e.g. ' +
+    '`@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies ' +
+    'the host provides. All platform interaction goes through this SDK.',
 );
 lines.push('');
 lines.push('## Resources');
 lines.push('');
 lines.push(`- [README & guide](${SITE}/): narrative docs and the design rules.`);
-lines.push(`- [Full typed API (machine-readable JSON)](${SITE}/api.json): every symbol with exact signatures, parameters, and types — parse this when you need more than the one-liners below.`);
+lines.push(
+  `- [Full typed API (machine-readable JSON)](${SITE}/api.json): every symbol with exact signatures, parameters, and types — parse this when you need more than the one-liners below.`,
+);
 lines.push(`- [API reference (HTML)](${SITE}/modules.html): the human-browsable TypeDoc.`);
-lines.push(`- npm: \`npm install ${pkg.name}\` — the installed package ships \`.d.ts\` with the same JSDoc, readable inline by your tools.`);
+lines.push(
+  `- npm: \`npm install ${pkg.name}\` — the installed package ships \`.d.ts\` with the same JSDoc, readable inline by your tools.`,
+);
 lines.push('');
 
 for (const m of modules) {

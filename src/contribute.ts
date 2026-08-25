@@ -70,8 +70,6 @@ export interface ContributeOptions {
  * Throws a `StreamError` (`.code`) if the host rejects the request — notably
  * `forbidden` when a `contribute:any` app asks for `mode: 'direct'` (T11).
  */
-export function contribute(
-  opts: ContributeOptions
-): AsyncGenerator<ContributionEvent, ContributionResult, void> {
+export function contribute(opts: ContributeOptions): AsyncGenerator<ContributionEvent, ContributionResult, void> {
   return protocolStream<ContributionEvent, ContributionResult>(PROTOCOL_CONTRIBUTE, 'run', [opts]);
 }

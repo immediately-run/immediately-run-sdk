@@ -1,7 +1,7 @@
-import { APP_ROOT, underAppRoot } from "@immediately-run/platform-constants";
+import { APP_ROOT, underAppRoot } from '@immediately-run/platform-constants';
 
-import { joinPaths } from "./pathUtils";
-import { NavigationState, PathState } from "./TinkerableContext";
+import { joinPaths } from './pathUtils';
+import { NavigationState, PathState } from './TinkerableContext';
 
 export const FILES_PREFIX = '/files';
 
@@ -36,13 +36,13 @@ export { APP_ROOT, underAppRoot };
  * `<a>`. Clicking it performed a real navigation out of the sandboxed frame instead of
  * routing: the app appeared to "reload" on an ordinary internal link.
  */
-export const getOuterHostname = (outerHref:string) => {
+export const getOuterHostname = (outerHref: string) => {
   const url = new URL(outerHref);
   return `${url.protocol}//${url.host}`;
-}
+};
 
-export const getSearchParams = (search?: string): Record<string, string> => Object.fromEntries(
-  [...(new URLSearchParams(search ?? window.location.search).entries())]);
+export const getSearchParams = (search?: string): Record<string, string> =>
+  Object.fromEntries([...new URLSearchParams(search ?? window.location.search).entries()]);
 
 /**
  * Split a link target into its path part and its `#fragment` (the `#` dropped),
@@ -57,21 +57,19 @@ export const splitHash = (target: string): [string, string] => {
   return i === -1 ? [target, ''] : [target.slice(0, i), target.slice(i + 1)];
 };
 
-
 export const parseTarget = (target: string, navigation: NavigationState): NavigationState => {
   const newNavigation = { ...navigation };
-  let [prehash, hash] = target.split("#")
+  let [prehash, hash] = target.split('#');
   if (prehash) {
-    let [path, search] = prehash.split("?")
+    let [path, search] = prehash.split('?');
     if (path) {
-      newNavigation.sandboxPath = path
+      newNavigation.sandboxPath = path;
     }
     newNavigation.search = search ? search : '';
   }
   newNavigation.hash = hash ? hash : '';
-  return newNavigation
-}
-
+  return newNavigation;
+};
 
 export const maybeParseUrl = (str: string): URL | null => {
   try {
@@ -79,7 +77,7 @@ export const maybeParseUrl = (str: string): URL | null => {
   } catch (_) {
     return null;
   }
-}
+};
 
 export const isAbsolutePath = (sandboxPath: string) => sandboxPath.startsWith('/');
 
@@ -93,62 +91,58 @@ export const isAbsolutePath = (sandboxPath: string) => sandboxPath.startsWith('/
  * in-app link was classified EXTERNAL, and clicking one navigated the sandboxed frame away
  * instead of routing. A page with a fragment quietly broke its own links.
  */
-export const repositoryPrefixURL = (outerHref:string, navigationState: NavigationState) => constructUrl(outerHref, {
-      ...navigationState,
-      sandboxPath: '',
-      hash: '',
-      search: '',
-    });
+export const repositoryPrefixURL = (outerHref: string, navigationState: NavigationState) =>
+  constructUrl(outerHref, {
+    ...navigationState,
+    sandboxPath: '',
+    hash: '',
+    search: '',
+  });
 
-export const constructOuterUrl = (previousOuterHref:string, sandboxTarget:string, navigationState: NavigationState, addFilesPrefix=true):string => {
+export const constructOuterUrl = (
+  previousOuterHref: string,
+  sandboxTarget: string,
+  navigationState: NavigationState,
+  addFilesPrefix = true,
+): string => {
   if (isAbsolutePath(sandboxTarget)) {
     // Split a trailing `#fragment` off before the target is folded into the
     // sandboxPath, and carry it in `hash` instead — a fragment addresses a section,
     // not a file, so it must not leak into the path (MARKDOWN_SYNTAX_SPEC §13.5). An
     // absolute target with no fragment clears any stale hash from the prior state.
     const [pathPart, hash] = splitHash(sandboxTarget);
-    return constructUrl(
-      previousOuterHref,
-      {
-        ...navigationState,
-        sandboxPath: addFilesPrefix ? joinPaths(FILES_PREFIX, pathPart) : pathPart,
-        hash,
-      })
+    return constructUrl(previousOuterHref, {
+      ...navigationState,
+      sandboxPath: addFilesPrefix ? joinPaths(FILES_PREFIX, pathPart) : pathPart,
+      hash,
+    });
   }
-  return (
-    new URL(
-      sandboxTarget,
-      constructUrl(
-        previousOuterHref,
-        navigationState
-      )
-    )
-  ).toString();
-}
+  return new URL(sandboxTarget, constructUrl(previousOuterHref, navigationState)).toString();
+};
 
-export const isInternalHref = (outerHref:string, target: string, navigationState: NavigationState) => {
+export const isInternalHref = (outerHref: string, target: string, navigationState: NavigationState) => {
   const parsedUrl = maybeParseUrl(target);
   if (parsedUrl) {
     return target.startsWith(repositoryPrefixURL(outerHref, navigationState));
   }
   // if target is not a valid URL, then assume it's relative.
   return true;
-}
+};
 
 export type PathSegment = {
-  name: string,
-  pattern: string,
-  transform?: (pathSegment: string) => string,
+  name: string;
+  pattern: string;
+  transform?: (pathSegment: string) => string;
   // When true, the leading slash that delimits this segment is optional, so the
   // whole `/segment` group can be absent. Used for the trailing sandboxPath:
   // an outer href of `/mode/provider/namespace/repository/ref` (no trailing
   // slash, no sub-path) must still parse, otherwise the regex matches nothing
   // and every segment comes back empty.
-  optionalLeadingSlash?: boolean
+  optionalLeadingSlash?: boolean;
   // Inverse of `transform`, applied when BUILDING a url (`constructUrl`). Without it a
   // decoded ref would be written back raw and split into two segments again.
-  encode?: (value: string) => string
-}
+  encode?: (value: string) => string;
+};
 
 // One URL path segment is "anything but a slash". The previous patterns instead
 // ENUMERATED the allowed characters (`[a-zA-Z0-9-_]+`), which silently rejected three
@@ -183,19 +177,16 @@ const PATH_SEGMENTS: PathSegment[] = [
   // on the way in and re-encode on the way out (`encode`), so app code always sees the
   // real ref (`claude/x`) and never the wire form.
   { name: 'ref', pattern: '[^/]+', transform: decodeSegment, encode: encodeURIComponent },
-  { name: 'sandboxPath', pattern: '.*', transform: s => `/${s}`, optionalLeadingSlash: true }
+  { name: 'sandboxPath', pattern: '.*', transform: (s) => `/${s}`, optionalLeadingSlash: true },
 ];
 
 const OUTER_HREF_REGEXP = new RegExp(
   '^' +
-  PATH_SEGMENTS.map(({ name, pattern, optionalLeadingSlash }) =>
-    optionalLeadingSlash
-      ? `(?:\/(?<${name}>${pattern}))?`
-      : `\/(?<${name}>${pattern})`
-  ).join('') +
-  "$"
+    PATH_SEGMENTS.map(({ name, pattern, optionalLeadingSlash }) =>
+      optionalLeadingSlash ? `(?:\/(?<${name}>${pattern}))?` : `\/(?<${name}>${pattern})`,
+    ).join('') +
+    '$',
 );
-
 
 export const parsePath = (pathname: string): PathState => {
   const matchResults = pathname.match(OUTER_HREF_REGEXP)?.groups ?? {};
@@ -213,7 +204,7 @@ export const parsePath = (pathname: string): PathState => {
     }
     return acc;
   }, {}) as PathState;
-}
+};
 
 export const parseHref = (href: string): NavigationState => {
   const parsedUrl = new URL(href);
@@ -222,12 +213,12 @@ export const parseHref = (href: string): NavigationState => {
     ...pathnameState,
     search: parsedUrl.search.substring(1),
     hash: parsedUrl.hash.substring(1),
-  } as NavigationState
-}
+  } as NavigationState;
+};
 
-const stripSlashPrefix = (s: string): string => s.startsWith('/') ? s.substring(1) : s;
+const stripSlashPrefix = (s: string): string => (s.startsWith('/') ? s.substring(1) : s);
 
-export const constructUrl = (outerHref:string, navigationState: NavigationState): string => {
+export const constructUrl = (outerHref: string, navigationState: NavigationState): string => {
   const path = PATH_SEGMENTS.map(({ name, encode }) => {
     const value = stripSlashPrefix(navigationState[name] ?? '');
     // Encode AFTER stripping the delimiter slash: `encode` is per-segment, and the
@@ -235,12 +226,12 @@ export const constructUrl = (outerHref:string, navigationState: NavigationState)
     return encode ? encode(value) : value;
   }).join('/');
   const host = getOuterHostname(outerHref);
-  let url = `${host}/${path}`
+  let url = `${host}/${path}`;
   if (navigationState.search) {
-    url += '?' + navigationState.search
+    url += '?' + navigationState.search;
   }
   if (navigationState.hash) {
-    url += '#' + navigationState.hash
+    url += '#' + navigationState.hash;
   }
   return url;
-}
+};

@@ -32,13 +32,7 @@ export const Route = (_props: RouteProps): null => null;
  * rendered route see this match. Use instead of (or nested within) a `boot`-time
  * `routingSpec`.
  */
-export const Routes = ({
-  children,
-  fallback = null,
-}: {
-  children?: ReactNode;
-  fallback?: ReactNode;
-}) => {
+export const Routes = ({ children, fallback = null }: { children?: ReactNode; fallback?: ReactNode }) => {
   const context = use(TinkerableContext);
   const { sandboxPath } = context.navigationState;
 
@@ -54,11 +48,7 @@ export const Routes = ({
         ...context,
         navigationState: { ...context.navigationState, routingRule, pathParameters: params },
       };
-      return (
-        <TinkerableContext value={scoped}>
-          {renderRoute(routingRule, params)}
-        </TinkerableContext>
-      );
+      return <TinkerableContext value={scoped}>{renderRoute(routingRule, params)}</TinkerableContext>;
     }
   }
 

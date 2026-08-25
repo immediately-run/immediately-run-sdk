@@ -40,9 +40,7 @@ import type { ProtocolSnapshot, WireShape } from '@immediately-run/sandbox-proto
 // `resolveJsonModule` (it would change what the published build emits), and the
 // snapshot is data the test reads, not a module the SDK ships.
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const snapshot = JSON.parse(
-  readFileSync(require.resolve('@immediately-run/sandbox-protocol/snapshots/sdk'), 'utf8'),
-);
+const snapshot = JSON.parse(readFileSync(require.resolve('@immediately-run/sandbox-protocol/snapshots/sdk'), 'utf8'));
 
 import { getFsChange, onFsChange } from './onFsChange';
 import { getEditorContext, onEditorContextChange } from './editorContext';
@@ -92,9 +90,7 @@ describe('the shared wire fixture conforms to the SDK’s declarations', () => {
   });
 
   it('the fixture names are spelled by this side’s own constants', () => {
-    expect(Object.keys(WIRE_FIXTURES).sort()).toEqual(
-      [EDITOR_CONTEXT, FS_CHANGE, SDK_HANDSHAKE].sort(),
-    );
+    expect(Object.keys(WIRE_FIXTURES).sort()).toEqual([EDITOR_CONTEXT, FS_CHANGE, SDK_HANDSHAKE].sort());
   });
 });
 

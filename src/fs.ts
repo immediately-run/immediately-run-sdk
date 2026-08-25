@@ -36,8 +36,7 @@ export interface SandboxFsPort {
   readFile?: NodeFsPromises['readFile'];
 }
 
-const hasFs = (fs: any): boolean =>
-  typeof fs?.promises?.readFile === 'function' || typeof fs?.readFile === 'function';
+const hasFs = (fs: any): boolean => typeof fs?.promises?.readFile === 'function' || typeof fs?.readFile === 'function';
 
 /**
  * The resolved sandbox ZenFS, or `null` when unavailable. The ONE home for the
@@ -189,7 +188,12 @@ const resolveUnder = (root: string, relPath: string): string => {
 // the whole-mount `mode`. A CLIENT-SIDE hint mirroring the host rule — EROFS stays
 // authoritative (the host re-checks live policy on every write).
 const writableAt = (mount: SandboxMount, relPath: string): boolean => {
-  const path = '/' + relPath.split('/').filter((s) => s && s !== '.').join('/');
+  const path =
+    '/' +
+    relPath
+      .split('/')
+      .filter((s) => s && s !== '.')
+      .join('/');
   const rules: MountRule[] | undefined = mount.rules;
   if (rules && rules.length) {
     let best: MountRule | undefined;
@@ -222,10 +226,7 @@ export interface MountFs {
    *  and a `revoke()` you MUST call when done (typically on unmount) or the URL
    *  leaks. Prefer the `useObjectUrl` hook / `MountImage` component, which revoke
    *  for you; reach for this directly only outside React. */
-  readObjectUrl(
-    relPath: string,
-    opts?: { type?: string },
-  ): Promise<{ url: string; revoke: () => void }>;
+  readObjectUrl(relPath: string, opts?: { type?: string }): Promise<{ url: string; revoke: () => void }>;
   /** Write text or bytes, creating or truncating the file. Throws `read-only` on a `ro` mount. */
   writeFile(relPath: string, data: string | Uint8Array): Promise<void>;
   /** List a directory (the mount root when `relPath` is omitted). */
@@ -259,8 +260,7 @@ export interface MountFs {
   onChange(cb: (changedRelPaths: string[]) => void): () => void;
 }
 
-const promisesOf = (port: SandboxFsPort): NodeFsPromises =>
-  (port.promises ?? (port as unknown as NodeFsPromises));
+const promisesOf = (port: SandboxFsPort): NodeFsPromises => port.promises ?? (port as unknown as NodeFsPromises);
 
 /**
  * Open a typed, mount-anchored filesystem view (SDK_FS_SURFACE_SPEC §2.1). Pure-client:
@@ -297,8 +297,7 @@ export function openFs(mount: SandboxMount): MountFs {
       const abs = resolveUnder(root, relPath);
       try {
         const data = await p.readFile(abs);
-        const bytes =
-          typeof data === 'string' ? encoder().encode(data) : (data as Uint8Array);
+        const bytes = typeof data === 'string' ? encoder().encode(data) : (data as Uint8Array);
         return encoding === 'utf8' ? decoder().decode(bytes) : bytes;
       } catch (e) {
         throw mapError(e);

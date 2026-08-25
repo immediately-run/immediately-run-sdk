@@ -11,7 +11,7 @@
 export const types = {
   // ── contribute ──────────────────────────────────────────────────────────────
   ContributeMode: {
-    description: "The save strategy. `direct` requires the first-party `contribute:direct` capability.",
+    description: 'The save strategy. `direct` requires the first-party `contribute:direct` capability.',
     schema: { type: 'string', enum: ['pr', 'direct'] },
   },
   ContributionResult: {
@@ -53,23 +53,31 @@ export const types = {
   },
 
   // ── llm:chat ────────────────────────────────────────────────────────────────
-  ChatRole: { description: 'Who authored a message.', schema: { type: 'string', enum: ['system', 'user', 'assistant', 'tool'] } },
+  ChatRole: {
+    description: 'Who authored a message.',
+    schema: { type: 'string', enum: ['system', 'user', 'assistant', 'tool'] },
+  },
   ContentPart: {
     description: 'A part of a message.',
     schema: {
-      oneOf: [
-        obj({ type: konst('text'), text: str() }),
-        obj({ type: konst('image'), mimeType: str(), data: str() }),
-      ],
+      oneOf: [obj({ type: konst('text'), text: str() }), obj({ type: konst('image'), mimeType: str(), data: str() })],
     },
   },
   ChatMessage: {
     description: 'One message in a ChatRequest.',
-    schema: { type: 'object', required: ['role', 'content'], properties: { role: ref('ChatRole'), content: arr(ref('ContentPart')) } },
+    schema: {
+      type: 'object',
+      required: ['role', 'content'],
+      properties: { role: ref('ChatRole'), content: arr(ref('ContentPart')) },
+    },
   },
   ToolDef: {
     description: 'A tool the model may call — honored only when `features.tools`.',
-    schema: { type: 'object', required: ['name', 'inputSchema'], properties: { name: str(), description: opt(str()), inputSchema: { type: 'record' } } },
+    schema: {
+      type: 'object',
+      required: ['name', 'inputSchema'],
+      properties: { name: str(), description: opt(str()), inputSchema: { type: 'record' } },
+    },
   },
   ChatDelta: {
     description: 'One streamed chunk.',
@@ -83,7 +91,11 @@ export const types = {
   },
   ChatResult: {
     description: 'The terminal value of the chat stream.',
-    schema: { type: 'object', required: ['stopReason'], properties: { stopReason: { type: 'string', enum: ['end', 'length', 'tool', 'filtered'] } } },
+    schema: {
+      type: 'object',
+      required: ['stopReason'],
+      properties: { stopReason: { type: 'string', enum: ['end', 'length', 'tool', 'filtered'] } },
+    },
   },
 };
 
@@ -143,15 +155,33 @@ export const family = {
 
 // ── tiny schema builders (keep the descriptor readable) ───────────────────────
 function obj(properties) {
-  const required = Object.entries(properties).filter(([, v]) => !v.__opt).map(([k]) => k);
+  const required = Object.entries(properties)
+    .filter(([, v]) => !v.__opt)
+    .map(([k]) => k);
   const props = Object.fromEntries(Object.entries(properties).map(([k, v]) => [k, strip(v)]));
   return { type: 'object', required, properties: props };
 }
-function konst(v) { return { type: 'string', const: v }; }
-function str() { return { type: 'string' }; }
-function num() { return { type: 'number' }; }
-function bool() { return { type: 'boolean' }; }
-function arr(items) { return { type: 'array', items }; }
-function ref(name) { return { $ref: name }; }
-function opt(s) { return { ...s, __opt: true }; }
-function strip({ __opt, ...rest }) { return rest; }
+function konst(v) {
+  return { type: 'string', const: v };
+}
+function str() {
+  return { type: 'string' };
+}
+function num() {
+  return { type: 'number' };
+}
+function bool() {
+  return { type: 'boolean' };
+}
+function arr(items) {
+  return { type: 'array', items };
+}
+function ref(name) {
+  return { $ref: name };
+}
+function opt(s) {
+  return { ...s, __opt: true };
+}
+function strip({ __opt, ...rest }) {
+  return rest;
+}

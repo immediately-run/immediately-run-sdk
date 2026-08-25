@@ -75,9 +75,7 @@ export interface MetadataSource {
  * Without it (npm-fetched): return no `event`, so the caller's `addListener` falls
  * back to the §4 transport's `onMessage`, and `enable` is a no-op.
  */
-export const resolveMetadataSource = (
-  injected: InjectedMetadataEmitter | null,
-): MetadataSource =>
+export const resolveMetadataSource = (injected: InjectedMetadataEmitter | null): MetadataSource =>
   injected
     ? { event: injected.onMetadataChange, enable: () => injected.enable() }
     : { event: undefined, enable: () => {} };

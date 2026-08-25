@@ -69,16 +69,11 @@ export interface SecretError extends Error {
   code: 'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'invalid-params' | 'unknown';
 }
 
-type SecretResult =
-  | { ok: true; data: unknown }
-  | { ok: false; code: string; message: string };
+type SecretResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
 // Issue a `protocol-secrets` request, unwrapping the host's {ok,data} envelope
 // and throwing a typed SecretError on failure (mirrors mounts.ts `request`).
-const request = async <T = unknown>(
-  method: string,
-  query: object = {},
-): Promise<T> => {
+const request = async <T = unknown>(method: string, query: object = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SECRETS], method, [query])) as SecretResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'secret request failed') as SecretError;
@@ -95,8 +90,7 @@ const request = async <T = unknown>(
  * {@link SecretError} (`cancelled` if the user dismisses the modal). Requires the
  * `secrets:add` capability.
  */
-export const requestAddSecret = (hints: SecretHints = {}): Promise<SecretView> =>
-  request<SecretView>('add', hints);
+export const requestAddSecret = (hints: SecretHints = {}): Promise<SecretView> => request<SecretView>('add', hints);
 
 /**
  * Ask the user to bind one of their stored secrets to this app (SECRETS_SPEC §5,
@@ -109,8 +103,7 @@ export const requestAddSecret = (hints: SecretHints = {}): Promise<SecretView> =
  * nonexistent secret are indistinguishable — all reject with a {@link SecretError}
  * `cancelled`; the app never sees the list it chose from.
  */
-export const requestSecret = (query: SecretQuery = {}): Promise<SecretGrant> =>
-  request<SecretGrant>('request', query);
+export const requestSecret = (query: SecretQuery = {}): Promise<SecretGrant> => request<SecretGrant>('request', query);
 
 /**
  * Delete a stored secret and tombstone every dependent per-app use grant
@@ -136,8 +129,7 @@ export const getSecrets = (): SecretView[] => channel.get();
 
 /** Subscribe to secret-metadata changes (added/revoked). Invoked immediately with
  *  the current list, then on every change. Returns an unsubscribe fn. */
-export const onSecretsChange = (listener: (secrets: SecretView[]) => void): (() => void) =>
-  channel.onChange(listener);
+export const onSecretsChange = (listener: (secrets: SecretView[]) => void): (() => void) => channel.onChange(listener);
 
 /** React hook returning the user's secret metadata (never values), re-rendering
  *  on change. For the Settings app (SECRETS_SPEC §7). */

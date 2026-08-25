@@ -31,10 +31,7 @@ export interface StreamTransport {
   // by the same `msgId`.
   send: (msg: { type: string; method: string; params: unknown[]; msgId: number; stream: true }) => void;
   // Subscribe to inbound frames for `type`; returns an unsubscribe.
-  subscribe: (
-    type: string,
-    handler: (msg: { msgId?: number; stream?: StreamFrame }) => void
-  ) => () => void;
+  subscribe: (type: string, handler: (msg: { msgId?: number; stream?: StreamFrame }) => void) => () => void;
   // Tell the host to STOP the stream early — abort the in-flight generation (and,
   // for `llm:chat`, the upstream provider fetch so it stops BILLING). Sent when the
   // consumer bails before a terminal frame: an early `break`/`return` out of the
@@ -85,7 +82,7 @@ export async function* consumeStream<T = unknown, R = unknown>(
   params: unknown[],
   msgId: number = nextMsgId(),
   signal?: AbortSignal,
-  opts?: BoundedCallOptions & { idleTimeoutMs?: number }
+  opts?: BoundedCallOptions & { idleTimeoutMs?: number },
 ): AsyncGenerator<T, R, void> {
   const queue: StreamFrame[] = [];
   let wake: (() => void) | null = null;
@@ -150,10 +147,7 @@ export async function* consumeStream<T = unknown, R = unknown>(
     try {
       await new Promise<void>((resolve, reject) => {
         wake = resolve;
-        deadline = setTimeout(
-          () => reject(new ProtocolTimeoutError(call, budget, attendance)),
-          budget,
-        );
+        deadline = setTimeout(() => reject(new ProtocolTimeoutError(call, budget, attendance)), budget);
         if (opts?.onPending && !noticed) {
           notice = setTimeout(() => {
             noticed = true;
@@ -162,9 +156,7 @@ export async function* consumeStream<T = unknown, R = unknown>(
                 call,
                 attendance,
                 elapsedMs: Date.now() - startedAt,
-                ...(attendanceReason(scheme, method)
-                  ? { reason: attendanceReason(scheme, method) as string }
-                  : {}),
+                ...(attendanceReason(scheme, method) ? { reason: attendanceReason(scheme, method) as string } : {}),
               });
             } catch {
               /* a caller's render callback must never break the stream it describes */
@@ -218,8 +210,7 @@ export async function* consumeStream<T = unknown, R = unknown>(
 // host dispatcher routes to the in-flight generator's AbortController.
 const bundlerTransport: StreamTransport = {
   send: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
-  subscribe: (type, handler) =>
-    addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
+  subscribe: (type, handler) => addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
   cancel: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
 };
 
@@ -235,15 +226,7 @@ export function protocolStream<T = unknown, R = unknown>(
   method: string,
   params: unknown[],
   signal?: AbortSignal,
-  opts?: BoundedCallOptions & { idleTimeoutMs?: number }
+  opts?: BoundedCallOptions & { idleTimeoutMs?: number },
 ): AsyncGenerator<T, R, void> {
-  return consumeStream<T, R>(
-    bundlerTransport,
-    protocolName,
-    method,
-    params,
-    undefined,
-    signal,
-    opts
-  );
+  return consumeStream<T, R>(bundlerTransport, protocolName, method, params, undefined, signal, opts);
 }

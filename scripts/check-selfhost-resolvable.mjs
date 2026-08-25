@@ -60,8 +60,7 @@ const ORIGIN = 'https://immediately-run.github.io/immediately-run-sdk';
 export const APP_PROVIDED = ['react', 'react-dom', 'react-error-boundary'];
 
 const isRelative = (spec) => spec.startsWith('./') || spec.startsWith('../') || spec.startsWith('/');
-const isAppProvided = (spec) =>
-  APP_PROVIDED.some((p) => spec === p || spec.startsWith(`${p}/`));
+const isAppProvided = (spec) => APP_PROVIDED.some((p) => spec === p || spec.startsWith(`${p}/`));
 
 /** Every bare (non-relative) specifier in one emitted file. */
 export const bareSpecifiers = (source) => {
@@ -122,7 +121,8 @@ export const exportedNames = (source) => {
   }
   for (const m of source.matchAll(
     /(?:^|[\s;}])export\s+(?:declare\s+)?(?:const|let|var|function\*?|class)\s+([A-Za-z_$][\w$]*)/g,
-  )) names.add(m[1]);
+  ))
+    names.add(m[1]);
   if (/(?:^|[\s;}])export\s+default\b/.test(source)) names.add('default');
   return names;
 };
@@ -130,12 +130,15 @@ export const exportedNames = (source) => {
 /** The named imports a file takes from RELATIVE specifiers: [{ spec, names }]. */
 export const relativeNamedImports = (source) => {
   const out = [];
-  for (const m of source.matchAll(
-    /(?:^|[\s;}])import\s*\{([^}]*)\}\s*from\s*["'](\.[^"']*)["']/g,
-  )) {
+  for (const m of source.matchAll(/(?:^|[\s;}])import\s*\{([^}]*)\}\s*from\s*["'](\.[^"']*)["']/g)) {
     const names = m[1]
       .split(',')
-      .map((p) => p.trim().split(/\s+as\s+/)[0].trim())
+      .map((p) =>
+        p
+          .trim()
+          .split(/\s+as\s+/)[0]
+          .trim(),
+      )
       .filter(Boolean);
     out.push({ spec: m[2], names });
   }

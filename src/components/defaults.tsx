@@ -28,4 +28,6 @@ export const defaultLoadingComponent = () => (
   </div>
 );
 
-export const defaultErrorComponent:ErrorBoundaryPropsWithRender["fallbackRender"] = ({error}) => <>ERROR {String(error)}</>;
+export const defaultErrorComponent: ErrorBoundaryPropsWithRender['fallbackRender'] = ({ error }) => (
+  <>ERROR {String(error)}</>
+);

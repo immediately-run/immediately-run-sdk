@@ -1,6 +1,6 @@
-export * from "./MDXProvider";
-export * from "./routing";
-export * from "./boot";
+export * from './MDXProvider';
+export * from './routing';
+export * from './boot';
 export * from './components/Include';
 // Only the component is public. `stripFrontmatter`/`appMountRelative` are module-level
 // exports so they can be unit-tested directly, NOT public API — the SDK's surface is
@@ -12,7 +12,7 @@ export * from './components/MDXComponents';
 export * from './linkSpace';
 export * from './components/MountImage';
 export * from './components/Routes';
-export * from './hooks'
+export * from './hooks';
 // R3-276: the supported way for a viewer app to provide its own metadata store,
 // replacing a wholesale re-provision of `TinkerableContext` in app code.
 export * from './metadataSource';

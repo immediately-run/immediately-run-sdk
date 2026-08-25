@@ -11,7 +11,7 @@
 // `getReadyState` expose the report state in the same poll+subscribe shape as
 // `auth` / `mounts`.
 
-import { sendMessage as defaultSend } from "./sandboxUtils";
+import { sendMessage as defaultSend } from './sandboxUtils';
 
 /** The app's `reportReady()` state, mirrored by {@link onReady}/{@link getReadyState}. */
 export interface ReadyState {
@@ -27,9 +27,7 @@ interface ReadyDeps {
 }
 
 const realNow = (): number =>
-  typeof performance !== "undefined" && typeof performance.now === "function"
-    ? performance.now()
-    : Date.now();
+  typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
 
 const defaultDeps: ReadyDeps = { send: defaultSend, now: realNow };
 
@@ -54,7 +52,7 @@ export function reportReady(): void {
   if (state.reported) return;
   state = { reported: true, reportedAt: deps.now() };
   try {
-    deps.send("ir-report-ready", { at: state.reportedAt });
+    deps.send('ir-report-ready', { at: state.reportedAt });
   } catch {
     /* transport not ready — the runtime still marks interactive at root commit */
   }

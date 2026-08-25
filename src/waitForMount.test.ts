@@ -57,9 +57,7 @@ describe('awaitMatchingMount (the waitForMount core)', () => {
 
     // Before the fix this rejected with
     // "ReferenceError: Cannot access 'unsubscribe' before initialization".
-    await expect(
-      awaitMatchingMount(subscribe, { id: settingsMount.id }),
-    ).resolves.toBe(settingsMount);
+    await expect(awaitMatchingMount(subscribe, { id: settingsMount.id })).resolves.toBe(settingsMount);
   });
 
   it('unsubscribes after an initial-replay resolve (deferred, not during the replay)', async () => {
@@ -82,9 +80,7 @@ describe('awaitMatchingMount (the waitForMount core)', () => {
     const s = subscribeWith([]);
     const pending = awaitMatchingMount(s.subscribe, { id: 'never-arrives' });
     const sentinel = Symbol('still-pending');
-    await expect(
-      Promise.race([pending, Promise.resolve(sentinel)]),
-    ).resolves.toBe(sentinel);
+    await expect(Promise.race([pending, Promise.resolve(sentinel)])).resolves.toBe(sentinel);
   });
 
   it('rejects with code "timeout" once bounded — so a caller can report it', async () => {

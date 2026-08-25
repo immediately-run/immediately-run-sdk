@@ -11,10 +11,7 @@
 export { SafeContent } from './SafeContent';
 export type { SafeContentProps } from './SafeContent';
 export { renderMdast } from './renderMdast';
-export type {
-  RenderMdastOptions,
-  SafeContentComponents,
-} from './renderMdast';
+export type { RenderMdastOptions, SafeContentComponents } from './renderMdast';
 export { parseSafeMdast } from './parseSafeMdast';
 export type { SafeMdastNode, SafeMdxAttribute, ParseSafeMdastOptions } from './parseSafeMdast';
 export { sanitizeUrl } from './sanitizeUrl';

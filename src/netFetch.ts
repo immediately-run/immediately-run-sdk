@@ -40,16 +40,10 @@ export interface HostFetchResponse {
  * `invalid` (bad url/scheme), `redirect` (the host refuses to follow redirects),
  * `too-large`, or `network`.
  */
-export const hostFetch = async (
-  url: string,
-  init: HostFetchInit = {},
-): Promise<HostFetchResponse> => {
+export const hostFetch = async (url: string, init: HostFetchInit = {}): Promise<HostFetchResponse> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_FETCH], 'fetch', [
     { url, method: init.method, headers: init.headers, body: init.body },
-  ])) as
-    | { ok: true; data: HostFetchResponse }
-    | { ok: false; code?: string; message?: string }
-    | undefined;
+  ])) as { ok: true; data: HostFetchResponse } | { ok: false; code?: string; message?: string } | undefined;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'hostFetch failed') as Error & { code?: string };
     err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
@@ -110,9 +104,7 @@ export function hostFetchStream(
   url: string,
   init: HostFetchInit = {},
 ): AsyncGenerator<HostFetchStreamEvent, HostFetchStreamResult, void> {
-  return protocolStream<HostFetchStreamEvent, HostFetchStreamResult>(
-    PROTOCOL_FETCH,
-    'fetchStream',
-    [{ url, method: init.method, headers: init.headers, body: init.body }],
-  );
+  return protocolStream<HostFetchStreamEvent, HostFetchStreamResult>(PROTOCOL_FETCH, 'fetchStream', [
+    { url, method: init.method, headers: init.headers, body: init.body },
+  ]);
 }

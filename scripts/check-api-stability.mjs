@@ -119,9 +119,7 @@ const current = {};
 for (const file of dtsFiles) {
   const key = relative(distDir, file).replace(/\.d\.ts$/, '');
   const code = readFileSync(file, 'utf8');
-  const names = [
-    ...new Set([...extractExports(code), ...starReExportedNames(code, file)]),
-  ].sort();
+  const names = [...new Set([...extractExports(code), ...starReExportedNames(code, file)])].sort();
   if (names.length) current[key] = names;
 }
 

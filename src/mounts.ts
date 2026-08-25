@@ -74,7 +74,7 @@ export interface SandboxMount {
    * observing `onMountsChange` see the change and writes start failing `EROFS`.
    * Absent on the primary repo mount (treated as read-write).
    */
-  mode?: "ro" | "rw";
+  mode?: 'ro' | 'rw';
   /**
    * Human-readable label for the mount — the space's display name, or the repo
    * label for the primary working-tree mount (R3-69). Use this to show users and
@@ -112,12 +112,7 @@ export interface MountRule {
  * - `deleted` — the space was soft-deleted.
  * An older host that sends no reason is read as `'revoked'` (most conservative).
  */
-export type MountRemoveReason =
-  | "revoked"
-  | "unshared"
-  | "signed-out"
-  | "unmounted"
-  | "deleted";
+export type MountRemoveReason = 'revoked' | 'unshared' | 'signed-out' | 'unmounted' | 'deleted';
 
 /** A descriptor delivered as REMOVED to a mounts-change listener: the mount that
  *  went away, plus the `reason` it did. */
@@ -127,9 +122,7 @@ export interface RemovedMount extends SandboxMount {
 
 interface MountService {
   getMounts(): SandboxMount[];
-  onChange(
-    listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void,
-  ): { dispose(): void };
+  onChange(listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void): { dispose(): void };
 }
 
 // The stable key of a mount: its `id` (spaceId) when present, else its `path`.
@@ -148,9 +141,7 @@ const MOUNT_REMOVE_REASONS: ReadonlySet<string> = new Set<MountRemoveReason>([
 // Normalize an over-the-wire `mount-remove` reason; an absent/unknown value (older
 // host) reads as `'revoked'`, the most conservative reading (mirrors the sandbox).
 const asMountRemoveReason = (value: unknown): MountRemoveReason =>
-  typeof value === 'string' && MOUNT_REMOVE_REASONS.has(value)
-    ? (value as MountRemoveReason)
-    : 'revoked';
+  typeof value === 'string' && MOUNT_REMOVE_REASONS.has(value) ? (value as MountRemoveReason) : 'revoked';
 
 // The injected sandbox-bundler mount service (`module.evaluation.module.bundler.mounts`),
 // or null when the SDK is npm-fetched with no injection — same dual-mode shape as
@@ -227,8 +218,7 @@ const mountService = (): MountService => injectedMountService() ?? transportMoun
  *  combination of coordinates; `name` matches the human-readable mount label. */
 export type MountQuery = { type?: string; id?: string; path?: string; name?: string };
 
-const matches = (mount: SandboxMount, query: MountQuery): boolean =>
-  mountMatches(mount, query);
+const matches = (mount: SandboxMount, query: MountQuery): boolean => mountMatches(mount, query);
 
 /**
  * Returns the mounts currently available. Poll this whenever you need a one-off
@@ -240,8 +230,7 @@ const matches = (mount: SandboxMount, query: MountQuery): boolean =>
 export const getMounts = (): SandboxMount[] => mountService().getMounts();
 
 /** Returns the first mount matching `query`, or `undefined`. */
-export const findMount = (query: MountQuery): SandboxMount | undefined =>
-  getMounts().find((m) => matches(m, query));
+export const findMount = (query: MountQuery): SandboxMount | undefined => getMounts().find((m) => matches(m, query));
 
 /**
  * Subscribe to mount changes. The listener is invoked immediately with the
@@ -251,9 +240,7 @@ export const findMount = (query: MountQuery): SandboxMount | undefined =>
  * shared space was `unshared` vs `deleted`). It is empty on adds and on the
  * initial replay. Returns an unsubscribe fn.
  */
-export const onMountsChange = (
-  listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void,
-): (() => void) => {
+export const onMountsChange = (listener: (mounts: SandboxMount[], removed: RemovedMount[]) => void): (() => void) => {
   const disposable = mountService().onChange(listener);
   return () => disposable.dispose();
 };
@@ -281,10 +268,8 @@ export const onMountsChange = (
  * temporal-dead-zone read) on exactly that path. That bug silently broke
  * `openSettings()` — and with it the agent's conversation memory.
  */
-export const waitForMount = (
-  query: MountQuery,
-  timeoutMs?: number,
-): Promise<SandboxMount> => awaitMatchingMount(onMountsChange, query, timeoutMs);
+export const waitForMount = (query: MountQuery, timeoutMs?: number): Promise<SandboxMount> =>
+  awaitMatchingMount(onMountsChange, query, timeoutMs);
 
 /** The framework-free core of {@link waitForMount}, with the subscription injected
  *  so a test can drive the synchronous-initial-replay case that broke it. */
@@ -373,9 +358,8 @@ export const getSessionMounts = (): SessionMount[] => sessionMountsChannel.get()
 /** Subscribe to Session-lens mount changes. Invoked immediately with the current
  *  list (`[]` for a non-first-party frame), then on every change. Returns an
  *  unsubscribe. */
-export const onSessionMountsChange = (
-  listener: (mounts: SessionMount[]) => void,
-): (() => void) => sessionMountsChannel.onChange(listener);
+export const onSessionMountsChange = (listener: (mounts: SessionMount[]) => void): (() => void) =>
+  sessionMountsChannel.onChange(listener);
 
 /** React hook returning the live "Session" lens mount list, re-rendering on change.
  *  Empty for any non-first-party frame (the host withholds the channel), so a URL-
@@ -388,7 +372,6 @@ export const useSessionMounts = (): SessionMount[] => sessionMountsChannel.use()
 // isn't accessible, the parent window presents sign-in / create / request-access
 // and only then resolves these calls. See docs/specs/FILE_SHARING_SPEC.md.
 // ---------------------------------------------------------------------------
-
 
 /** An error from a space operation, carrying a machine-readable `code`. */
 export interface SpaceError extends Error {
@@ -403,16 +386,11 @@ export interface SpaceError extends Error {
     | 'unknown';
 }
 
-type SpaceResult =
-  | { ok: true; data: unknown }
-  | { ok: false; code: string; message: string };
+type SpaceResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
 // Issue a spaces protocol request, unwrapping the host's {ok,data} envelope and
 // throwing a typed SpaceError on failure.
-const request = async <T = unknown>(
-  method: string,
-  query: Record<string, unknown> = {},
-): Promise<T> => {
+const request = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'space request failed') as SpaceError;
@@ -425,10 +403,7 @@ const request = async <T = unknown>(
 // Request a space mount, then wait until the host actually registers it. The
 // host announces the mount (`mount-add`) separately from the protocol reply, so
 // an immediate read could otherwise race the mount.
-const requestMountInternal = async (
-  method: string,
-  query: Record<string, unknown>,
-): Promise<SandboxMount> => {
+const requestMountInternal = async (method: string, query: Record<string, unknown>): Promise<SandboxMount> => {
   const mount = await request<SandboxMount>(method, query);
   return waitForMount({ id: mount.id ?? mount.path });
 };
@@ -439,13 +414,11 @@ const requestMountInternal = async (
  * the host resolves the scheme. A scheme with no resolver rejects with
  * {@link SpaceError} `unsupported-scheme`.
  */
-export const mount = (mountId: string): Promise<SandboxMount> =>
-  requestMountInternal('mount', { mount: mountId });
+export const mount = (mountId: string): Promise<SandboxMount> => requestMountInternal('mount', { mount: mountId });
 
 /** Mount a specific space by id (e.g. one shared with you, or from a link). A thin
  *  shim over {@link mount} with the `space:` scheme. */
-export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
-  mount(`space:${query.spaceId}`);
+export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> => mount(`space:${query.spaceId}`);
 
 /**
  * Ask the user to grant a filesystem to this app — the §8.6 powerbox. The app
@@ -466,8 +439,7 @@ export const mountSpace = (query: { spaceId: string }): Promise<SandboxMount> =>
  * Backend-general (§3.5): the picker offers whatever mounts the user has (today,
  * their spaces). Returns the granted mount by its universal id.
  */
-export const requestMount = (): Promise<SandboxMount> =>
-  requestMountInternal('request', {});
+export const requestMount = (): Promise<SandboxMount> => requestMountInternal('request', {});
 
 /** Prompt the user to grant a mount, returning the granted {@link SandboxMount}.
  *  @deprecated renamed to {@link requestMount} (backend-general, §3.5). */
@@ -487,10 +459,12 @@ export const requestSpace = requestMount;
  *
  *   const ref = makeContentRef({ mountId: 'space:ACME', relPath: 'office-seating/desk.mdx' }, { mode: 'ro' });
  */
-export const makeContentRef = (
-  ref: { mountId: string; relPath: string },
-  opts: { mode: 'ro' | 'rw' },
-): FileCap => ({ $cap: 'file', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
+export const makeContentRef = (ref: { mountId: string; relPath: string }, opts: { mode: 'ro' | 'rw' }): FileCap => ({
+  $cap: 'file',
+  mountId: ref.mountId,
+  relPath: ref.relPath,
+  mode: opts.mode,
+});
 
 /**
  * Resolve a content reference your app found in content it ALREADY holds
@@ -546,10 +520,7 @@ export const resolveContentRefs = async (refs: FileCap[]): Promise<{ paths: stri
 
 // Issue a `protocol-settings` request, unwrapping {ok,data} and throwing a typed
 // SpaceError on failure (mirrors `request` for the spaces surface).
-const settingsRequest = async <T = unknown>(
-  method: string,
-  query: Record<string, unknown> = {},
-): Promise<T> => {
+const settingsRequest = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SETTINGS], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'settings request failed') as SpaceError;
@@ -617,16 +588,13 @@ export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
  * enumeration. Pair with {@link openSettingsOf} to mount any of them. Rejects
  * `forbidden` unless this app holds the first-party-only `settings:all`.
  */
-export const listSettingsApps = (): Promise<string[]> =>
-  settingsRequest<string[]>('list');
+export const listSettingsApps = (): Promise<string[]> => settingsRequest<string[]>('list');
 
 /** Create a brand-new, empty platform-hosted space. The app reaches it (or any
  *  other space) afterward through the {@link requestMount} powerbox or
  *  {@link mountSpace}; there is no implicit per-app binding. */
-export const createSpace = (
-  opts: { name?: string } = {}
-): Promise<SandboxMount> => requestMountInternal('create', opts);
-
+export const createSpace = (opts: { name?: string } = {}): Promise<SandboxMount> =>
+  requestMountInternal('create', opts);
 
 /** Release a mounted space (stops its listener on the host). */
 export const unmountSpace = async (query: { spaceId: string }): Promise<void> => {
@@ -641,7 +609,6 @@ export const unmountSpace = async (query: { spaceId: string }): Promise<void> =>
 // T41) and rate-limits handle lookups (L1); the OAuth/identity token never
 // crosses to the app.
 // ---------------------------------------------------------------------------
-
 
 /** A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
  *  It grants NO access until accepted — the recipient accepts it from their inbox
@@ -661,7 +628,6 @@ export interface Invite {
   login?: string;
   avatarUrl?: string;
 }
-
 
 /** The owner's outstanding invitations for a space — `spaces:admin`. */
 export const listPendingInvites = (spaceId: string): Promise<Invite[]> =>
@@ -712,4 +678,3 @@ export const onInvitesChange = (listener: (invites: Invite[]) => void): (() => v
 /** React hook returning the caller's live invitation inbox, re-rendering on change
  *  (the space-manager Invitations inbox, §9.8). */
 export const useInvites = (): Invite[] => invitesChannel.use();
-

@@ -204,7 +204,11 @@ describe('renderMdast — the render-as-data security properties', () => {
     const seen: string[] = [];
     const A = ({ href, children }: any) => {
       seen.push(href);
-      return <a href={href} data-routed="1">{children}</a>;
+      return (
+        <a href={href} data-routed="1">
+          {children}
+        </a>
+      );
     };
     const link: SafeMdastNode = { type: 'link', url: '/content/roadmap/index.mdx', children: [text('Roadmap')] };
     const components = { a: A } as unknown as SafeContentComponents;
@@ -216,7 +220,11 @@ describe('renderMdast — the render-as-data security properties', () => {
   });
 
   it('a wikilink uses the host `a` override too', () => {
-    const A = ({ href, children }: any) => <a href={href} data-routed="1">{children}</a>;
+    const A = ({ href, children }: any) => (
+      <a href={href} data-routed="1">
+        {children}
+      </a>
+    );
     const tree = root(para(text('see [[in-mount.mdx]]')));
     const components = { a: A } as unknown as SafeContentComponents;
     const { container, unmount } = render(
@@ -295,8 +303,14 @@ describe('renderMdast — the render-as-data security properties', () => {
     // their literal attributes (incl. a `#sec-` deep-link fragment carried verbatim).
     const seen: Record<string, Record<string, unknown>> = {};
     const components: SafeContentComponents = {
-      WikiLink: (props) => { seen.WikiLink = props; return <a data-t={props.target ?? ''}>{props.label ?? ''}</a>; },
-      Admonition: (props) => { seen.Admonition = props; return <aside data-type={props.type ?? ''} />; },
+      WikiLink: (props) => {
+        seen.WikiLink = props;
+        return <a data-t={props.target ?? ''}>{props.label ?? ''}</a>;
+      },
+      Admonition: (props) => {
+        seen.Admonition = props;
+        return <aside data-type={props.type ?? ''} />;
+      },
     };
     const wikiNode: SafeMdastNode = {
       type: 'mdxJsxTextElement',

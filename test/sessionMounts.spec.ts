@@ -42,7 +42,14 @@ describe('useSessionMounts channel (first-party Session lens)', () => {
     host.emit({
       type: 'session-mounts',
       mounts: [
-        { id: 'space:notes', path: '/spaces/notes', type: 'space', mode: 'ro', name: 'Shared notes', forwardedToApp: false },
+        {
+          id: 'space:notes',
+          path: '/spaces/notes',
+          type: 'space',
+          mode: 'ro',
+          name: 'Shared notes',
+          forwardedToApp: false,
+        },
         { id: 'mnt/abc', path: '/mnt/abc', type: 'worktree', mode: 'rw', name: 'acme/app', forwardedToApp: true },
       ],
     });
@@ -57,16 +64,25 @@ describe('useSessionMounts channel (first-party Session lens)', () => {
   it('re-projects on a subsequent push (forwarding flips forwardedToApp live)', () => {
     const { getSessionMounts } = load();
     getSessionMounts(); // trigger the lazy channel subscription before pushing
-    host.emit({ type: 'session-mounts', mounts: [{ id: 'space:notes', path: '/spaces/notes', type: 'space', forwardedToApp: false }] });
+    host.emit({
+      type: 'session-mounts',
+      mounts: [{ id: 'space:notes', path: '/spaces/notes', type: 'space', forwardedToApp: false }],
+    });
     expect(getSessionMounts()[0].forwardedToApp).toBe(false);
-    host.emit({ type: 'session-mounts', mounts: [{ id: 'space:notes', path: '/spaces/notes', type: 'space', forwardedToApp: true }] });
+    host.emit({
+      type: 'session-mounts',
+      mounts: [{ id: 'space:notes', path: '/spaces/notes', type: 'space', forwardedToApp: true }],
+    });
     expect(getSessionMounts()[0].forwardedToApp).toBe(true);
   });
 
   it('ignores a malformed push (no mounts array) — the last good value stands', () => {
     const { getSessionMounts } = load();
     getSessionMounts(); // trigger the lazy channel subscription before pushing
-    host.emit({ type: 'session-mounts', mounts: [{ id: 'a', path: '/spaces/a', type: 'space', forwardedToApp: false }] });
+    host.emit({
+      type: 'session-mounts',
+      mounts: [{ id: 'a', path: '/spaces/a', type: 'space', forwardedToApp: false }],
+    });
     host.emit({ type: 'session-mounts' }); // malformed — parse returns undefined
     expect(getSessionMounts().map((m) => m.id)).toEqual(['a']);
   });

@@ -17,13 +17,7 @@
 //
 // Self-contained: the SDK ships no CSS pipeline, so the keyframes are injected once
 // into the document and everything else is inline styles — zero config for the author.
-import {
-  useEffect,
-  useLayoutEffect,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 /** Loading timing constants, matching the host (LOADING_UX_SPEC §3, the 2026-06-22
  *  design bundle). Exported so authors who hand-roll still match the platform. */
@@ -37,14 +31,9 @@ export const LOADING_TIMINGS = {
 } as const;
 
 /** The in-app skeleton archetypes (the same shapes as the host §4.1 catalog). */
-export type SkeletonArchetype =
-  | "panel.list"
-  | "panel.tree"
-  | "panel.editor"
-  | "panel.conversation"
-  | "generic";
+export type SkeletonArchetype = 'panel.list' | 'panel.tree' | 'panel.editor' | 'panel.conversation' | 'generic';
 
-const STYLE_ID = "ir-sdk-loading-styles";
+const STYLE_ID = 'ir-sdk-loading-styles';
 const STYLE_TEXT = `
 @keyframes ir-sdk-sweep{0%{transform:translateX(-130%)}60%,100%{transform:translateX(130%)}}
 @keyframes ir-sdk-spin{to{transform:rotate(360deg)}}
@@ -56,9 +45,9 @@ const STYLE_TEXT = `
 
 /** Inject the shimmer/spin keyframes once (idempotent, browser-only). */
 function ensureLoadingStyles(): void {
-  if (typeof document === "undefined") return;
+  if (typeof document === 'undefined') return;
   if (document.getElementById(STYLE_ID)) return;
-  const el = document.createElement("style");
+  const el = document.createElement('style');
   el.id = STYLE_ID;
   el.textContent = STYLE_TEXT;
   document.head.appendChild(el);
@@ -73,13 +62,13 @@ function useLoadingStyles(): void {
 
 // A soft, low-contrast placeholder fill that reads on a light OR dark app surface.
 const PLACEHOLDER: CSSProperties = {
-  background: "rgba(127,127,127,0.20)",
+  background: 'rgba(127,127,127,0.20)',
   borderRadius: 6,
 };
 
 /** A single placeholder bar — compose these into a custom skeleton shape. */
 export function SkeletonRow({
-  width = "100%",
+  width = '100%',
   height = 12,
   style,
 }: {
@@ -88,13 +77,7 @@ export function SkeletonRow({
   style?: CSSProperties;
 }) {
   useLoadingStyles();
-  return (
-    <div
-      className="ir-sdk-shim"
-      aria-hidden="true"
-      style={{ ...PLACEHOLDER, width, height, ...style }}
-    />
-  );
+  return <div className="ir-sdk-shim" aria-hidden="true" style={{ ...PLACEHOLDER, width, height, ...style }} />;
 }
 
 function rows(specs: Array<CSSProperties & { key: number }>): ReactNode {
@@ -106,50 +89,48 @@ function rows(specs: Array<CSSProperties & { key: number }>): ReactNode {
 /** A shaped, in-app skeleton matching the host archetypes — for an app's own lazy
  *  region (e.g. `<Suspense fallback={<Skeleton archetype="panel.list" />}>`).
  *  Decorative (`aria-hidden`); pair it with `aria-busy` on the region it stands in. */
-export function Skeleton({
-  archetype = "generic",
-  style,
-}: {
-  archetype?: SkeletonArchetype;
-  style?: CSSProperties;
-}) {
+export function Skeleton({ archetype = 'generic', style }: { archetype?: SkeletonArchetype; style?: CSSProperties }) {
   useLoadingStyles();
   const wrap: CSSProperties = {
-    display: "flex",
-    flexDirection: "column",
+    display: 'flex',
+    flexDirection: 'column',
     gap: 10,
     padding: 12,
-    width: "100%",
-    boxSizing: "border-box",
+    width: '100%',
+    boxSizing: 'border-box',
     ...style,
   };
   let body: ReactNode;
   switch (archetype) {
-    case "panel.list":
+    case 'panel.list':
       body = rows([0, 1, 2, 3, 4].map((key) => ({ key, height: 14 })));
       break;
-    case "panel.tree":
+    case 'panel.tree':
       body = rows([0, 1, 2, 3, 4].map((key) => ({ key, height: 14, marginLeft: (key % 3) * 16 })));
       break;
-    case "panel.editor":
+    case 'panel.editor':
       body = rows([62, 88, 73, 41, 80].map((w, key) => ({ key, height: 11, width: `${w}%` })));
       break;
-    case "panel.conversation":
+    case 'panel.conversation':
       body = rows(
         [0, 1, 2, 3].map((key) => ({
           key,
           height: 40,
-          width: "70%",
+          width: '70%',
           borderRadius: 12,
-          alignSelf: key % 2 ? "flex-end" : "flex-start",
+          alignSelf: key % 2 ? 'flex-end' : 'flex-start',
         })),
       );
       break;
-    case "generic":
+    case 'generic':
     default:
       body = (
         <>
-          <div className="ir-sdk-shim" aria-hidden="true" style={{ ...PLACEHOLDER, height: 16, width: "45%", borderRadius: 4 }} />
+          <div
+            className="ir-sdk-shim"
+            aria-hidden="true"
+            style={{ ...PLACEHOLDER, height: 16, width: '45%', borderRadius: 4 }}
+          />
           {rows([0, 1].map((key) => ({ key, height: 56, borderRadius: 8 })))}
         </>
       );
@@ -178,7 +159,7 @@ function useDelayedFlag(ms: number): boolean {
 export function Spinner({
   size = 18,
   thresholdMs = LOADING_TIMINGS.spinThresholdMs,
-  label = "Loading",
+  label = 'Loading',
 }: {
   size?: number;
   thresholdMs?: number;
@@ -193,13 +174,13 @@ export function Spinner({
       role="status"
       aria-label={label}
       style={{
-        display: "inline-block",
+        display: 'inline-block',
         width: size,
         height: size,
-        border: "2px solid rgba(127,127,127,0.3)",
-        borderTopColor: "currentColor",
-        borderRadius: "50%",
-        boxSizing: "border-box",
+        border: '2px solid rgba(127,127,127,0.3)',
+        borderTopColor: 'currentColor',
+        borderRadius: '50%',
+        boxSizing: 'border-box',
       }}
     />
   );
@@ -211,7 +192,7 @@ export function Spinner({
 export function LoadingRegion({
   loading,
   fallback,
-  label = "Loading",
+  label = 'Loading',
   children,
 }: {
   loading: boolean;
@@ -224,7 +205,14 @@ export function LoadingRegion({
   return (
     <div
       aria-busy="true"
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", minHeight: 48 }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        height: '100%',
+        minHeight: 48,
+      }}
     >
       {fallback ?? <Spinner label={label} />}
     </div>

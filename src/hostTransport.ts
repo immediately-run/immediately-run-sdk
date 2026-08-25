@@ -48,11 +48,7 @@ export const sendMessage = (type: string, data: Record<string, any> = {}) => {
   transport().sendMessage(type, data);
 };
 
-export const addListener = (
-  msgType: string,
-  handler: (msg: any) => void,
-  event?: any,
-): (() => void) => {
+export const addListener = (msgType: string, handler: (msg: any) => void, event?: any): (() => void) => {
   const onMessage = event ?? transport().onMessage;
   const disposable = onMessage((msg: any) => {
     if (msg.type === msgType) {

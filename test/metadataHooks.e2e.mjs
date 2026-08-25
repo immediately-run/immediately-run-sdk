@@ -50,9 +50,7 @@ const run = (useHook, { host = FILES, source, mode } = {}) => {
     captured = useHook();
     return null;
   };
-  const tree = source
-    ? h(MetadataSource, { value: source, mode }, h(Probe))
-    : h(Probe);
+  const tree = source ? h(MetadataSource, { value: source, mode }, h(Probe)) : h(Probe);
   renderToStaticMarkup(h(TinkerableContext.Provider, { value: { filesMetadata: host } }, tree));
   return captured;
 };
@@ -63,8 +61,14 @@ test('the previous published shape still behaves: a path-returning query', () =>
 });
 
 test('the previous published shape still behaves: useFileMetadata + useAllMetadata', () => {
-  assert.deepEqual(run(() => hooks.useFileMetadata('/app/a.mdx')), { title: 'A' });
-  assert.deepEqual(run(() => hooks.useAllMetadata()), FILES);
+  assert.deepEqual(
+    run(() => hooks.useFileMetadata('/app/a.mdx')),
+    { title: 'A' },
+  );
+  assert.deepEqual(
+    run(() => hooks.useAllMetadata()),
+    FILES,
+  );
 });
 
 test('a throwing query is still reported as { error }, not a crash', () => {
@@ -78,9 +82,7 @@ test('a throwing query is still reported as { error }, not a crash', () => {
 });
 
 test('R3-276: a record-returning query carries its extra fields', () => {
-  const out = run(() =>
-    hooks.useMetadataQuery((m) => Object.keys(m).map((path) => ({ path, n: m[path].title }))),
-  );
+  const out = run(() => hooks.useMetadataQuery((m) => Object.keys(m).map((path) => ({ path, n: m[path].title }))));
   assert.deepEqual(out, [
     { path: '/app/a.mdx', meta: FILES['/app/a.mdx'], n: 'A' },
     { path: '/app/b.mdx', meta: FILES['/app/b.mdx'], n: 'B' },
@@ -89,15 +91,24 @@ test('R3-276: a record-returning query carries its extra fields', () => {
 
 test('R3-276: MetadataSource replaces the store for descendants, and merge layers over it', () => {
   const source = { '/corpus/x.mdx': { title: 'X' } };
-  assert.deepEqual(run(() => hooks.useAllMetadata(), { source }), source);
-  assert.deepEqual(run(() => hooks.useAllMetadata(), { source, mode: 'merge' }), {
-    ...FILES,
-    ...source,
-  });
+  assert.deepEqual(
+    run(() => hooks.useAllMetadata(), { source }),
+    source,
+  );
+  assert.deepEqual(
+    run(() => hooks.useAllMetadata(), { source, mode: 'merge' }),
+    {
+      ...FILES,
+      ...source,
+    },
+  );
 });
 
 test('R3-276: useFileMetadata accepts the repo-relative form the old doc taught', () => {
-  assert.deepEqual(run(() => hooks.useFileMetadata('/a.mdx')), { title: 'A' });
+  assert.deepEqual(
+    run(() => hooks.useFileMetadata('/a.mdx')),
+    { title: 'A' },
+  );
 });
 
 // The ambient declarations are TYPES ONLY. The criterion is about the BUILT graph:

@@ -73,9 +73,7 @@ export const revealRegion = async (region: string): Promise<void> => {
 
 /** Subscribe to inbound region messages. Returns an unsubscribe fn. */
 export const onRegionMessage = (listener: (msg: RegionMessage) => void): (() => void) =>
-  addListener(REGION_MESSAGE, (m: { from: string; data: unknown }) =>
-    listener({ from: m.from, data: m.data }),
-  );
+  addListener(REGION_MESSAGE, (m: { from: string; data: unknown }) => listener({ from: m.from, data: m.data }));
 
 /** React hook: the most recent inbound region message (or `null`). */
 export const useRegionMessage = (): RegionMessage | null => {

@@ -66,11 +66,7 @@ export interface MetadataSourceProps {
  * if you care about the query hooks' identity-preservation, which is what keeps
  * their results usable in dependency arrays.
  */
-export const MetadataSource = ({
-  value,
-  mode = 'replace',
-  children,
-}: MetadataSourceProps): React.ReactElement => {
+export const MetadataSource = ({ value, mode = 'replace', children }: MetadataSourceProps): React.ReactElement => {
   const outer = use(MetadataSourceContext);
   const host = use(TinkerableContext);
   const provided = useMemo<MetadataSourceValue>(() => {
@@ -78,9 +74,7 @@ export const MetadataSource = ({
     const base = outer?.filesMetadata ?? host?.filesMetadata ?? {};
     return { filesMetadata: { ...base, ...value } };
   }, [value, mode, outer, host]);
-  return (
-    <MetadataSourceContext.Provider value={provided}>{children}</MetadataSourceContext.Provider>
-  );
+  return <MetadataSourceContext.Provider value={provided}>{children}</MetadataSourceContext.Provider>;
 };
 
 /**

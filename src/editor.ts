@@ -24,14 +24,9 @@ export interface EditorOpenError extends Error {
     | 'unknown';
 }
 
-type EditorResult =
-  | { ok: true; data: unknown }
-  | { ok: false; code: string; message: string };
+type EditorResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
-const editorRequest = async (
-  method: string,
-  arg: Record<string, unknown>,
-): Promise<void> => {
+const editorRequest = async (method: string, arg: Record<string, unknown>): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_EDITOR], method, [arg])) as EditorResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? `editor ${method} failed`) as EditorWriteError;
@@ -114,8 +109,7 @@ export interface EditorSessionError extends Error {
  *  not already open — native `setActiveFile` parity. Rejects with an
  *  {@link EditorSessionError} (`.code`) if the path is missing/invalid or this app
  *  lacks `editor:document`. */
-export const setActiveFile = (path: string): Promise<void> =>
-  editorRequest('setActive', { path });
+export const setActiveFile = (path: string): Promise<void> => editorRequest('setActive', { path });
 
 /** Close `path`'s tab in the editor (remove it from the open set) — native
  *  `closeFile` parity. Rejects with an {@link EditorSessionError} (`.code`). */
@@ -147,8 +141,7 @@ export interface EditorWriteError extends Error {
 export const createFile = (path: string): Promise<void> => editorRequest('createFile', { path });
 
 /** Create a working-tree folder at `path` (materialised with a `.gitkeep`). */
-export const createFolder = (path: string): Promise<void> =>
-  editorRequest('createFolder', { path });
+export const createFolder = (path: string): Promise<void> => editorRequest('createFolder', { path });
 
 /** Delete a working-tree file, or a folder and everything under it. Rejects
  *  `protected` for files the host won't remove, `not-found` if absent. */
@@ -156,10 +149,8 @@ export const deleteEntry = (path: string): Promise<void> => editorRequest('delet
 
 /** Rename/move a working-tree file from `from` to `to`. Rejects `exists` if `to`
  *  is taken, `not-found` if `from` is absent. */
-export const renameEntry = (from: string, to: string): Promise<void> =>
-  editorRequest('rename', { from, to });
+export const renameEntry = (from: string, to: string): Promise<void> => editorRequest('rename', { from, to });
 
 /** Upload binary/text `bytes` to a working-tree file at `path`. Rejects
  *  `too-large` past the host's size limit. The bytes are transferred (zero-copy). */
-export const uploadFile = (path: string, bytes: Uint8Array): Promise<void> =>
-  editorRequest('upload', { path, bytes });
+export const uploadFile = (path: string, bytes: Uint8Array): Promise<void> => editorRequest('upload', { path, bytes });

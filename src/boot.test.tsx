@@ -36,8 +36,7 @@ describe('CATCH_ALL_ROUTING_SPEC', () => {
 });
 
 describe('DEFAULT_ROUTING_SPEC (re-expressed with templates, §7)', () => {
-  const ruleFor = (path: string) =>
-    DEFAULT_ROUTING_SPEC.routes.find((r) => matchRoute(r.pattern, path));
+  const ruleFor = (path: string) => DEFAULT_ROUTING_SPEC.routes.find((r) => matchRoute(r.pattern, path));
 
   it('routes `/` to MainContent with no params', () => {
     const rule = ruleFor('/');

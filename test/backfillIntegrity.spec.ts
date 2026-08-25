@@ -142,7 +142,14 @@ describe('backfill-integrity — an undetermined probe is not an absent manifest
       server = origin.server;
 
       const { stdout } = await runBackfill([
-        '0.10.0', outDir, '--origin', origin.url, '--repo-root', repoRoot, '--attempts', '2',
+        '0.10.0',
+        outDir,
+        '--origin',
+        origin.url,
+        '--repo-root',
+        repoRoot,
+        '--attempts',
+        '2',
       ]);
 
       expect(stdout).toMatch(/from the repo trust root/);

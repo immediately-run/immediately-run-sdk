@@ -30,7 +30,6 @@ jest.mock('./hostTransport', () => ({
   },
 }));
 
-
 import {
   inviteToSpace,
   listPendingInvites,
@@ -80,9 +79,7 @@ describe('invites — SDK surface (§6.4/§7)', () => {
   it('revokeInvite drives `revokeInvite` with the target uid', async () => {
     protocolRequest.mockResolvedValue(ok(undefined));
     await revokeInvite('space-1', 'uid-of-bob');
-    expect(protocolRequest).toHaveBeenCalledWith('spaces', 'revokeInvite', [
-      { spaceId: 'space-1', uid: 'uid-of-bob' },
-    ]);
+    expect(protocolRequest).toHaveBeenCalledWith('spaces', 'revokeInvite', [{ spaceId: 'space-1', uid: 'uid-of-bob' }]);
   });
 
   it('listMyInvites drives `listInvites` (invitee inbox, spaces:user)', async () => {

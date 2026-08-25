@@ -225,7 +225,7 @@ if (isMain) {
     result === 'skipped'
       ? `v/${version}/integrity.json already present — nothing to do.`
       : result === 'trust-root'
-        ? `Carried v/${version}/integrity.json from the repo trust root.`
-        : `Backfilled ${join(outBase, 'v', version, 'integrity.json')}.`,
+      ? `Carried v/${version}/integrity.json from the repo trust root.`
+      : `Backfilled ${join(outBase, 'v', version, 'integrity.json')}.`,
   );
 }

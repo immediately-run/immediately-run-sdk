@@ -29,15 +29,7 @@ jest.mock('./hostTransport', () => ({
   },
 }));
 
-
-import {
-  requestAddSecret,
-  requestSecret,
-  revokeSecret,
-  getSecrets,
-  onSecretsChange,
-  type SecretView,
-} from './secrets';
+import { requestAddSecret, requestSecret, revokeSecret, getSecrets, onSecretsChange, type SecretView } from './secrets';
 
 beforeEach(() => {
   for (const k of Object.keys(listeners)) delete listeners[k];
@@ -60,9 +52,7 @@ describe('secrets — app-facing surface (§4/§5)', () => {
   it('requestAddSecret sends hints to protocol-secrets.add and returns metadata', async () => {
     protocolRequest.mockResolvedValue(ok(view));
     const res = await requestAddSecret({ family: 'anthropic', type: 'api-key' });
-    expect(protocolRequest).toHaveBeenCalledWith('secrets', 'add', [
-      { family: 'anthropic', type: 'api-key' },
-    ]);
+    expect(protocolRequest).toHaveBeenCalledWith('secrets', 'add', [{ family: 'anthropic', type: 'api-key' }]);
     expect(res).toEqual(view);
     expect(res).not.toHaveProperty('value');
   });

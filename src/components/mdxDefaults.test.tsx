@@ -153,10 +153,10 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
   });
 
   it('uses an explicit label when provided', () => {
-    const { container, unmount } = renderWiki(
-      <WikiLink target="/guide/setup.mdx" label="Set it up" />,
-      { currentFile: '/app/content/intro.mdx', files: {} },
-    );
+    const { container, unmount } = renderWiki(<WikiLink target="/guide/setup.mdx" label="Set it up" />, {
+      currentFile: '/app/content/intro.mdx',
+      files: {},
+    });
     expect(container.querySelector('a.ir-wikilink')!.textContent).toBe('Set it up');
     unmount();
   });
@@ -184,10 +184,9 @@ describe('default WikiLink (§13) — resolve at runtime', () => {
   });
 
   it('resolves an ABSOLUTE target verbatim and links when it exists', () => {
-    const { container, unmount } = renderWiki(
-      <WikiLink target="/app/content/guide/setup.mdx" />,
-      { currentFile: '/app/content/intro.mdx' },
-    );
+    const { container, unmount } = renderWiki(<WikiLink target="/app/content/guide/setup.mdx" />, {
+      currentFile: '/app/content/intro.mdx',
+    });
     expect(container.querySelector('a.ir-wikilink[data-state="resolved"]')).not.toBeNull();
     unmount();
   });
@@ -369,10 +368,9 @@ describe('link spaces (R3-273)', () => {
   });
 
   it('a malformed `$fs:` wikilink (scheme smuggling) renders broken, never an anchor', () => {
-    const { container, unmount } = renderSpaced(
-      <WikiLink target="$fs:javascript:alert(1)" label="click me" />,
-      { currentFile: '/app/content/intro.mdx' },
-    );
+    const { container, unmount } = renderSpaced(<WikiLink target="$fs:javascript:alert(1)" label="click me" />, {
+      currentFile: '/app/content/intro.mdx',
+    });
     expect(container.querySelector('a')).toBeNull();
     const el = container.querySelector('.ir-wikilink-broken');
     expect(el).not.toBeNull();
@@ -407,7 +405,11 @@ describe('link spaces (R3-273)', () => {
           <LinkSpaceContext value={{ corpusRoot: '/app/content/sub' }}>
             <RenderExportedComponentContext
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              value={{ evaluationContext: { evaluation: { module: { filepath: '/app/content/sub/page.mdx', source: '' } } } } as any}
+              value={
+                {
+                  evaluationContext: { evaluation: { module: { filepath: '/app/content/sub/page.mdx', source: '' } } },
+                } as any
+              }
             >
               <WikiLink target="/other.mdx" />
             </RenderExportedComponentContext>
@@ -423,10 +425,9 @@ describe('link spaces (R3-273)', () => {
 
   it('the default `a` translates a `$fs:` href to its mount path and routes it', () => {
     const A = DEFAULT_MDX_COMPONENTS.a;
-    const { container, unmount } = renderSpaced(
-      <A href="$fs:/app/content/intro.mdx#sec-2">read the intro</A>,
-      { corpusRoot: '/app/content' },
-    );
+    const { container, unmount } = renderSpaced(<A href="$fs:/app/content/intro.mdx#sec-2">read the intro</A>, {
+      corpusRoot: '/app/content',
+    });
     const a = container.querySelector('a');
     expect(a).not.toBeNull();
     // In-app href: routed (outer URL form), never the raw `$fs:` text.

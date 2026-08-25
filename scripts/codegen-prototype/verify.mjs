@@ -148,57 +148,65 @@ const eq = (a, b) => canon(a) === canon(b);
 /** Run every check over one family. Returns `{ pass, failures }`; prints nothing
  *  when `quiet` (the self-test drives it repeatedly with poisoned input). */
 const checkFamily = async (fam, { quiet = false } = {}) => {
-const failures = [];
-let pass = 0;
+  const failures = [];
+  let pass = 0;
 
-for (const m of fam.methods) {
-  const fn = m.alias.fn;
-  const problems = [];
+  for (const m of fam.methods) {
+    const fn = m.alias.fn;
+    const problems = [];
 
-  // A. SURFACE — the descriptor must name an export the SDK actually ships.
-  //    This is the check the old harness structurally could not perform.
-  const shipped = typeof real[fn] === 'function';
-  if (!shipped) problems.push(`no such export in dist/mounts.js`);
-  if (!pinned.has(fn)) problems.push(`not in api-snapshot.json's pinned 'mounts' surface`);
+    // A. SURFACE — the descriptor must name an export the SDK actually ships.
+    //    This is the check the old harness structurally could not perform.
+    const shipped = typeof real[fn] === 'function';
+    if (!shipped) problems.push(`no such export in dist/mounts.js`);
+    if (!pinned.has(fn)) problems.push(`not in api-snapshot.json's pinned 'mounts' surface`);
 
-  if (shipped) {
-    const args = argsFor(m);
-    // B. WIRE — real wrapper vs. generated `invoke()`, same inputs.
-    nextReply = { ok: true, data: { marker: fn } };
-    calls.length = 0;
-    await real[fn](...args).catch((e) => problems.push(`real threw on success path: ${e.message}`));
-    const wireReal = calls.at(-1);
-    calls.length = 0;
-    await invoke(m.name, paramsFor(m, args)).catch((e) =>
-      problems.push(`generated threw on success path: ${e.message}`),
-    );
-    const wireGen = calls.at(-1);
-    if (!eq(wireReal, wireGen)) {
-      problems.push(`wire mismatch\n     real: ${JSON.stringify(wireReal)}\n     gen : ${JSON.stringify(wireGen)}`);
+    if (shipped) {
+      const args = argsFor(m);
+      // B. WIRE — real wrapper vs. generated `invoke()`, same inputs.
+      nextReply = { ok: true, data: { marker: fn } };
+      calls.length = 0;
+      await real[fn](...args).catch((e) => problems.push(`real threw on success path: ${e.message}`));
+      const wireReal = calls.at(-1);
+      calls.length = 0;
+      await invoke(m.name, paramsFor(m, args)).catch((e) =>
+        problems.push(`generated threw on success path: ${e.message}`),
+      );
+      const wireGen = calls.at(-1);
+      if (!eq(wireReal, wireGen)) {
+        problems.push(`wire mismatch\n     real: ${JSON.stringify(wireReal)}\n     gen : ${JSON.stringify(wireGen)}`);
+      }
+
+      // C. ERROR — the same refusal must surface as the same `.code`.
+      nextReply = { ok: false, code: 'forbidden', message: 'nope' };
+      let codeReal, codeGen;
+      try {
+        await real[fn](...args);
+      } catch (e) {
+        codeReal = e.code;
+      }
+      try {
+        await invoke(m.name, paramsFor(m, args));
+      } catch (e) {
+        codeGen = e.code;
+      }
+      if (codeReal !== codeGen || codeReal !== 'forbidden') {
+        problems.push(`error mismatch: real=${codeReal} gen=${codeGen}`);
+      }
     }
 
-    // C. ERROR — the same refusal must surface as the same `.code`.
-    nextReply = { ok: false, code: 'forbidden', message: 'nope' };
-    let codeReal, codeGen;
-    try { await real[fn](...args); } catch (e) { codeReal = e.code; }
-    try { await invoke(m.name, paramsFor(m, args)); } catch (e) { codeGen = e.code; }
-    if (codeReal !== codeGen || codeReal !== 'forbidden') {
-      problems.push(`error mismatch: real=${codeReal} gen=${codeGen}`);
+    if (problems.length === 0) {
+      pass++;
+      if (!quiet) console.log(`PASS  ${fn.padEnd(16)} ${m.name}`);
+    } else {
+      failures.push({ fn, name: m.name, problems });
+      if (!quiet) {
+        console.log(`FAIL  ${fn.padEnd(16)} ${m.name}`);
+        for (const p of problems) console.log(`   - ${p}`);
+      }
     }
   }
-
-  if (problems.length === 0) {
-    pass++;
-    if (!quiet) console.log(`PASS  ${fn.padEnd(16)} ${m.name}`);
-  } else {
-    failures.push({ fn, name: m.name, problems });
-    if (!quiet) {
-      console.log(`FAIL  ${fn.padEnd(16)} ${m.name}`);
-      for (const p of problems) console.log(`   - ${p}`);
-    }
-  }
-}
-return { pass, failures };
+  return { pass, failures };
 };
 
 // ── the real run ───────────────────────────────────────────────────────────────
@@ -213,9 +221,7 @@ const main = async () => {
   for (const name of Object.keys(family.types ?? {})) covered.add(name);
   const uncovered = [...pinned].filter((n) => !covered.has(n));
 
-  console.log(
-    `\n${pass}/${family.methods.length} methods: descriptor ≡ SHIPPED surface (export + wire + error).`,
-  );
+  console.log(`\n${pass}/${family.methods.length} methods: descriptor ≡ SHIPPED surface (export + wire + error).`);
   console.log(
     `${covered.size} of ${pinned.size} pinned \`mounts\` names described by descriptors; ` +
       `${uncovered.length} not yet covered (migration scope, not drift).`,
@@ -242,11 +248,15 @@ const selfTest = async () => {
   const cases = [
     [
       'a descriptor naming an export the SDK does not have',
-      (f) => { f.methods[0].alias.fn = 'noSuchExportAnywhere'; },
+      (f) => {
+        f.methods[0].alias.fn = 'noSuchExportAnywhere';
+      },
     ],
     [
       'a descriptor with the wrong wire method',
-      (f) => { f.methods[0].name = 'spaces:listWrong'; },
+      (f) => {
+        f.methods[0].name = 'spaces:listWrong';
+      },
     ],
     [
       'a descriptor with an extra param the real wrapper does not send',

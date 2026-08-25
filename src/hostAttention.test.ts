@@ -25,8 +25,7 @@ import type { HostAttention } from './hostAttention';
 
 type Mod = typeof import('./hostAttention');
 let mod: Mod;
-const push = (msg: Record<string, unknown>) =>
-  (listeners['host-attention'] || []).forEach((l) => l(msg));
+const push = (msg: Record<string, unknown>) => (listeners['host-attention'] || []).forEach((l) => l(msg));
 
 beforeEach(() => {
   jest.resetModules();

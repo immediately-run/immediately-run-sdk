@@ -33,7 +33,7 @@ const mod = { onFsChange } as unknown as {
   __unsub: jest.Mock;
 };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const m = (jest.requireMock('./onFsChange') as any) as typeof mod;
+const m = jest.requireMock('./onFsChange') as any as typeof mod;
 
 const mount = (over: Partial<SandboxMount> = {}): SandboxMount =>
   ({ path: '/app', type: 'repo', ...over } as SandboxMount);

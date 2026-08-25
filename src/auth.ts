@@ -50,8 +50,7 @@ export const getAuthState = (): AuthState => channel.get();
  * Subscribe to login / logout changes. The listener is invoked immediately with
  * the current state, then again on every change. Returns an unsubscribe fn.
  */
-export const onAuthChange = (listener: (state: AuthState) => void): (() => void) =>
-  channel.onChange(listener);
+export const onAuthChange = (listener: (state: AuthState) => void): (() => void) => channel.onChange(listener);
 
 /**
  * React hook returning the current login / account state, re-rendering on

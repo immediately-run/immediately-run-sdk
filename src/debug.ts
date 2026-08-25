@@ -29,13 +29,7 @@
 
 import { createPushChannel } from './pushChannel';
 import { sendMessage, addListener } from './sandboxUtils';
-import {
-  DEBUG_ENABLED,
-  DEBUG_LOG,
-  DEBUG_QUERY,
-  DEBUG_QUERY_RESULT,
-  REQUEST_DEBUG_ENABLED,
-} from './generated/protocol';
+import { DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, REQUEST_DEBUG_ENABLED } from './generated/protocol';
 
 /** Severity of a {@link debug.log} entry. */
 export type DebugLevel = 'debug' | 'info' | 'warn' | 'error';
@@ -171,7 +165,8 @@ function computedStyle(params: { selector: string; props: string[] }): Record<st
   if (!el) return null;
   const cs = getComputedStyle(el);
   const out: Record<string, string> = {};
-  for (const p of params.props.slice(0, 50)) out[p] = cs.getPropertyValue(p) || cs[p as keyof CSSStyleDeclaration]?.toString?.() || '';
+  for (const p of params.props.slice(0, 50))
+    out[p] = cs.getPropertyValue(p) || cs[p as keyof CSSStyleDeclaration]?.toString?.() || '';
   return out;
 }
 

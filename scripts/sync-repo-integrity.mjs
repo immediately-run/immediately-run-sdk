@@ -47,7 +47,9 @@ export class ImmutabilityViolation extends Error {
         `is immutable — its gh-pages bytes, git-tag integrity, and npm tarball must ` +
         `never change once released. Bump the package version instead of re-publishing ` +
         `${versions.length > 1 ? 'these versions' : 'this version'} with different bytes.\n` +
-        `\nThis means THIS BUILD produced different bytes for ${versions.length > 1 ? 'those versions' : 'that version'}. ` +
+        `\nThis means THIS BUILD produced different bytes for ${
+          versions.length > 1 ? 'those versions' : 'that version'
+        }. ` +
         `It does NOT mean the serving origin drifted — since R3-286 a version the trust ` +
         `root already pins is carried from the repo, and an origin that disagrees is ` +
         `reported by \`backfill-integrity\` as an OriginDivergence, before this runs. ` +
@@ -68,17 +70,13 @@ export class ImmutabilityViolation extends Error {
 export const syncRepoIntegrity = (pubDir, repoRoot = root) => {
   const pubVersionsDir = join(pubDir, 'v');
   if (!existsSync(pubVersionsDir)) return [];
-  const versions = readdirSync(pubVersionsDir).filter((v) =>
-    existsSync(join(pubVersionsDir, v, 'integrity.json')),
-  );
+  const versions = readdirSync(pubVersionsDir).filter((v) => existsSync(join(pubVersionsDir, v, 'integrity.json')));
   const srcOf = (v) => readFileSync(join(pubVersionsDir, v, 'integrity.json'));
   const destOf = (v) => join(repoRoot, 'integrity', `v${v}`, 'integrity.json');
 
   // Pass 1 — detect immutability violations before writing anything. A committed
   // manifest whose bytes would change means a released version was mutated.
-  const violations = versions.filter(
-    (v) => existsSync(destOf(v)) && !readFileSync(destOf(v)).equals(srcOf(v)),
-  );
+  const violations = versions.filter((v) => existsSync(destOf(v)) && !readFileSync(destOf(v)).equals(srcOf(v)));
   if (violations.length) throw new ImmutabilityViolation(violations.sort());
 
   // Pass 2 — write only never-committed versions (an existing dest is, post-Pass-1,

@@ -104,8 +104,7 @@ describe('sync-repo-integrity (SDK repo trust root, SP2-2)', () => {
 describe('backfill-all version range (SP2-2 floor..current)', () => {
   // Run under native Node ESM (a subprocess) — the script is .mjs and ts-jest's
   // CommonJS transform can't import it directly.
-  const evalNode = (expr: string) =>
-    execFileSync('node', ['-e', expr], { encoding: 'utf8' }).trim();
+  const evalNode = (expr: string) => execFileSync('node', ['-e', expr], { encoding: 'utf8' }).trim();
 
   it('keeps only versions >= floor, sorted, numeric-aware', () => {
     const script = join(repo, 'scripts', 'backfill-all-integrity.mjs').replace(/\\/g, '/');

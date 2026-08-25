@@ -25,4 +25,4 @@ export type RoutingRule = {
 
 export type RoutingSpec = {
   routes: RoutingRule[];
-}
+};

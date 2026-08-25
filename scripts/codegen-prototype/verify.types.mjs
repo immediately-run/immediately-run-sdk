@@ -50,7 +50,10 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const dtsPath = resolve(root, 'dist/mounts.d.ts');
 const generatedPath = resolve(root, 'scripts/codegen-prototype/generated/spaces.generated.ts');
 
-for (const [label, p] of [['dist/mounts.d.ts', dtsPath], ['the generated family', generatedPath]]) {
+for (const [label, p] of [
+  ['dist/mounts.d.ts', dtsPath],
+  ['the generated family', generatedPath],
+]) {
   if (!existsSync(p)) {
     console.error(`error: ${label} missing (${p}) — run \`npm run build\` and the generator first.`);
     process.exit(1);
@@ -66,12 +69,7 @@ for (const [label, p] of [['dist/mounts.d.ts', dtsPath], ['the generated family'
  * on JSDoc, multi-line unions, and nested object literals.
  */
 const declarationsOf = (path) => {
-  const src = ts.createSourceFile(
-    path,
-    readFileSync(path, 'utf8'),
-    ts.ScriptTarget.ES2020,
-    true,
-  );
+  const src = ts.createSourceFile(path, readFileSync(path, 'utf8'), ts.ScriptTarget.ES2020, true);
   const all = new Map();
   /** The JSDoc text attached to a declaration, normalised for comparison. The
    *  shipped types carry substantial prose (the grantee/`principal` rationale, the
@@ -80,23 +78,22 @@ const declarationsOf = (path) => {
    *  exists to improve, so it is compared, not assumed. */
   const docOf = (node) => {
     const ranges = ts.getLeadingCommentRanges(src.text, node.pos) ?? [];
-    const jsdoc = ranges
-      .map((r) => src.text.slice(r.pos, r.end))
-      .filter((t) => t.startsWith('/**'));
+    const jsdoc = ranges.map((r) => src.text.slice(r.pos, r.end)).filter((t) => t.startsWith('/**'));
     if (jsdoc.length === 0) return '';
-    return jsdoc[jsdoc.length - 1]
-      .replace(/^\/\*\*|\*\/$/g, '')
-      .split('\n')
-      .map((l) => l.replace(/^\s*\*/, '').trim())
-      // A line ending in `-` is a SOFT hyphen-wrap in the source ("already-" /
-      // "invited/member"), not two words. Joining those with a space would report
-      // a phantom doc loss, so rejoin them directly.
-      .reduce((acc, line) => (acc.endsWith('-') ? acc + line : acc ? `${acc} ${line}` : line), '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return (
+      jsdoc[jsdoc.length - 1]
+        .replace(/^\/\*\*|\*\/$/g, '')
+        .split('\n')
+        .map((l) => l.replace(/^\s*\*/, '').trim())
+        // A line ending in `-` is a SOFT hyphen-wrap in the source ("already-" /
+        // "invited/member"), not two words. Joining those with a space would report
+        // a phantom doc loss, so rejoin them directly.
+        .reduce((acc, line) => (acc.endsWith('-') ? acc + line : acc ? `${acc} ${line}` : line), '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   };
-  const hasExportModifier = (node) =>
-    node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
+  const hasExportModifier = (node) => node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
 
   // Two export styles must both be understood. The GENERATED `.ts` uses inline
   // `export interface X`; tsup's emitted `.d.ts` uses `declare interface X` plus a
@@ -214,9 +211,7 @@ const compareType = (name) => {
 
   const lost = docLoss(s.doc, g.doc);
   if (lost.length) {
-    problems.push(
-      `doc LOSES: ${lost.join(', ')}\n     shipped:   ${s.doc}\n     generated: ${g.doc || '(none)'}`,
-    );
+    problems.push(`doc LOSES: ${lost.join(', ')}\n     shipped:   ${s.doc}\n     generated: ${g.doc || '(none)'}`);
   }
   for (const m of s.members ?? []) {
     const gm = (g.members ?? []).find((x) => x.name === m.name);
@@ -272,10 +267,7 @@ const compareType = (name) => {
 const checkAll = ({ quiet = false } = {}) => {
   const failures = [];
   let pass = 0;
-  const subjects = [
-    ...Object.keys(descriptorTypes),
-    ...descriptorMethods.map((m) => m.alias.fn),
-  ];
+  const subjects = [...Object.keys(descriptorTypes), ...descriptorMethods.map((m) => m.alias.fn)];
   for (const name of subjects) {
     const problems = compareType(name);
     if (problems.length === 0) {
@@ -316,7 +308,9 @@ const selfTest = () => {
         const m = generated.get('Member');
         const saved = m.members;
         m.members = saved.filter((x) => x.name !== 'grantee');
-        return () => { m.members = saved; };
+        return () => {
+          m.members = saved;
+        };
       },
     ],
     [
@@ -325,7 +319,9 @@ const selfTest = () => {
         const m = generated.get('SpaceInfo');
         const saved = m.members;
         m.members = [...saved, { name: 'inventedField', optional: false }];
-        return () => { m.members = saved; };
+        return () => {
+          m.members = saved;
+        };
       },
     ],
     [
@@ -334,7 +330,9 @@ const selfTest = () => {
         const m = generated.get('SpaceInfo');
         const saved = m.members;
         m.members = saved.map((x) => (x.name === 'owner' ? { ...x, optional: false } : x));
-        return () => { m.members = saved; };
+        return () => {
+          m.members = saved;
+        };
       },
     ],
     [
@@ -343,7 +341,9 @@ const selfTest = () => {
         const a = generated.get('Role');
         const saved = a.members;
         a.members = saved.filter((x) => x !== 'reader');
-        return () => { a.members = saved; };
+        return () => {
+          a.members = saved;
+        };
       },
     ],
   ];

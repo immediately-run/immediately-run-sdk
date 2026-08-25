@@ -64,13 +64,7 @@ const files: FilesMetadata = {
 
 describe('useMetadataQuery', () => {
   it('returns matching entries with their metadata, not just paths', () => {
-    const h = renderHook(
-      () =>
-        useMetadataQuery<PostMeta>((m) =>
-          Object.keys(m).filter((p) => !m[p].draft),
-        ),
-      files,
-    );
+    const h = renderHook(() => useMetadataQuery<PostMeta>((m) => Object.keys(m).filter((p) => !m[p].draft)), files);
     expect(h.last).toEqual([
       { path: '/a.mdx', meta: { title: 'A', draft: false } },
       { path: '/c.mdx', meta: { title: 'C' } },
@@ -212,9 +206,7 @@ describe('useMetadataQuery — record results (R3-276)', () => {
     // frontmatter — every downstream consumer reads `entry.meta`.
     const h = renderHook(
       () =>
-        useMetadataQuery<PostMeta, { meta: string }>(() => [
-          { path: '/a.mdx', meta: 'not the frontmatter' } as never,
-        ]),
+        useMetadataQuery<PostMeta, { meta: string }>(() => [{ path: '/a.mdx', meta: 'not the frontmatter' } as never]),
       files,
     );
     expect((h.last as { meta: unknown }[])[0].meta).toBe(files['/a.mdx']);
@@ -225,10 +217,7 @@ describe('useMetadataQuery — record results (R3-276)', () => {
     // but an unchanged result must keep its reference, or every downstream
     // dependency array fires on every render.
     let salt = 'x';
-    const h = renderHook(
-      () => useMetadataQuery<PostMeta, { salt: string }>(() => [{ path: '/a.mdx', salt }]),
-      files,
-    );
+    const h = renderHook(() => useMetadataQuery<PostMeta, { salt: string }>(() => [{ path: '/a.mdx', salt }]), files);
     const first = h.last;
     h.rerender(files);
     expect(h.last).toBe(first);
@@ -259,10 +248,7 @@ describe('useFileMetadata — the key space is absolute (R3-276)', () => {
 
   it('does not double-root an already-rooted miss', () => {
     // `/app/app/...` must never be consulted — a miss is a miss.
-    const h = renderHook(
-      () => useFileMetadata('/app/nope.mdx'),
-      { '/app/app/nope.mdx': { title: 'wrong' } },
-    );
+    const h = renderHook(() => useFileMetadata('/app/nope.mdx'), { '/app/app/nope.mdx': { title: 'wrong' } });
     expect(h.last).toBeUndefined();
   });
 });
@@ -277,11 +263,7 @@ describe('MetadataSource (R3-276)', () => {
   });
 
   it('query: a query runs against the provided store', () => {
-    const h = renderWithSource(
-      () => useMetadataQuery((m) => Object.keys(m)),
-      provided,
-      host,
-    );
+    const h = renderWithSource(() => useMetadataQuery((m) => Object.keys(m)), provided, host);
     expect(h.last).toEqual([{ path: '/corpus/x.mdx', meta: provided['/corpus/x.mdx'] }]);
   });
 

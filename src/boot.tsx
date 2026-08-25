@@ -22,9 +22,7 @@ import { METADATA_UPDATE, URLCHANGE } from './generated/protocol';
 
 /** A map of MDX component overrides, or a function that receives the platform
  *  {@link DEFAULT_MDX_COMPONENTS} and returns the full map to use. */
-export type MdxComponents =
-  | Record<string, FC>
-  | ((defaults: Record<string, FC>) => Record<string, FC>);
+export type MdxComponents = Record<string, FC> | ((defaults: Record<string, FC>) => Record<string, FC>);
 
 /**
  * Resolve the effective MDX component map from a {@link BootProps.mdxComponents}
@@ -39,8 +37,8 @@ export const resolveMdxComponents = (mdxComponents?: MdxComponents): Record<stri
   mdxComponents === undefined
     ? (DEFAULT_MDX_COMPONENTS as Record<string, FC>)
     : typeof mdxComponents === 'function'
-      ? mdxComponents(DEFAULT_MDX_COMPONENTS as Record<string, FC>)
-      : { ...(DEFAULT_MDX_COMPONENTS as Record<string, FC>), ...mdxComponents };
+    ? mdxComponents(DEFAULT_MDX_COMPONENTS as Record<string, FC>)
+    : { ...(DEFAULT_MDX_COMPONENTS as Record<string, FC>), ...mdxComponents };
 
 /** Options for {@link boot}: MDX overrides, a route table, or an app root. */
 export type BootProps = {
@@ -73,13 +71,7 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
 
 /** The app shell {@link boot} renders: holds navigation state, subscribes to host
  *  URL + metadata pushes, and renders `children` or the route `<Router />`. */
-export const TinkerableApp = ({
-  routingSpec,
-  children,
-}: {
-  routingSpec: RoutingSpec;
-  children?: ReactNode;
-}) => {
+export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingSpec; children?: ReactNode }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
     const removeListener = addListener(URLCHANGE, ({ url }) => {
@@ -87,7 +79,7 @@ export const TinkerableApp = ({
         const updatedContext = updateContext(context, url);
         if (updatedContext !== context) {
           console.log(
-            `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`
+            `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`,
           );
         }
         return updatedContext;
@@ -114,10 +106,10 @@ export const TinkerableApp = ({
                   ...prevContext.filesMetadata,
                   ...update,
                 },
-              }
+              },
         );
       },
-      source.event
+      source.event,
     );
     source.enable();
     return dispose;
@@ -175,11 +167,7 @@ export const CATCH_ALL_ROUTING_SPEC: RoutingSpec = {
  * app calls from `index.tsx`: wires the MDX, module-cache, and navigation
  * providers, then renders the route table (`routingSpec`) or your `children`.
  */
-export const boot = ({
-  mdxComponents,
-  routingSpec,
-  children,
-}: BootProps = {}) => {
+export const boot = ({ mdxComponents, routingSpec, children }: BootProps = {}) => {
   const rootElement = document.getElementById('root');
   if (!rootElement) {
     throw new Error('boot requires root HTML element to exist');
@@ -198,6 +186,6 @@ export const boot = ({
           <TinkerableApp routingSpec={spec}>{children}</TinkerableApp>
         </MDXProvider>
       </ModuleCacheContextProvider>
-    </StrictMode>
+    </StrictMode>,
   );
 };

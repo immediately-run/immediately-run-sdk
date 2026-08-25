@@ -3,14 +3,7 @@
 // the `..`/absolute escape rejection, the errno→`.code` mapping, the bytes/utf8 read
 // shape, and the `canWrite` mode/rules hint.
 
-import {
-  openFs,
-  fsAvailable,
-  mimeTypeFor,
-  sandboxFs,
-  type FsError,
-  type SandboxFsPort,
-} from './fs';
+import { openFs, fsAvailable, mimeTypeFor, sandboxFs, type FsError, type SandboxFsPort } from './fs';
 import type { SandboxMount } from './mounts';
 
 type Calls = { method: string; args: unknown[] }[];
@@ -111,7 +104,9 @@ describe('error mapping', () => {
 
   it('maps EROFS → read-only on a ro fs', async () => {
     install(fakePort({}, { roFs: true }).port);
-    const err = await openFs(mount({ mode: 'ro' })).writeFile('x', 'y').catch((e: FsError) => e);
+    const err = await openFs(mount({ mode: 'ro' }))
+      .writeFile('x', 'y')
+      .catch((e: FsError) => e);
     expect((err as FsError).code).toBe('read-only');
   });
 

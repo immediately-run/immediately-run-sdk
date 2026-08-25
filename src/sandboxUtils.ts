@@ -45,12 +45,7 @@ export const protocolRequest = (
   params: Array<any>,
   opts?: BoundedCallOptions,
 ): Promise<any> =>
-  withDeadline(
-    protocolName,
-    method,
-    () => transport().protocolRequest(protocolName, method, params),
-    opts,
-  );
+  withDeadline(protocolName, method, () => transport().protocolRequest(protocolName, method, params), opts);
 
 /**
  * Race a host call against its deadline, a caller abort, and a pending notice.
@@ -72,9 +67,7 @@ export async function withDeadline<T>(
   const call = `${scheme}:${method}`;
   const attendance = attendanceOf(scheme, method);
   const bounds: CallBounds =
-    opts?.timeoutMs !== undefined
-      ? { idleMs: opts.timeoutMs, ceilingMs: opts.timeoutMs }
-      : boundsFor(scheme, method);
+    opts?.timeoutMs !== undefined ? { idleMs: opts.timeoutMs, ceilingMs: opts.timeoutMs } : boundsFor(scheme, method);
   const signal = opts?.signal;
 
   if (signal?.aborted) throw new ProtocolCancelledError(call);
@@ -107,12 +100,8 @@ export async function withDeadline<T>(
             call,
             attendance,
             elapsedMs: Date.now() - started,
-            ...(attendanceReason(scheme, method)
-              ? { reason: attendanceReason(scheme, method) as string }
-              : {}),
-            ...(attention?.awaiting
-              ? { awaiting: { kind: attention.kind, since: attention.since } }
-              : {}),
+            ...(attendanceReason(scheme, method) ? { reason: attendanceReason(scheme, method) as string } : {}),
+            ...(attention?.awaiting ? { awaiting: { kind: attention.kind, since: attention.since } } : {}),
           });
         } catch {
           /* a caller's render callback must never break the call it describes */
@@ -121,8 +110,7 @@ export async function withDeadline<T>(
 
       deadline = createSuspendableDeadline({
         bounds,
-        onExpire: (bound, elapsedBoundMs) =>
-          reject(new ProtocolTimeoutError(call, elapsedBoundMs, attendance, bound)),
+        onExpire: (bound, elapsedBoundMs) => reject(new ProtocolTimeoutError(call, elapsedBoundMs, attendance, bound)),
       });
 
       if (opts?.onPending) {

@@ -37,13 +37,7 @@ const fileSet = new Set(files);
 const resolveSpecifier = (fromFile, spec) => {
   if (!spec.startsWith('.')) return null; // bare/external import — not our graph
   const base = resolve(dirname(fromFile), spec);
-  const candidates = [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    join(base, 'index.ts'),
-    join(base, 'index.tsx'),
-  ];
+  const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')];
   for (const c of candidates) {
     if (fileSet.has(c)) return c;
     if (existsSync(c) && statSync(c).isFile() && fileSet.has(c)) return c;

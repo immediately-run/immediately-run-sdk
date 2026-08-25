@@ -76,9 +76,7 @@ if (isMain) {
   const outBase = process.argv[3] ?? 'selfhost';
 
   const targets = versionsAtOrAbove(publishedVersions(), floor);
-  console.log(
-    `Backfilling integrity for ${targets.length} version(s) >= ${floor}: ${targets.join(', ')}`,
-  );
+  console.log(`Backfilling integrity for ${targets.length} version(s) >= ${floor}: ${targets.join(', ')}`);
   // R3-286: the per-version SOURCE is printed, not just "written". The failure this
   // replaces was visible in the old log only as a 3.9s outlier among 80ms lines —
   // one version had silently taken the re-derive path. Name the path instead.

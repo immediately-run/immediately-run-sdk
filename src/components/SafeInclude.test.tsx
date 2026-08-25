@@ -28,12 +28,12 @@ const render = (ui: ReactNode) => {
   return { container, unmount: () => act(() => root.unmount()) };
 };
 
-describe('isForeignMountPath — is this file in the app, or in someone else\'s mount?', () => {
+describe("isForeignMountPath — is this file in the app, or in someone else's mount?", () => {
   // The distinction the interpreted include exists for. Getting it wrong is not a loud
   // failure: an app-anchored read of `/task/<slot>/dir/_layout.mdx` strips to
   // `task/<slot>/dir/_layout.mdx` and misses INSIDE the app's own tree, so a dispatched
   // wiki renders no shell and nothing says why.
-  it('treats the app\'s own repo paths as local', () => {
+  it("treats the app's own repo paths as local", () => {
     expect(isForeignMountPath('/app/content/home.mdx')).toBe(false);
     expect(isForeignMountPath('/app')).toBe(false);
   });
@@ -158,10 +158,7 @@ describe('createSourceCache', () => {
     // The behaviour this cache exists for: the host RPC drops requests during a navigation,
     // and a memoised rejection is returned to every later render — the file then stays blank
     // for the rest of the session, with no error and no way back short of a reload.
-    const reader = jest
-      .fn()
-      .mockRejectedValueOnce(new Error('Invalid RPC id'))
-      .mockResolvedValueOnce('recovered');
+    const reader = jest.fn().mockRejectedValueOnce(new Error('Invalid RPC id')).mockResolvedValueOnce('recovered');
     const cache = createSourceCache(reader);
     await expect(cache.read('x.mdx')).rejects.toThrow('Invalid RPC id');
     expect(cache.size()).toBe(0);

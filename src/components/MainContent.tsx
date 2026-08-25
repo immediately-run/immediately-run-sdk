@@ -9,7 +9,17 @@ import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 // returned path is reused below to build the redirect URL (which is anchored to
 // `/app` by the file router); only the filesystem existence check is resolved
 // under `APP_ROOT`, since `bundler.fs` is rooted at `/`.
-const candidates = ['/src/App.tsx', '/src/App.ts', '/src/App.js', '/App.tsx', '/App.ts', '/App.js', '/README.md', '/README.mdx', '/README.html'];
+const candidates = [
+  '/src/App.tsx',
+  '/src/App.ts',
+  '/src/App.js',
+  '/App.tsx',
+  '/App.ts',
+  '/App.js',
+  '/README.md',
+  '/README.mdx',
+  '/README.html',
+];
 
 const fileExists = async (path: string): Promise<[string, boolean]> => {
   // @ts-ignore
@@ -18,11 +28,11 @@ const fileExists = async (path: string): Promise<[string, boolean]> => {
   return [path, exists];
 };
 
-export const MainContentRedirect = ({filename}:{filename:string}) => {
+export const MainContentRedirect = ({ filename }: { filename: string }) => {
   const url = useTinkerableLink(filename);
   navigate(url);
   return <>Redirecting to {filename}</>;
-}
+};
 
 export const MainContentInner = ({
   candidatesExistPromise,
@@ -35,7 +45,7 @@ export const MainContentInner = ({
     // todo: show file list
     throw new Error(`No main content file present`);
   }
-  return <MainContentRedirect filename={FILES_PREFIX + filename}/>;
+  return <MainContentRedirect filename={FILES_PREFIX + filename} />;
 };
 
 export const MainContent = ({

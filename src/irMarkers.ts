@@ -15,17 +15,17 @@
  * array means "no attributes" (a bare mark).
  */
 export const IR_MARKERS = {
-  "ir.open": ["url", "provider", "ns", "repo", "ref", "refKind"],
-  "ir.fetch": ["source", "bytes", "requestCount", "cacheHit", "httpStatus"],
-  "ir.mount": ["phantomCount", "writablePrimed"],
-  "ir.sandbox.boot": [],
-  "ir.transpile": ["moduleCount", "cacheHit", "bytesIn", "bytesOut"],
-  "ir.deps": ["depCount", "bytes", "requestCount", "cacheHit", "cdn"],
-  "ir.eval": ["moduleCount"],
-  "ir.fmp": [],
-  "ir.interactive": ["cold"],
-  "ir.verify": ["result", "blocking"],
-  "ir.refresh": ["bytes"],
+  'ir.open': ['url', 'provider', 'ns', 'repo', 'ref', 'refKind'],
+  'ir.fetch': ['source', 'bytes', 'requestCount', 'cacheHit', 'httpStatus'],
+  'ir.mount': ['phantomCount', 'writablePrimed'],
+  'ir.sandbox.boot': [],
+  'ir.transpile': ['moduleCount', 'cacheHit', 'bytesIn', 'bytesOut'],
+  'ir.deps': ['depCount', 'bytes', 'requestCount', 'cacheHit', 'cdn'],
+  'ir.eval': ['moduleCount'],
+  'ir.fmp': [],
+  'ir.interactive': ['cold'],
+  'ir.verify': ['result', 'blocking'],
+  'ir.refresh': ['bytes'],
 } as const;
 
 /** A canonical `ir.*` load-profiling marker name (a key of {@link IR_MARKERS}). */
@@ -36,7 +36,7 @@ export type IrMarkerName = keyof typeof IR_MARKERS;
 // inherits its aggregate's attribute schema.
 const SUBMARK_RE = /^(ir\.transpile\.mod|ir\.deps\.pkg)\[[^\]]+\]$/;
 const submarkAggregate = (name: string): IrMarkerName | null =>
-  name.startsWith("ir.transpile.mod") ? "ir.transpile" : name.startsWith("ir.deps.pkg") ? "ir.deps" : null;
+  name.startsWith('ir.transpile.mod') ? 'ir.transpile' : name.startsWith('ir.deps.pkg') ? 'ir.deps' : null;
 
 /** Is `name` a defined top-level `ir.*` marker (not a sub-mark)? */
 export const isIrMarkerName = (name: string): name is IrMarkerName =>
@@ -44,8 +44,7 @@ export const isIrMarkerName = (name: string): name is IrMarkerName =>
 
 /** Is `name` an accepted marker name — a defined top-level marker OR a recognized
  *  per-module/per-dep sub-mark? */
-export const isAllowedMarkerName = (name: string): boolean =>
-  isIrMarkerName(name) || SUBMARK_RE.test(name);
+export const isAllowedMarkerName = (name: string): boolean => isIrMarkerName(name) || SUBMARK_RE.test(name);
 
 /** A marker forwarded across the origin boundary (§3.2): a name, the sandbox-side
  *  `performance.now()` timestamp, and the optional attribute payload. */
@@ -66,14 +65,14 @@ export interface ForwardedMarker {
  * aggregate's schema.
  */
 export function validateMarker(m: ForwardedMarker | null | undefined): ForwardedMarker | null {
-  if (!m || typeof m.name !== "string") return null;
-  if (typeof m.at !== "number" || !Number.isFinite(m.at)) return null;
+  if (!m || typeof m.name !== 'string') return null;
+  if (typeof m.at !== 'number' || !Number.isFinite(m.at)) return null;
   if (!isAllowedMarkerName(m.name)) return null;
   const base: IrMarkerName = isIrMarkerName(m.name) ? m.name : submarkAggregate(m.name)!;
   const allowed: readonly string[] = IR_MARKERS[base];
   const attrs = m.attrs;
   if (attrs !== undefined) {
-    if (typeof attrs !== "object" || attrs === null) return null;
+    if (typeof attrs !== 'object' || attrs === null) return null;
     for (const key of Object.keys(attrs)) {
       if (!allowed.includes(key)) return null; // out-of-schema attribute → drop the whole marker
     }
