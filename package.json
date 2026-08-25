@@ -29,12 +29,14 @@
     "prebuild": "node scripts/gen-version.mjs",
     "build": "tsup && node scripts/build-safecontent-deps.mjs && node scripts/copy-ambient-types.mjs",
     "test": "jest",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,mjs,json}\" \"test/**/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,mjs,json}\" \"test/**/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
     "check:circular": "node scripts/check-circular.mjs",
     "api:check": "node scripts/check-api-stability.mjs",
     "protocol:check": "node scripts/check-protocol-snapshot.mjs",
     "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run check:selfhost:selftest && npm run check:selfhost && npm run verify:codegen-parity",
+    "verify": "npm run format:check && npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run check:selfhost:selftest && npm run check:selfhost && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
@@ -43,7 +45,8 @@
     "compat:previous": "node scripts/check-previous-sdk-compat.mjs",
     "compat:selftest": "node scripts/check-previous-sdk-compat.mjs --self-test",
     "check:selfhost": "node scripts/build-selfhost.mjs .selfhost-check && node scripts/check-selfhost-resolvable.mjs --dir .selfhost-check",
-    "check:selfhost:selftest": "node scripts/check-selfhost-resolvable.mjs --self-test"
+    "check:selfhost:selftest": "node scripts/check-selfhost-resolvable.mjs --self-test",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -56,6 +59,7 @@
   },
   "devDependencies": {
     "@immediately-run/mdx-plugins": "^0.1.0",
+    "@immediately-run/prettier-config": "0.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.2",
     "@types/jest": "^29.5.0",
@@ -70,6 +74,7 @@
     "mdast-util-mdx-jsx": "^3.2.0",
     "micromark-extension-gfm": "^3.0.0",
     "micromark-extension-mdx-jsx": "^3.0.2",
+    "prettier": "2.8.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "ts-jest": "^29.1.0",
@@ -77,5 +82,6 @@
     "tsup": "^8.0.0",
     "typedoc": "^0.27.0",
     "typescript": "^5.6.0"
-  }
+  },
+  "prettier": "@immediately-run/prettier-config"
 }

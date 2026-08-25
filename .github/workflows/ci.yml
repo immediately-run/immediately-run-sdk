@@ -34,6 +34,11 @@ jobs:
       # publishes cleanly; revisit when 12.x is fixed.
       - run: npm install -g npm@11
       - run: npm ci
+      # The formatting gate. `format:check`, never `format -- --check`: appending
+      # --check to a `prettier --write` script does not make it read-only — Prettier
+      # rewrites the tree and exits 0, which is how the sandbox repo drifted 106 files
+      # behind a step that looked like a gate.
+      - run: npm run format:check
       # Fail fast on a circular import — the sandbox bundler infinite-loops on one
       # at app boot ("Maximum call stack size exceeded"). Caught the 0.2.7 cycle.
       - run: npm run check:circular
