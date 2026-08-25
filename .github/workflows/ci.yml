@@ -179,6 +179,7 @@ jobs:
       # (R3-19/R3-21 landed on main after the v0.8.0 tag without a bump); the fix
       # is always to bump the package version.
       - name: Commit integrity trust root + tag the release
+        id: trust-root
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
@@ -192,12 +193,20 @@ jobs:
             git commit -m "chore(integrity): sync SDK trust root for ${TAG} [skip ci]"
             git push origin HEAD:main
           fi
+          # `new_tag` is the "a version actually went out" signal the deploy
+          # dispatch below keys on. The release job runs on EVERY approved push to
+          # main, but tagging and publishing are idempotent no-ops when the version
+          # was not bumped — so the tag being newly created is the one event that
+          # means the host's pin range needs to grow.
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "::notice::tag ${TAG} already exists — skipping."
+            echo "new_tag=false" >> "$GITHUB_OUTPUT"
           else
             git tag -a "${TAG}" -m "@immediately-run/sdk ${VERSION}"
             git push origin "refs/tags/${TAG}"
+            echo "new_tag=true" >> "$GITHUB_OUTPUT"
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
@@ -222,3 +231,88 @@ jobs:
             exit 0
           fi
           npm publish --access public
+
+      # --- Close the sdk-integrity staleness window -------------------------
+      #
+      # The host pins a per-version SHA-384 of every self-hosted SDK file and the
+      # sandbox bundler FAILS CLOSED on a version the pin does not cover
+      # (SDK_PACKAGING_SPEC §5.2). That manifest is assembled at site-main DEPLOY
+      # time from this repo's newest release tag — so the moment a new version is
+      # tagged here, every already-deployed host is one version short, and the
+      # first app to pin the new version breaks until someone deploys.
+      #
+      # That is not hypothetical: 0.47.0/0.48.0 published 2026-08-25 14:15/14:25Z,
+      # `agent-demo` pinned ^0.48.0 at 14:32Z, and the agent workbench threw
+      # "@immediately-run/sdk@0.48.0 has no host-pinned integrity entry" in
+      # production until the next deploy at 15:16Z. Nothing caught it: the deploy's
+      # own coverage gate only asserts the floor and DEFAULT_SDK_VERSION, which it
+      # cannot extend to whatever version an app in another repo might pin.
+      #
+      # So a new tag now dispatches the production deploy, which re-ingests this
+      # repo's tags and re-bakes the manifest.
+      #
+      # ⚠ WHAT THIS COSTS, stated plainly because it is a real widening: the deploy
+      # builds all five repos at `main`, so this promotes whatever is on main across
+      # those five repos at the instant a version is tagged here — not just the
+      # manifest. The human decision recorded on THIS run is "publish this SDK
+      # version" (the `production` environment approval asserted at the top of this
+      # job), which is not the same decision as "promote the current main of five
+      # repos". Accepted deliberately (2026-08-25) in exchange for closing the
+      # window automatically; the deploy workflow's own comment records the other
+      # half. If that trade stops being worth it, the alternative considered was a
+      # manifest-only refresh that redeploys the shas already in
+      # `deployments/latest.json`, promoting no new code.
+      #
+      # Fails the job when the dispatch cannot be made — a silent failure here is
+      # an open staleness window nobody knows about. The publish above has already
+      # happened and is irreversible, so the message says exactly what to run by
+      # hand.
+      - name: Dispatch the production deploy (re-bake the host SDK integrity manifest)
+        if: steps.trust-root.outputs.new_tag == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          VERSION: ${{ steps.trust-root.outputs.version }}
+        run: |
+          set -euo pipefail
+          # One definition, used both to RUN the dispatch and to PRINT it in every
+          # failure message — so the command an operator is told to run by hand
+          # cannot drift from the one CI actually attempted.
+          DISPATCH=(gh workflow run deploy.yml --repo immediately-run/deploy
+                    -f sdk_ref=main -f sandpack_ref=main -f sandbox_ref=main
+                    -f site_ref=main -f backend_ref=main)
+          MANUAL="${DISPATCH[*]}"
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::DEPLOY_DISPATCH_TOKEN is not set on this repository, so v${VERSION} was published but no deploy was dispatched — every deployed host stays one version short and fails closed for any app that pins ${VERSION}. Add a fine-grained PAT scoped to immediately-run/deploy with Actions: read+write as the DEPLOY_DISPATCH_TOKEN secret, then run: ${MANUAL}"
+            exit 1
+          fi
+
+          # The newest run BEFORE dispatching. Polling for "a run exists" would
+          # match the previous deploy and report success without anything having
+          # been queued — the confirmation has to be that the newest id CHANGED.
+          before=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
+                   --limit 1 --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)
+
+          if ! "${DISPATCH[@]}"; then
+            echo "::error::Dispatching the production deploy failed after publishing v${VERSION}. Until a deploy runs, any app pinning ${VERSION} fails closed on the missing integrity entry. Run it by hand: ${MANUAL}"
+            exit 1
+          fi
+          echo "::notice::Dispatched immediately-run/deploy for v${VERSION}."
+
+          # Confirm the side effect actually appeared rather than trusting the
+          # dispatch API's empty 204 (ways_of_working §2: check the side effect).
+          # Deliberately fail-OPEN: the dispatch was accepted, and a slow queue
+          # must not fail an otherwise-good release — so an unobserved run is a
+          # warning naming the manual command, never a silent pass claiming
+          # success.
+          for _ in $(seq 1 12); do
+            sleep 5
+            after=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
+                    --limit 1 --json databaseId,url --jq '.[0]' 2>/dev/null || true)
+            id=$(printf '%s' "${after:-}" | jq -r '.databaseId // 0' 2>/dev/null || echo 0)
+            if [ "${id:-0}" != "0" ] && [ "${id}" != "${before}" ]; then
+              echo "::notice::Deploy run: $(printf '%s' "$after" | jq -r '.url')"
+              exit 0
+            fi
+          done
+          echo "::warning::Dispatch was accepted but no NEW deploy run became visible within 60s (newest is still ${before}). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
