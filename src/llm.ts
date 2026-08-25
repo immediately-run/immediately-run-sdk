@@ -91,7 +91,17 @@ export type ChatDelta =
   | { type: 'reasoning-delta'; text: string }
   | { type: 'reasoning'; text: string; signature?: string }
   | { type: 'reasoning-redacted'; data: string }
-  | { type: 'usage'; inputTokens: number; outputTokens: number };
+  // Token accounting for the turn. `cacheReadTokens`/`cacheWriteTokens` are present
+  // only on providers that report prompt caching (R3-336) — they are what makes a
+  // caching claim verifiable rather than believed, and their ABSENCE is meaningful:
+  // it says this provider reports nothing, not that nothing was cached.
+  | {
+      type: 'usage';
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    };
 
 /** Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`. */
 export type ChatStopReason = 'end' | 'length' | 'tool' | 'filtered';
