@@ -9,14 +9,15 @@
 // This is types-only: nothing here is imported at runtime, so referencing it does
 // not pull the SDK's sandbox-adapter tier into the app's bundle graph.
 //
-// ── What is NOT here: the `fs` module ────────────────────────────────────────
-// The async-only `fs` surface the sandbox exposes is declared by
-// `@immediately-run/dev-fs/fs` (`/// <reference types="@immediately-run/dev-fs/fs" />`),
-// the package that also bridges it to real disk under `vite dev`. It is not
-// re-declared here: a second copy of a type declaration is the drift this whole
-// project is removing, and the copy would be the one apps hit first. Moving that
-// declaration's OWNERSHIP to the SDK (with dev-fs re-referencing it) is the right
-// long-run shape and needs a change in that repo — filed as R3-276b.
+// ── The `fs` module ──────────────────────────────────────────────────────────
+// The async-only `fs` surface the sandbox exposes is declared alongside this
+// file in `ambient-fs.d.ts` (moved there from `@immediately-run/dev-fs` by
+// R3-276b, so the package that owns the surface declares it). Nothing else is
+// needed: this one reference is the whole ambient contract.
+//
+// `@immediately-run/dev-fs/fs` still works — it re-references this declaration
+// for a deprecation window (`SDK_PACKAGING_SPEC` §9), because every app repo
+// names that path in a `.d.ts` and moves on its own schedule.
 //
 // ── Host obligation: mount before boot ───────────────────────────────────────
 // The corpus a viewer reads must be MOUNTED before the app boots. The SDK offers no
@@ -25,6 +26,8 @@
 // already there, because the host guarantees the mount precedes evaluation. A host
 // that boots an app first and mounts second is breaking the contract, not exposing
 // a race the app should defend against.
+
+/// <reference path="./ambient-fs.d.ts" />
 
 import type { EvaluationContext } from './sandboxTypes';
 

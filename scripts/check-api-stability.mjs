@@ -84,10 +84,34 @@ const extractExports = (code) => {
 /** The names a `export * from '<bare package>'` brings in, read from that package's
  *  own types. Bounded to `@immediately-run/*`: a star re-export of a third-party
  *  package would make this repo's public surface hostage to someone else's release,
- *  which is a design problem to reject, not a resolution to implement. */
+ *  which is a design problem to reject, not a resolution to implement.
+ *
+ *  `export *` inside an ambient `declare module 'x' { … }` block (ambient-fs.d.ts
+ *  aliases `node:fs` to the sandbox `fs` surface) is NOT a module-graph re-export —
+ *  the block declares what a builtin module's types ARE for `/// <reference>`-ing
+ *  apps; it adds nothing to the SDK's own export graph. Those blocks are skipped
+ *  by brace-tracking, so the gate still fires on every real surface file. */
+const stripAmbientModuleBlocks = (code) => {
+  const lines = code.split('\n');
+  const kept = [];
+  let depth = 0;
+  for (const line of lines) {
+    if (depth === 0 && /^\s*declare\s+(global\s+)?module\s+['"]/.test(line) && line.includes('{')) {
+      depth = (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+      continue;
+    }
+    if (depth > 0) {
+      depth += (line.match(/\{/g) || []).length - (line.match(/\}/g) || []).length;
+      continue;
+    }
+    kept.push(line);
+  }
+  return kept.join('\n');
+};
+
 const starReExportedNames = (code, fromFile) => {
   const names = new Set();
-  for (const m of code.matchAll(/export\s*\*\s*from\s*['"]([^'"]+)['"]/g)) {
+  for (const m of stripAmbientModuleBlocks(code).matchAll(/export\s*\*\s*from\s*['"]([^'"]+)['"]/g)) {
     const spec = m[1];
     if (spec.startsWith('.')) continue; // relative → its own .d.ts is in this walk
     if (!spec.startsWith('@immediately-run/')) {
