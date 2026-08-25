@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.49.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.50.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -117,7 +117,7 @@ Import: `@immediately-run/sdk/mounts`
 - `openSettingsOf` (function) — Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file commander" surface.
 - `RemovedMount` (interface) — A descriptor delivered as REMOVED to a mounts-change listener: the mount that went away, plus the `reason` it did.
 - `requestMount` (function) — Ask the user to grant a filesystem to this app — the §8.6 powerbox.
-- `requestSpace` (function) — Prompt the user to grant a mount, returning the granted SandboxMount.
+- `requestSpace` (function) **[DEPRECATED]** — Prompt the user to grant a mount, returning the granted SandboxMount.
 - `resolveContentRef` (function) — Resolve a content reference your app found in content it ALREADY holds (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
 - `resolveContentRefs` (function) — Resolve a BATCH of content references in ONE consent round (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
 - `revokeInvite` (function) — Withdraw a pending invitation (distinct from unshareSpace, which removes an ACCEPTED member) — `spaces:admin`.
@@ -427,6 +427,13 @@ Import: `@immediately-run/sdk/hostRuntime`
 
 - `getHostRuntime` (function) — Read the sandbox runtime's discovery global (§4), or null when absent — in which case the SDK uses the current INJECTED path (`module.evaluation.*`).
 - `ImmediatelyRunGlobal` (interface) — The sandbox runtime's pre-evaluation discovery global (§4).
+
+## injectedBundler
+
+Import: `@immediately-run/sdk/injectedBundler`
+
+- `getInjectedMetadataEmitter` (function) **[DEPRECATED]**
+- `getInjectedMetadataSnapshot` (function) **[DEPRECATED]**
 
 ## ipc
 
