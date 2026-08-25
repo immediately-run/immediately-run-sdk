@@ -9,6 +9,13 @@
     "TinkerableContext",
     "TinkerableState"
   ],
+  "ambient-fs": [
+    "Dirent",
+    "FsPromises",
+    "Stats",
+    "WatchEvent",
+    "WatchOptions"
+  ],
   "auth": [
     "AuthState",
     "AuthStatus",
