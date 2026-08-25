@@ -222,3 +222,61 @@ jobs:
             exit 0
           fi
           npm publish --access public
+
+  # @immediately-run/safe-content — the S3 content-framework's first extraction
+  # (PLATFORM_LAYERING_SPEC §4, R3-279 phase 2). A second package in this repo with
+  # its OWN install/build/test/publish, so the SDK's release apparatus (gh-pages,
+  # integrity trust root) stays scoped to @immediately-run/sdk.
+  #
+  # ⚠ OPERATOR PREREQUISITE (one-time): npm trusted publishing must be configured for
+  # @immediately-run/safe-content on npmjs.com (repository = immediately-run/immediately-run-sdk),
+  # and the `production` environment's approvers cover this job too (it publishes a
+  # public package, so it takes the same human gate).
+  #
+  # BOOTSTRAP NOTE: the package depends on @immediately-run/mdx-plugins 0.5.0 (PR #4's
+  # publish). Until that is on the registry this job fails at install BY DESIGN, and
+  # `npm install` stands in for `npm ci` (no lockfile can exist before first publish —
+  # switch to `npm ci` + commit safe-content/package-lock.json in the follow-up that
+  # lands phase 3).
+  safe-content:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing (OIDC)
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+      - run: npm install -g npm@11
+      - name: Install, build, test (the package's own verify)
+        working-directory: safe-content
+        run: |
+          npm install --no-audit --no-fund
+          npm run verify
+      - name: Assert this run cleared the `production` approval gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APPROVALS=$(gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/approvals")
+          COUNT=$(printf '%s' "$APPROVALS" | jq '[.[] | select(.state == "approved") | select(any(.environments[]?; .name == "production"))] | length')
+          if [ "${COUNT:-0}" -lt 1 ]; then
+            echo "::error::No human approval recorded for environment 'production' on this run. Refusing to publish an irreversible public version unattended (R-TA-1)."
+            exit 1
+          fi
+      - name: Publish to npm via trusted publishing (skip if version already published)
+        working-directory: safe-content
+        env:
+          NODE_AUTH_TOKEN: ""
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          PKG_VER=$(node -p "require('./package.json').version")
+          if npm view "$PKG_NAME@$PKG_VER" version >/dev/null 2>&1; then
+            echo "::notice::$PKG_NAME@$PKG_VER already published — skipping."
+            exit 0
+          fi
+          npm publish --access public
