@@ -20,10 +20,11 @@ export default defineConfig({
     // keeps it OUT of the public `.d.ts` API surface — it's internal, reached only by
     // `parseSafeMdast`'s relative `import('./mdastDeps')`, never as a public subpath.
     "!src/safeContent/mdastDeps.ts",
-    // `ambient.d.ts` is a DECLARATION file, not a source file: tsup would emit it
-    // as `ambient.d.cjs` / `ambient.d.d.cts`, which is neither loadable nor
-    // referenceable. It is copied to dist verbatim by scripts/copy-ambient-types.mjs.
+    // `ambient*.d.ts` are DECLARATION files, not source files: tsup would emit
+    // them as `ambient.d.cjs` / `ambient.d.d.cts`, which is neither loadable nor
+    // referenceable. They are copied to dist verbatim by scripts/copy-ambient-types.mjs.
     "!src/ambient.d.ts",
+    "!src/ambient-fs.d.ts",
   ],
   format: ["esm", "cjs"],
   bundle: false,
