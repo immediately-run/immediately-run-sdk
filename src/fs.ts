@@ -59,6 +59,11 @@ export function sandboxFs(): SandboxFsPort | null {
   }
   try {
     // @ts-ignore - `module` is injected by the sandbox runtime (see sandboxUtils transport).
+    // DEPRECATION WINDOW (opened 2026-08-25, R3-278): this `bundler.fs.layers` fallback
+    // is injected-bundler API reading — the supported surface is the
+    // `__sandpackSharedFs` discovery global above (and `openFs`/`sandboxFs` themselves).
+    // Kept through the SDK_PACKAGING_SPEC §9 window; new code must not read bundler.*
+    // (scripts/check-bundler-reads.mjs).
     const layers = module?.evaluation?.module?.bundler?.fs?.layers;
     if (Array.isArray(layers)) {
       for (const layer of layers) {

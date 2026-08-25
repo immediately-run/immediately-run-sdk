@@ -16,6 +16,9 @@ export * from './hooks';
 // R3-276: the supported way for a viewer app to provide its own metadata store,
 // replacing a wholesale re-provision of `TinkerableContext` in app code.
 export * from './metadataSource';
+// The deprecated injected-bundler adapters, re-exported so their deprecation notices
+// are visible in the published docs (R3-278; the window only narrows).
+export { getInjectedMetadataEmitter, getInjectedMetadataSnapshot } from './injectedBundler';
 export * from './auth';
 export * from './theme';
 export * from './editorContext';

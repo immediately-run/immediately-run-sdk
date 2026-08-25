@@ -2,6 +2,7 @@ import { Suspense, use, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { navigate, useTinkerableLink } from '../routing';
 import { FILES_PREFIX, underAppRoot } from '../urlUtils';
+import { sandboxFs, type SandboxFsPort } from '../fs';
 
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 
@@ -21,11 +22,30 @@ const candidates = [
   '/README.html',
 ];
 
+// R3-278: the existence probe goes through the SDK's OWN fs surface (`sandboxFs`),
+// not the injected bundler — this was the last direct `bundler.*` read on a
+// PUBLIC component, and the one with no fallback: with no injected bundler
+// (npm-fetched SDK, `vite dev`, pre-boot) the old read THREW. Unavailable fs
+// simply answers `false` for every candidate (the "no main content file" path),
+// so the component degrades instead of crashing — the regression case this
+// item exists to close.
 const fileExists = async (path: string): Promise<[string, boolean]> => {
-  // @ts-ignore
-  const bundler = module.evaluation.module.bundler;
-  const exists = await bundler.fs.isFile.async(underAppRoot(path));
-  return [path, exists];
+  const fs = sandboxFs();
+  if (!fs) return [path, false];
+  const absolute = underAppRoot(path);
+  try {
+    // stat when the port has it, else readFile (dirs reject with EISDIR → false).
+    const stat = (fs.promises as { stat?: Function } | undefined)?.stat ?? (fs as { stat?: Function }).stat;
+    if (typeof stat === 'function') {
+      await stat.call(fs.promises ?? fs, absolute);
+      return [path, true];
+    }
+    const holder = fs.promises ?? (fs as { readFile: NonNullable<SandboxFsPort['readFile']> });
+    await holder.readFile(absolute);
+    return [path, true];
+  } catch {
+    return [path, false];
+  }
 };
 
 export const MainContentRedirect = ({ filename }: { filename: string }) => {

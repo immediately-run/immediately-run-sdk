@@ -549,6 +549,8 @@
     "getHostAttention",
     "getHostRuntime",
     "getHostTheme",
+    "getInjectedMetadataEmitter",
+    "getInjectedMetadataSnapshot",
     "getInvites",
     "getMounts",
     "getReadyState",

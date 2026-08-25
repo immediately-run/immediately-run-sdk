@@ -5,6 +5,16 @@
 // (so the current, live path stays byte-for-byte unchanged) and FALLS BACK to the
 // §4 transport when the SDK is fetched from npm with no injection present.
 //
+/** @deprecated The injected-bundler adapter tier — DEPRECATION WINDOW OPENED 2026-08-25
+ *  (R3-278, SDK_PACKAGING_SPEC §9). `module.evaluation.module.bundler.*` stops being
+ *  API: every read here has a protocol equivalent (the §4 transport paths in
+ *  `sandboxUtils`/`hostRuntime`, the metadata event-fill, `sandboxFs`, the transport
+ *  mount service). The injection is still PREFERRED at runtime so today's live path
+ *  is byte-for-byte unchanged — deprecating is an announcement, not a removal (the
+ *  window closes only when no host injects and no pinned app reads; see
+ *  DEPRECATION_CANDIDATES.md). New code MUST NOT read `bundler.*` — enforced by
+ *  `scripts/check-bundler-reads.mjs` in `verify`.
+ */
 // This module centralizes the `module.evaluation.module.bundler.*` reads (the same
 // philosophy as `sandboxUtils`' transport resolver) and exposes a PURE resolver for
 // the metadata-update subscription so the dual-mode decision is unit-tested without
@@ -32,7 +42,11 @@ const injectedBundler = (): any | null => {
   }
 };
 
-/** The injected bundler's metadata emitter, or null when npm-fetched. */
+/** @deprecated Injected-bundler read (window opened 2026-08-25, R3-278) — the
+ *  protocol equivalent is the metadata event-fill over the §4 transport, which
+ *  `resolveMetadataSource` already selects when this returns null.
+ *
+ * The injected bundler's metadata emitter, or null when npm-fetched. */
 export const getInjectedMetadataEmitter = (): InjectedMetadataEmitter | null => {
   const b = injectedBundler();
   if (b && typeof b.onMetadataChange === 'function' && b.onMetadataChangeEmitter) {
@@ -44,7 +58,9 @@ export const getInjectedMetadataEmitter = (): InjectedMetadataEmitter | null => 
   return null;
 };
 
-/**
+/** @deprecated Injected-bundler read (window opened 2026-08-25, R3-278) — the boot
+ *  seed degrades to transport event-fill when this returns null.
+ *
  * The injected bundler's synchronous metadata snapshot for the boot seed
  * (MDX_CONTENT_COLLECTIONS_SPEC §1.4). Returns the full `/app`-keyed collection the
  * bundler seeded (from the frontmatter sidecar) so the app's first render already

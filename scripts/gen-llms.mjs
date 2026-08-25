@@ -39,6 +39,13 @@ const KIND = {
   4: 'namespace',
 };
 
+// `@deprecated` present on the declaration or its first signature (R3-278: the
+// notice must be VISIBLE in llms.txt, not only in TypeDoc's HTML).
+const isDeprecated = (c) => {
+  const tags = [...(c.comment?.blockTags ?? []), ...(c.signatures?.find((s) => s.comment)?.comment?.blockTags ?? [])];
+  return tags.some((t) => t.tag === '@deprecated');
+};
+
 // First sentence of an export's JSDoc summary (comment lives on the declaration
 // or, for functions, on the first call signature).
 const summary = (c) => {
@@ -128,7 +135,7 @@ for (const m of modules) {
   lines.push('');
   for (const c of exports) {
     const s = summary(c);
-    lines.push(`- \`${c.name}\` (${KIND[c.kind]})${s ? ' — ' + s : ''}`);
+    lines.push(`- \`${c.name}\` (${KIND[c.kind]})${isDeprecated(c) ? ' **[DEPRECATED]**' : ''}${s ? ' — ' + s : ''}`);
   }
   lines.push('');
 }
