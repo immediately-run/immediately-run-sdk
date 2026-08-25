@@ -179,6 +179,7 @@ jobs:
       # (R3-19/R3-21 landed on main after the v0.8.0 tag without a bump); the fix
       # is always to bump the package version.
       - name: Commit integrity trust root + tag the release
+        id: trust-root
         run: |
           VERSION=$(node -p "require('./package.json').version")
           TAG="v$VERSION"
@@ -192,12 +193,20 @@ jobs:
             git commit -m "chore(integrity): sync SDK trust root for ${TAG} [skip ci]"
             git push origin HEAD:main
           fi
+          # `new_tag` is the "a version actually went out" signal the deploy
+          # dispatch below keys on. The release job runs on EVERY approved push to
+          # main, but tagging and publishing are idempotent no-ops when the version
+          # was not bumped — so the tag being newly created is the one event that
+          # means the host's pin range needs to grow.
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "::notice::tag ${TAG} already exists — skipping."
+            echo "new_tag=false" >> "$GITHUB_OUTPUT"
           else
             git tag -a "${TAG}" -m "@immediately-run/sdk ${VERSION}"
             git push origin "refs/tags/${TAG}"
+            echo "new_tag=true" >> "$GITHUB_OUTPUT"
           fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
