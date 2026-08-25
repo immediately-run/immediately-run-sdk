@@ -438,10 +438,36 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ""
         run: |
+          set -uo pipefail
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VER=$(node -p "require('./package.json').version")
           if npm view "$PKG_NAME@$PKG_VER" version >/dev/null 2>&1; then
             echo "::notice::$PKG_NAME@$PKG_VER already published — skipping."
             exit 0
           fi
-          npm publish --access public
+
+          # Does the package NAME exist at all? A first publish and a new version of
+          # an existing package fail for completely different reasons, and raw npm
+          # output does not distinguish them: both surface as `ENEEDAUTH`, which
+          # reads like a broken token and sends you to look at permissions that are
+          # in fact correct. This is what that cost on 2026-08-25 — the first
+          # @immediately-run/safe-content publish failed with ENEEDAUTH while the
+          # SDK's own publish, same workflow and same `id-token: write`, succeeded a
+          # minute earlier.
+          if npm view "$PKG_NAME" version >/dev/null 2>&1; then
+            FIRST_PUBLISH=0
+          else
+            FIRST_PUBLISH=1
+            echo "::notice::$PKG_NAME is not on the registry yet — this is its first publish."
+          fi
+
+          if npm publish --access public; then
+            exit 0
+          fi
+
+          if [ "$FIRST_PUBLISH" = "1" ]; then
+            echo "::error::First publish of $PKG_NAME failed. OIDC trusted publishing authenticates against a trusted publisher configured ON the npm package, and a name that has never been published has none to match — unless a PENDING publisher was pre-registered. Fix by either (a) configuring a pending trusted publisher for $PKG_NAME on npmjs.com pointing at immediately-run/immediately-run-sdk, workflow .github/workflows/ci.yml, environment production; or (b) publishing this first version once with a granular npm token. Every later publish then runs unattended. This is NOT a token or permissions fault — $PKG_NAME cannot bootstrap itself."
+          else
+            echo "::error::Publishing $PKG_NAME@$PKG_VER failed. The package already exists, so this is not the first-publish bootstrap: check that its trusted publisher on npmjs.com still names this repo and workflow, and that package.json repository.url matches the repo (npm answers E422 when it does not)."
+          fi
+          exit 1
