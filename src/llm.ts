@@ -30,6 +30,18 @@ export type ContentPart =
   // conversation so a follow-up request carries the agentic history. Pairs with the
   // streamed `tool-call` {@link ChatDelta} that first surfaced it.
   | { type: 'tool-use'; id: string; name: string; input: Record<string, unknown> }
+  // A block of the model's own REASONING from a prior `assistant` turn (R3-335).
+  // Honored only when the resolved provider advertises `features.reasoning`.
+  //
+  // Echo these back. On some providers a reasoning block must be replayed — with its
+  // `signature` intact and BEFORE the turn's text/tool-use — for the following turn to
+  // be accepted at all; a loop that drops them is quietly lossy across turns in a way
+  // that shows up as degraded output rather than an error. Pairs with the streamed
+  // `reasoning` {@link ChatDelta}.
+  | { type: 'reasoning'; text: string; signature?: string }
+  // Reasoning the provider REDACTED: opaque bytes with no readable text, which still
+  // have to be echoed back in place to keep the chain valid. Never render it.
+  | { type: 'reasoning-redacted'; data: string }
   // The result of executing a `tool-use`, fed back so the model can continue. Carried
   // on a `user`/`tool`-role message; `toolCallId` matches the `tool-use` `id`.
   | { type: 'tool-result'; toolCallId: string; content: string; isError?: boolean };
@@ -72,7 +84,24 @@ export interface ChatRequest {
 export type ChatDelta =
   | { type: 'text-delta'; text: string }
   | { type: 'tool-call'; id: string; name: string; input: unknown }
-  | { type: 'usage'; inputTokens: number; outputTokens: number };
+  // R3-335 — the model's reasoning as it streams. `reasoning-delta` carries the text
+  // incrementally (render it live); the terminal `reasoning` carries the WHOLE block
+  // plus the `signature` the provider may require on the echo, and is what a caller
+  // should put back into the conversation. A provider without reasoning emits neither.
+  | { type: 'reasoning-delta'; text: string }
+  | { type: 'reasoning'; text: string; signature?: string }
+  | { type: 'reasoning-redacted'; data: string }
+  // Token accounting for the turn. `cacheReadTokens`/`cacheWriteTokens` are present
+  // only on providers that report prompt caching (R3-336) — they are what makes a
+  // caching claim verifiable rather than believed, and their ABSENCE is meaningful:
+  // it says this provider reports nothing, not that nothing was cached.
+  | {
+      type: 'usage';
+      inputTokens: number;
+      outputTokens: number;
+      cacheReadTokens?: number;
+      cacheWriteTokens?: number;
+    };
 
 /** Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`. */
 export type ChatStopReason = 'end' | 'length' | 'tool' | 'filtered';
@@ -109,6 +138,11 @@ export interface ChatFeatures {
   vision: boolean;
   tools: boolean;
   jsonMode: boolean;
+  /** R3-335: the provider emits reasoning blocks. Read it to decide whether to render
+   *  a thinking surface at all — an empty affordance on a provider that never thinks
+   *  is worse than none. Normalized to `false` by the channel when a host predating
+   *  R3-335 omits it, so this is never `undefined` in practice. */
+  reasoning: boolean;
   maxContextTokens: number;
 }
 
@@ -155,6 +189,28 @@ export type ChatProviderState =
 // has ever spoken on this channel, which is the one bit `null` cannot carry. Deriving the
 // state rather than widening the channel keeps the wire contract byte-identical, which it
 // is (SDK_PACKAGING_SPEC §9: the wire is additive-only, and this is not a wire change).
+/**
+ * Fill in feature flags a host older than the field does not send (R3-335).
+ *
+ * `features.reasoning` arrived after `ChatFeatures` shipped, so a host predating it
+ * omits the key. `undefined` reads as falsy everywhere EXCEPT a `'reasoning' in
+ * features` check, which is exactly the kind of difference that produces one wrong
+ * branch a year later — so it is normalized here, once, rather than left to every
+ * caller. Absent means "does not reason": the fail-closed reading.
+ *
+ * Exported for its own test; not part of the public surface (`index.ts` re-exports
+ * this module wholesale, so it is reachable — it is documented as internal rather
+ * than hidden behind a lie).
+ * @internal
+ */
+export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatProviderInfo | null {
+  if (!provider) return null;
+  // The wire value is whatever the host sent, which may predate `reasoning` — so read
+  // it as partial rather than trusting the declared type, and decide the flag explicitly.
+  const wire = provider.features as Partial<ChatFeatures>;
+  return { ...provider, features: { ...wire, reasoning: wire.reasoning === true } as ChatFeatures };
+}
+
 let answered = false;
 const channel = createPushChannel<ChatProviderInfo | null>({
   pushType: LLM_PROVIDER,
@@ -163,7 +219,7 @@ const channel = createPushChannel<ChatProviderInfo | null>({
   parse: (msg) => {
     if (!('provider' in msg)) return undefined;
     answered = true;
-    return (msg.provider as ChatProviderInfo | null) ?? null;
+    return normalizeProviderInfo((msg.provider as ChatProviderInfo | null) ?? null);
   },
 });
 
