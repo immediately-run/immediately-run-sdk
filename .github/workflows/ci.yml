@@ -232,6 +232,162 @@ jobs:
           fi
           npm publish --access public
 
+      # --- Close the sdk-integrity staleness window -------------------------
+      #
+      # The host pins a per-version SHA-384 of every self-hosted SDK file and the
+      # sandbox bundler FAILS CLOSED on a version the pin does not cover
+      # (SDK_PACKAGING_SPEC §5.2). That manifest is assembled at site-main DEPLOY
+      # time from this repo's newest release tag — so the moment a new version is
+      # tagged here, every already-deployed host is one version short, and the
+      # first app to pin the new version breaks until someone deploys.
+      #
+      # Not hypothetical: 0.48.0 published 2026-08-25 14:25Z, `agent-demo` pinned
+      # ^0.48.0 at 14:32Z, and the agent workbench threw "no host-pinned integrity
+      # entry" in production until the next deploy at 15:16Z. Nothing caught it —
+      # the deploy's own coverage gate asserts only the floor and
+      # DEFAULT_SDK_VERSION, which cannot extend to whatever version an app in
+      # another repo decides to pin.
+      #
+      # THE CONDITION IS THE INVARIANT, NOT THIS RUN'S HISTORY. An earlier version
+      # of this step fired on "did THIS run create a tag", which is subtly wrong in
+      # the one case that matters: when a dispatch FAILS after the tag is pushed
+      # (as it did at 17:44Z on 2026-08-25), every later run sees the tag already
+      # existing, skips, and the window stays open forever while each run reports
+      # success. Asking instead whether the DEPLOYED manifest covers the version we
+      # now hold makes the step idempotent and self-healing — it retries by itself
+      # after any failed, skipped, or deleted dispatch, and does nothing when there
+      # is nothing to do.
+      #
+      # (It was in fact deleted once: PR #120's "merge main" resolved a conflict by
+      # dropping this step wholesale, leaving `new_tag` as a dead output and the
+      # trigger silently inert. A self-healing condition means the next release
+      # repairs the manifest even after that kind of regression.)
+      #
+      # ⚠ WHAT THIS COSTS, stated plainly because it is a real widening: the deploy
+      # builds all five repos at `main`, so this promotes whatever is on main across
+      # those five repos — not just the manifest. The human decision recorded on
+      # THIS run is "publish this SDK version" (the `production` environment
+      # approval asserted at the top of this job), which is not the same decision as
+      # "promote the current main of five repos". Accepted deliberately
+      # (2026-08-25); the deploy workflow's own comment and
+      # SIMPLIFIED_DEPLOYMENT_SPEC §5.2 record the other half, including the
+      # narrower alternative that was rejected.
+      - name: Deploy if the host manifest does not yet cover this version
+        env:
+          GH_TOKEN: ${{ secrets.DEPLOY_DISPATCH_TOKEN }}
+          VERSION: ${{ steps.trust-root.outputs.version }}
+          NEW_TAG: ${{ steps.trust-root.outputs.new_tag }}
+        run: |
+          set -euo pipefail
+          MANIFEST_URL="https://immediately.run/sdk-integrity.json"
+          # One definition, used both to RUN the dispatch and to PRINT it in every
+          # failure message — so the command an operator is told to run by hand
+          # cannot drift from the one CI actually attempted.
+          #
+          # `--ref main` is load-bearing, not decoration. Without it `gh workflow
+          # run` first RESOLVES the repo's default branch, which is a GraphQL read
+          # of `repository.defaultBranchRef` — a Contents/Metadata read, not an
+          # Actions one. A token scoped to exactly the authority this step needs
+          # (Actions: read+write on immediately-run/deploy, and nothing else) is
+          # refused before the dispatch is even attempted:
+          #
+          #   unable to determine default branch for immediately-run/deploy:
+          #   GraphQL: Resource not accessible by personal access token
+          #   (repository.defaultBranchRef)
+          #
+          # Naming the ref removes the lookup, so the credential stays as narrow as
+          # the job actually is. Widening the PAT to Contents: read would have
+          # "fixed" it by handing a release job read access to a private repo's
+          # source to save one flag — the wrong direction (value 1).
+          DISPATCH=(gh workflow run deploy.yml --repo immediately-run/deploy --ref main
+                    -f sdk_ref=main -f sandpack_ref=main -f sandbox_ref=main
+                    -f site_ref=main -f backend_ref=main)
+          MANUAL="${DISPATCH[*]}"
+
+          # Does the DEPLOYED host already pin this version? A failed probe is a
+          # third outcome, not a "no" — keep it distinct from a real answer.
+          #
+          # Both failure labels exist because both are reachable, but in practice
+          # `malformed` is the common one and `unreachable` is rare: the host
+          # SPA-rewrites unknown paths, so a MISSING manifest answers 200 with HTML
+          # rather than 404 — `curl -f` succeeds and `jq` is what notices. Measured,
+          # not assumed. Either way the case lands in the same branch below.
+          if manifest=$(curl -fsS --max-time 20 "$MANIFEST_URL" 2>&1); then
+            covered=$(printf '%s' "$manifest" \
+                      | jq -r --arg v "$VERSION" '."@immediately-run/sdk" | has($v)' 2>/dev/null \
+                      || echo malformed)
+          else
+            covered="unreachable"
+          fi
+
+          case "$covered" in
+            true)
+              echo "::notice::${MANIFEST_URL} already covers ${VERSION} — no deploy needed."
+              exit 0
+              ;;
+            false)
+              if [ "${NEW_TAG:-}" = "true" ]; then
+                echo "::notice::${VERSION} was tagged by this run and the deployed manifest does not cover it yet — dispatching."
+              else
+                echo "::warning::${VERSION} was tagged by an EARLIER run but the deployed manifest still does not cover it — a previous dispatch never landed. Retrying."
+              fi
+              ;;
+            *)
+              # Fail TOWARDS dispatching: a redundant deploy is loud and immediately
+              # visible, a missed one is a silent fail-closed for every app that
+              # pins this version. That is the asymmetry this whole step exists for.
+              echo "::warning::Could not determine whether ${MANIFEST_URL} covers ${VERSION} (${covered}). Dispatching anyway — a redundant deploy is cheaper than a silent staleness window."
+              ;;
+          esac
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::DEPLOY_DISPATCH_TOKEN is not set on this repository, so ${VERSION} is published but no deploy was dispatched — every deployed host stays one version short and fails closed for any app that pins it. Add a fine-grained PAT scoped to immediately-run/deploy with Actions: read+write as the DEPLOY_DISPATCH_TOKEN secret, then run: ${MANUAL}"
+            exit 1
+          fi
+
+          # The newest run BEFORE dispatching. Polling for "a run exists" would
+          # match the previous deploy and report success without anything having
+          # been queued — the confirmation has to be that the newest id CHANGED.
+          # And a FAILED read is a third outcome, not "id 0": swallowing the error
+          # into a baseline of 0 makes every later id look new, so the confirmation
+          # would pass vacuously in exactly the case where it can see least.
+          if before=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
+                      --limit 1 --json databaseId --jq '.[0].databaseId // "none"' 2>&1); then
+            baseline_known=1
+          else
+            baseline_known=0
+            echo "::warning::Could not read the deploy repo's run list (${before}); the dispatch below cannot be confirmed, only attempted."
+          fi
+
+          if ! "${DISPATCH[@]}"; then
+            echo "::error::Dispatching the production deploy failed, and ${VERSION} is already published. Until a deploy runs, any app pinning ${VERSION} fails closed on the missing integrity entry. Run it by hand: ${MANUAL}"
+            exit 1
+          fi
+          echo "::notice::Dispatched immediately-run/deploy for ${VERSION}."
+
+          # Confirm the side effect actually appeared rather than trusting the
+          # dispatch API's empty 204 (ways_of_working §2: check the side effect).
+          # Deliberately fail-OPEN: the dispatch was accepted, and a slow queue must
+          # not fail an otherwise-good release — so an unobserved run is a warning
+          # naming the manual command, never a silent pass claiming success. The
+          # next release re-checks the manifest anyway, so a missed confirmation
+          # self-corrects.
+          if [ "$baseline_known" = "0" ]; then
+            echo "::warning::Dispatch was accepted for ${VERSION} but could not be confirmed (no baseline). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
+            exit 0
+          fi
+          for _ in $(seq 1 12); do
+            sleep 5
+            after=$(gh run list --repo immediately-run/deploy --workflow deploy.yml \
+                    --limit 1 --json databaseId,url --jq '.[0]' 2>/dev/null || true)
+            id=$(printf '%s' "${after:-}" | jq -r '.databaseId // "none"' 2>/dev/null || echo none)
+            if [ "${id}" != "none" ] && [ "${id}" != "${before}" ]; then
+              echo "::notice::Deploy run: $(printf '%s' "$after" | jq -r '.url')"
+              exit 0
+            fi
+          done
+          echo "::warning::Dispatch was accepted but no NEW deploy run became visible within 60s (newest is still ${before}). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
+
   # @immediately-run/safe-content — the S3 content-framework's first extraction
   # (PLATFORM_LAYERING_SPEC §4, R3-279 phase 2). A second package in this repo with
   # its OWN install/build/test/publish, so the SDK's release apparatus (gh-pages,
