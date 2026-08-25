@@ -12,8 +12,7 @@ const sent: Array<Record<string, unknown>> = [];
 
 jest.mock('./sandboxUtils', () => ({
   protocolRequest: jest.fn(),
-  sendMessage: (type: string, data: Record<string, unknown>) =>
-    sent.push({ type, ...data }),
+  sendMessage: (type: string, data: Record<string, unknown>) => sent.push({ type, ...data }),
   addListener: (type: string, h: Listener) => {
     (listeners[type] ||= []).push(h);
     return () => {

@@ -37,12 +37,7 @@ export const Admonition = ({
   const kind = String(type).toLowerCase();
   const label = title ?? TITLES[kind] ?? TITLES.note;
   return (
-    <div
-      className={`ir-admonition ir-admonition-${kind}`}
-      role="note"
-      data-admonition={kind}
-      {...rest}
-    >
+    <div className={`ir-admonition ir-admonition-${kind}`} role="note" data-admonition={kind} {...rest}>
       <p className="ir-admonition-title">{label}</p>
       <div className="ir-admonition-body">{children}</div>
     </div>

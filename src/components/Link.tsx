@@ -24,7 +24,7 @@ export const FragmentLink = ({
         scrollToId(href.slice(1));
       }
     },
-    [href, onClick]
+    [href, onClick],
   );
   return (
     <a href={href} onClick={clickHandler} {...props}>
@@ -64,7 +64,7 @@ export const InternalLink = ({
       e.preventDefault();
       navigate(href);
     },
-    [href, onClick, target]
+    [href, onClick, target],
   );
   // Spread FIRST so no forwarded prop can clobber the interception or the href.
   return (

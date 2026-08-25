@@ -27,9 +27,7 @@ const makeFF = (m: ReturnType<typeof mockTransport>) =>
       requestType: 'request-form-factor',
       initial: { width: 0 },
       parse: (msg) =>
-        msg.formFactor && typeof (msg.formFactor as FF).width === 'number'
-          ? (msg.formFactor as FF)
-          : undefined,
+        msg.formFactor && typeof (msg.formFactor as FF).width === 'number' ? (msg.formFactor as FF) : undefined,
     },
     m.transport,
   );

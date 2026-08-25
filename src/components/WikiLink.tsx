@@ -135,12 +135,7 @@ export const WikiLink = ({
     const exists = !loaded || resolved in files;
     if (!exists) {
       return (
-        <span
-          className="ir-wikilink ir-wikilink-broken"
-          data-state="broken"
-          title={`No file at ${resolved}`}
-          {...rest}
-        >
+        <span className="ir-wikilink ir-wikilink-broken" data-state="broken" title={`No file at ${resolved}`} {...rest}>
           {text}
         </span>
       );
@@ -151,10 +146,8 @@ export const WikiLink = ({
   // the raw text is not a routable path in those shapes; everything else carries
   // the raw target bit-for-bit so its `#fragment` rides through navigation to the
   // scroll-after-nav effect (§13.5). The fragment is re-attached either way.
-  const translated =
-    pathPart.startsWith(FS_PREFIX) || (corpusRoot !== null && pathPart.startsWith('/'));
-  const href =
-    translated && resolved !== undefined ? `${resolved}${frag ? `#${frag}` : ''}` : rawTarget;
+  const translated = pathPart.startsWith(FS_PREFIX) || (corpusRoot !== null && pathPart.startsWith('/'));
+  const href = translated && resolved !== undefined ? `${resolved}${frag ? `#${frag}` : ''}` : rawTarget;
   return (
     <Link href={href} className="ir-wikilink" data-state="resolved" {...rest}>
       {text}

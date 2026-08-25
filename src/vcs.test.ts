@@ -33,7 +33,6 @@ jest.mock('./hostTransport', () => ({
   },
 }));
 
-
 import type { VcsState } from './vcs';
 
 type VcsMod = typeof import('./vcs');

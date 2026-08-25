@@ -32,7 +32,11 @@ describe('splitHash (§13.5)', () => {
 
 describe('constructOuterUrl — an absolute target carries its #fragment as the hash, not in the path', () => {
   it('folds the fragment into the outer URL hash, not the sandboxPath', () => {
-    const url = constructOuterUrl('https://localhost/present/github/acme/blog/main/about', '/specs/FOO.mdx#sec-8-9', nav);
+    const url = constructOuterUrl(
+      'https://localhost/present/github/acme/blog/main/about',
+      '/specs/FOO.mdx#sec-8-9',
+      nav,
+    );
     // The fragment must land after `#`, and NOT be embedded in the /files path.
     expect(url).toContain('/files/specs/FOO.mdx');
     expect(url.endsWith('#sec-8-9')).toBe(true);
@@ -71,9 +75,7 @@ describe('isInternalHref — the port bug changed link BEHAVIOUR, not just the t
     // With the port dropped, the prefix match failed, the href was classified EXTERNAL and
     // rendered as a plain <a> — clicking it navigated the sandboxed frame away instead of
     // routing, which looks exactly like "the app reloaded".
-    expect(
-      isInternalHref(outer, 'http://localhost:3100/present/github/acme/blog/main/files/x.mdx', nav),
-    ).toBe(true);
+    expect(isInternalHref(outer, 'http://localhost:3100/present/github/acme/blog/main/files/x.mdx', nav)).toBe(true);
   });
 
   it('still treats a genuinely different origin as external', () => {
@@ -92,6 +94,8 @@ describe('repositoryPrefixURL — a page with a fragment must not break its own 
     const withHash = { ...nav, hash: 'sec-8-9', search: 'q=1' };
     const outer = 'https://immediately.run/present/github/acme/blog/main/about';
     // Left in, these landed on the END of a prefix — so nothing could start with it.
-    expect(isInternalHref(outer, 'https://immediately.run/present/github/acme/blog/main/files/x.mdx', withHash)).toBe(true);
+    expect(isInternalHref(outer, 'https://immediately.run/present/github/acme/blog/main/files/x.mdx', withHash)).toBe(
+      true,
+    );
   });
 });

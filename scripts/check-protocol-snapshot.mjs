@@ -150,8 +150,7 @@ const MAX_DEPTH = 2;
  */
 const describeType = (checker, type, node, depth = 0) => {
   if (!type) return { type: 'unknown' };
-  const text = (t = type) =>
-    normalize(checker.typeToString(t, undefined, ts.TypeFormatFlags.NoTruncation));
+  const text = (t = type) => normalize(checker.typeToString(t, undefined, ts.TypeFormatFlags.NoTruncation));
   if (depth > MAX_DEPTH) return { type: text() };
   if (checker.isArrayType?.(type)) {
     const [el] = checker.getTypeArguments(type);
@@ -165,9 +164,7 @@ const describeType = (checker, type, node, depth = 0) => {
   // `boolean` is internally `true | false`; keep it spelled as itself.
   if (type.flags & ts.TypeFlags.Boolean) return { type: 'boolean' };
   if (type.isUnion?.()) {
-    const members = type.types
-      .map((t) => describeType(checker, t, node, depth + 1))
-      .map((d) => JSON.stringify(d));
+    const members = type.types.map((t) => describeType(checker, t, node, depth + 1)).map((d) => JSON.stringify(d));
     return { union: [...new Set(members)].sort().map((j) => JSON.parse(j)) };
   }
   const isObject = Boolean(type.flags & ts.TypeFlags.Object);
@@ -226,11 +223,7 @@ const readsOf = (body, paramName) => {
   const reads = new Set();
   if (!body || !paramName) return [];
   const walk = (node) => {
-    if (
-      ts.isPropertyAccessExpression(node) &&
-      ts.isIdentifier(node.expression) &&
-      node.expression.text === paramName
-    ) {
+    if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === paramName) {
       reads.add(node.name.text);
     }
     if (
@@ -252,7 +245,6 @@ const paramNameOf = (fn) => {
   const p = fn?.parameters?.[0];
   return p && ts.isIdentifier(p.name) ? p.name.text : undefined;
 };
-
 
 const objectProp = (obj, name) => {
   if (!obj || !ts.isObjectLiteralExpression(obj)) return undefined;
@@ -313,11 +305,7 @@ export const extract = (opts = {}) => {
   const literal = (node) => {
     if (!node) return undefined;
     if (ts.isStringLiteralLike(node)) return node.text;
-    if (
-      ts.isIdentifier(node) ||
-      ts.isPropertyAccessExpression(node) ||
-      ts.isElementAccessExpression(node)
-    ) {
+    if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node) || ts.isElementAccessExpression(node)) {
       const t = checker.getTypeAtLocation(node);
       if (t.isStringLiteral?.()) return t.value;
     }
@@ -349,9 +337,7 @@ export const extract = (opts = {}) => {
       prev.methods ??= {};
       for (const [m, spec] of Object.entries(entry.methods)) {
         const at = prev.methods[m];
-        prev.methods[m] = at
-          ? { payload: at.payload?.fields ? at.payload : spec.payload }
-          : spec;
+        prev.methods[m] = at ? { payload: at.payload?.fields ? at.payload : spec.payload } : spec;
       }
     }
     if (!prev.payload?.fields && entry.payload?.fields) prev.payload = entry.payload;
@@ -367,11 +353,7 @@ export const extract = (opts = {}) => {
     const scheme = catalogName.slice(0, i);
     const method = catalogName.slice(i + 1);
     const payload = paramsNode ? describeParams(checker, paramsNode) : { fields: [] };
-    record(
-      `protocol-${scheme}`,
-      { kind, direction: 'app->host', methods: { [method]: { payload } } },
-      node,
-    );
+    record(`protocol-${scheme}`, { kind, direction: 'app->host', methods: { [method]: { payload } } }, node);
   };
 
   for (const file of files) {
@@ -382,8 +364,8 @@ export const extract = (opts = {}) => {
         const callee = ts.isIdentifier(node.expression)
           ? node.expression.text
           : ts.isPropertyAccessExpression(node.expression)
-            ? node.expression.name.text
-            : undefined;
+          ? node.expression.name.text
+          : undefined;
         const args = node.arguments;
 
         if (callee === 'sendMessage' && literal(args[0])) {
@@ -394,9 +376,7 @@ export const extract = (opts = {}) => {
         } else if (callee === 'addListener' && literal(args[0])) {
           const fn = args[1];
           const param = fn && ts.isFunctionLike(fn) ? fn.parameters?.[0] : undefined;
-          const payload = param
-            ? describeType(checker, checker.getTypeAtLocation(param), param)
-            : { type: 'unknown' };
+          const payload = param ? describeType(checker, checker.getTypeAtLocation(param), param) : { type: 'unknown' };
           const reads = fn && ts.isFunctionLike(fn) ? readsOf(fn.body, paramNameOf(fn)) : [];
           if (reads.length) payload.reads = reads;
           record(literal(args[0]), { kind: 'message', direction: 'host->app', payload }, node);
@@ -406,8 +386,7 @@ export const extract = (opts = {}) => {
           const requestType = literal(objectProp(obj, 'requestType'));
           if (pushType) {
             const parse = objectProp(obj, 'parse');
-            const reads =
-              parse && ts.isFunctionLike(parse) ? readsOf(parse.body, paramNameOf(parse)) : [];
+            const reads = parse && ts.isFunctionLike(parse) ? readsOf(parse.body, paramNameOf(parse)) : [];
             const valueNode = node.typeArguments?.[0];
             const entry = {
               kind: 'push',
@@ -416,22 +395,13 @@ export const extract = (opts = {}) => {
             };
             if (requestType) entry.poll = requestType;
             if (valueNode) {
-              entry.value = describeType(
-                checker,
-                checker.getTypeFromTypeNode(valueNode),
-                valueNode,
-                1,
-              );
+              entry.value = describeType(checker, checker.getTypeFromTypeNode(valueNode), valueNode, 1);
               entry.value.type ??= normalize(valueNode.getText());
             }
             record(pushType, entry, node);
           }
           if (requestType) {
-            record(
-              requestType,
-              { kind: 'poll', direction: 'app->host', payload: { fields: [] } },
-              node,
-            );
+            record(requestType, { kind: 'poll', direction: 'app->host', payload: { fields: [] } }, node);
           }
         } else if (callee === 'protocolRequest' && literal(args[0])) {
           const scheme = literal(args[0]);
@@ -454,16 +424,11 @@ export const extract = (opts = {}) => {
           const params = describeParams(checker, args[off + 2]);
           const name = literal(nameNode);
           if (name) {
-            record(
-              name,
-              { kind: 'stream', direction: 'app->host', methods: { [method]: { payload: params } } },
-              node,
-            );
+            record(name, { kind: 'stream', direction: 'app->host', methods: { [method]: { payload: params } } }, node);
           } else if (nameNode && ts.isTemplateExpression(nameNode)) {
             // `protocol-${scheme}` — snapshot the TEMPLATE, never a wildcard.
             const template =
-              nameNode.head.text +
-              nameNode.templateSpans.map((s) => `<scheme>${s.literal.text}`).join('');
+              nameNode.head.text + nameNode.templateSpans.map((s) => `<scheme>${s.literal.text}`).join('');
             const fam = (dynamicFamilies[template] ??= { schemes: [], sites: [] });
             fam.sites = [...new Set([...fam.sites, site(node)])].sort();
           }
@@ -496,9 +461,7 @@ export const extract = (opts = {}) => {
       }
       if (ts.isTypeAliasDeclaration(n) && n.name.text === 'StreamFrame') {
         const t = checker.getTypeFromTypeNode(n.type);
-        envelopes.frame = (t.isUnion() ? t.types : [t]).map((member) =>
-          describeType(checker, member, n),
-        );
+        envelopes.frame = (t.isUnion() ? t.types : [t]).map((member) => describeType(checker, member, n));
       }
     });
   }
@@ -515,7 +478,11 @@ export const extract = (opts = {}) => {
   for (const key of Object.keys(channels).sort()) {
     const c = channels[key];
     const methods = c.methods
-      ? Object.fromEntries(Object.keys(c.methods).sort().map((m) => [m, c.methods[m]]))
+      ? Object.fromEntries(
+          Object.keys(c.methods)
+            .sort()
+            .map((m) => [m, c.methods[m]]),
+        )
       : undefined;
     sorted[key] = {
       kind: c.kind,
@@ -612,9 +579,7 @@ const main = () => {
     process.exit(1);
   }
 
-  const snapshot = existsSync(snapshotPath)
-    ? JSON.parse(readFileSync(snapshotPath, 'utf8'))
-    : null;
+  const snapshot = existsSync(snapshotPath) ? JSON.parse(readFileSync(snapshotPath, 'utf8')) : null;
   if (!snapshot) {
     console.error(
       'error: @immediately-run/sandbox-protocol is not installed — the wire contract\n' +
@@ -680,7 +645,15 @@ const selfTest = () => {
   const cases = [
     [
       'a RENAMED wire string',
-      new Map([[resolve(srcDir, 'tasks.ts'), readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace('sendMessage(TASK_COMPLETE,', "sendMessage('task-finished',")]]),
+      new Map([
+        [
+          resolve(srcDir, 'tasks.ts'),
+          readFileSync(join(srcDir, 'tasks.ts'), 'utf8').replace(
+            'sendMessage(TASK_COMPLETE,',
+            "sendMessage('task-finished',",
+          ),
+        ],
+      ]),
     ],
     [
       'a payload field made OPTIONAL (name unchanged)',
@@ -737,10 +710,7 @@ const selfTest = () => {
       new Map([
         [
           resolve(srcDir, 'theme.ts'),
-          readFileSync(join(srcDir, 'theme.ts'), 'utf8').replace(
-            'requestType: REQUEST_THEME,',
-            '',
-          ),
+          readFileSync(join(srcDir, 'theme.ts'), 'utf8').replace('requestType: REQUEST_THEME,', ''),
         ],
       ]),
     ],

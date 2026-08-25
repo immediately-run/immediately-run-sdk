@@ -93,9 +93,7 @@ export function createMockHost(): MockHost {
       protocolCalls.push({ protocol, method, params });
       const responder = responders.get(key(protocol, method));
       if (!responder) {
-        return Promise.reject(
-          new Error(`mockHost: no stub for protocolRequest('${protocol}', '${method}')`),
-        );
+        return Promise.reject(new Error(`mockHost: no stub for protocolRequest('${protocol}', '${method}')`));
       }
       // Resolve async so callers observe real microtask ordering.
       return Promise.resolve().then(() => responder(params));

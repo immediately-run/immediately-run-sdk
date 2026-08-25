@@ -41,8 +41,7 @@ export interface EditorContext {
 // and answers `request-editor-context` — but only for a frame holding `editor:read`
 // (gated by the channel router). An app without it gets no reply, so the empty
 // default below stands. Wire format: site-main channelBridge.ts.
-const isStringArray = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((p) => typeof p === 'string');
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((p) => typeof p === 'string');
 
 const channel = createPushChannel<EditorContext>({
   pushType: EDITOR_CONTEXT,

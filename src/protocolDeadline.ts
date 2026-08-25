@@ -179,9 +179,7 @@ export function timeoutFor(scheme: string, method: string): number {
  * one.
  */
 export function firstFrameTimeoutFor(scheme: string, method: string): number {
-  return attendanceOf(scheme, method) === 'attended'
-    ? ATTENDED_FIRST_FRAME_MS
-    : NETWORK_TIMEOUT_MS;
+  return attendanceOf(scheme, method) === 'attended' ? ATTENDED_FIRST_FRAME_MS : NETWORK_TIMEOUT_MS;
 }
 
 /**

@@ -70,9 +70,7 @@ const channel = createPushChannel<Diagnostics>({
     // is ignored (returns undefined) so the last good snapshot stands.
     if (!Array.isArray(msg.buildErrors) || !Array.isArray(msg.consoleEntries)) return undefined;
     const provenance =
-      msg.provenance && typeof msg.provenance === 'object'
-        ? (msg.provenance as DiagnosticsProvenance)
-        : null;
+      msg.provenance && typeof msg.provenance === 'object' ? (msg.provenance as DiagnosticsProvenance) : null;
     return {
       buildErrors: msg.buildErrors as BuildError[],
       consoleEntries: msg.consoleEntries as ConsoleEntry[],
@@ -88,8 +86,7 @@ export const getDiagnostics = (): Diagnostics => channel.get();
 
 /** Subscribe to diagnostics. Invoked immediately with the current value, then on
  *  every host push. Returns an unsubscribe. */
-export const onDiagnosticsChange = (listener: (d: Diagnostics) => void): (() => void) =>
-  channel.onChange(listener);
+export const onDiagnosticsChange = (listener: (d: Diagnostics) => void): (() => void) => channel.onChange(listener);
 
 /** React hook: the current diagnostics, re-rendering on every change. */
 export const useDiagnostics = (): Diagnostics => channel.use();

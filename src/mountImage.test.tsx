@@ -87,9 +87,7 @@ describe('MountImage', () => {
     const root = createRoot(container);
 
     await act(async () => {
-      root.render(
-        <MountImage mount={mount()} relPath="missing.png" fallback={<span>gone</span>} />,
-      );
+      root.render(<MountImage mount={mount()} relPath="missing.png" fallback={<span>gone</span>} />);
     });
 
     expect(container.querySelector('img')).toBeNull();

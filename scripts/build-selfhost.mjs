@@ -42,9 +42,7 @@ import { pathToFileURL } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
-const pkg = JSON.parse(
-  await import('node:fs').then((fs) => fs.readFileSync(join(root, 'package.json'), 'utf8')),
-);
+const pkg = JSON.parse(await import('node:fs').then((fs) => fs.readFileSync(join(root, 'package.json'), 'utf8')));
 const version = pkg.version;
 const outBase = process.argv[2] ?? join(root, 'selfhost');
 const dest = join(outBase, 'v', version);
@@ -150,10 +148,7 @@ for (const { spec, file } of INLINE_WORKSPACE) {
       .split(sep)
       .join('/');
     if (!relPath.startsWith('.')) relPath = `./${relPath}`;
-    writeFileSync(
-      target,
-      source.replaceAll(`"${spec}"`, `"${relPath}"`).replaceAll(`'${spec}'`, `'${relPath}'`),
-    );
+    writeFileSync(target, source.replaceAll(`"${spec}"`, `"${relPath}"`).replaceAll(`'${spec}'`, `'${relPath}'`));
   }
 }
 
@@ -172,10 +167,7 @@ writeFileSync(
 // bundler's addLocalModules reads. Sourcemaps/.d.ts are copied for debuggability
 // but intentionally not listed (the bundler only fetches manifest entries).
 const fetchable = [...jsFiles, 'package.json'].sort();
-writeFileSync(
-  join(dest, 'manifest.json'),
-  JSON.stringify({ files: fetchable }, null, 2) + '\n',
-);
+writeFileSync(join(dest, 'manifest.json'), JSON.stringify({ files: fetchable }, null, 2) + '\n');
 
 // Integrity manifest (SDK_PACKAGING_SPEC §5.2): SHA-384 per fetchable file
 // (manifest entries + manifest.json itself), so a verifier can check the bytes
@@ -204,5 +196,7 @@ writeFileSync(
 );
 
 console.log(
-  `Built self-hosted SDK ${version} -> ${dest} (${jsFiles.length} js files, integrity.json over ${Object.keys(integrityFiles).length} files)`,
+  `Built self-hosted SDK ${version} -> ${dest} (${jsFiles.length} js files, integrity.json over ${
+    Object.keys(integrityFiles).length
+  } files)`,
 );

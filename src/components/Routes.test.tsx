@@ -21,7 +21,7 @@ const navState = (sandboxPath: string): NavigationState =>
     ref: 'main',
     hash: '',
     search: '',
-  }) as NavigationState;
+  } as NavigationState);
 
 const render = (sandboxPath: string, ui: React.ReactNode) => {
   const container = document.createElement('div');
@@ -108,9 +108,7 @@ describe('Routes / Route', () => {
     const enabled = false;
     const r = render(
       '/admin',
-      <Routes fallback={<span>403</span>}>
-        {enabled && <Route path="/admin" element={<span>admin</span>} />}
-      </Routes>,
+      <Routes fallback={<span>403</span>}>{enabled && <Route path="/admin" element={<span>admin</span>} />}</Routes>,
     );
     expect(r.text()).toBe('403');
     r.unmount();

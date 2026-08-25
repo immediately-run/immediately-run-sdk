@@ -16,8 +16,7 @@
  *  json-schema form of the interfaces hand-declared in `src/mounts.ts`. */
 export const types = {
   Role: {
-    description:
-      "A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.",
+    description: "A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.",
     schema: { type: 'string', enum: ['owner', 'writer', 'reader'] },
   },
   SpaceInfo: {
@@ -77,7 +76,7 @@ export const types = {
     },
   },
   GrantRecord: {
-    description: "One durable grant an app holds, for the §8.11 capability audit view.",
+    description: 'One durable grant an app holds, for the §8.11 capability audit view.',
     schema: {
       type: 'object',
       required: ['appKey', 'spaceId', 'mountId', 'mode'],
@@ -103,14 +102,7 @@ export const types = {
 
 /** The error-code registry slice the `spaces:*` family can reply
  *  (CAPABILITY_REFERENCE error-code registry; SpaceError in src/mounts.ts). */
-const SPACE_ERRORS = [
-  'auth-required',
-  'cancelled',
-  'forbidden',
-  'not-found',
-  'unsupported-scheme',
-  'unknown',
-];
+const SPACE_ERRORS = ['auth-required', 'cancelled', 'forbidden', 'not-found', 'unsupported-scheme', 'unknown'];
 
 /** The capability descriptors. `name` is the catalog name `invoke()` already takes;
  *  `alias` carries the curated human wrapper (positional form preserved for
@@ -166,7 +158,7 @@ export const methods = [
     kind: 'request',
     doc:
       'Invite a user (by provider handle) to a space at a role. The host resolves the ' +
-      'handle, so the app never sees other users\' uids except the one it invited. ' +
+      "handle, so the app never sees other users' uids except the one it invited. " +
       'Pull-based (FILE_SHARING_SPEC §6.4): this writes an INVITATION, not membership — ' +
       'the recipient must {@link acceptInvite}. Re-inviting an already-invited/member ' +
       'user is idempotent.',
@@ -261,7 +253,7 @@ export const family = {
   scheme: 'spaces',
   doc:
     'Space management (the space-manager app) — UI_AS_APPS_SPEC §5.2. ELEVATED: ' +
-    'enumerating all the user\'s spaces is `spaces:user`; mutating membership and ' +
+    "enumerating all the user's spaces is `spaces:user`; mutating membership and " +
     'resolving handles is `spaces:admin`.',
   types,
   methods,

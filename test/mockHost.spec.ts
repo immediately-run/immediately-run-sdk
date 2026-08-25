@@ -71,10 +71,7 @@ describe('mock host transport harness (npm-fetched §4 path)', () => {
     host.emit({ type: 'metadata-update', update: { 'Guide.mdx': { title: 'Guide' } } });
     host.emit({ type: 'metadata-update', update: { 'Guide.mdx': { title: 'Guide v2' } } });
 
-    expect(applied).toEqual([
-      { 'Guide.mdx': { title: 'Guide' } },
-      { 'Guide.mdx': { title: 'Guide v2' } },
-    ]);
+    expect(applied).toEqual([{ 'Guide.mdx': { title: 'Guide' } }, { 'Guide.mdx': { title: 'Guide v2' } }]);
     dispose();
   });
 });

@@ -100,11 +100,7 @@ export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, vo
   // Peel `signal` out of the request before it becomes wire params — an AbortSignal
   // can't cross the postMessage boundary as data; it drives the SDK-side cancel frame.
   const { signal, ...params } = req;
-  return invokeStream<ChatDelta, ChatResult>(
-    'llm:chat',
-    params as unknown as Record<string, unknown>,
-    signal,
-  );
+  return invokeStream<ChatDelta, ChatResult>('llm:chat', params as unknown as Record<string, unknown>, signal);
 }
 
 /** The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read
@@ -190,14 +186,12 @@ export const describeChatState = (): ChatProviderState => stateOf(channel.get())
 
 /** Subscribe to provider changes (key added/revoked, preference changed). Invoked
  *  immediately with the current value, then on every change. Returns unsubscribe. */
-export const onChatProviderChange = (
-  listener: (provider: ChatProviderInfo | null) => void,
-): (() => void) => channel.onChange(listener);
+export const onChatProviderChange = (listener: (provider: ChatProviderInfo | null) => void): (() => void) =>
+  channel.onChange(listener);
 
 /** Subscribe to the three-state provider description. */
-export const onChatProviderStateChange = (
-  listener: (state: ChatProviderState) => void,
-): (() => void) => channel.onChange((p) => listener(stateOf(p)));
+export const onChatProviderStateChange = (listener: (state: ChatProviderState) => void): (() => void) =>
+  channel.onChange((p) => listener(stateOf(p)));
 
 /** React hook returning the resolved chat provider (or `null`), re-rendering on
  *  change — gate the summarize affordance on `provider !== null`. */

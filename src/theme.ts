@@ -34,8 +34,7 @@ export const getHostTheme = (): HostTheme => channel.get();
  * Subscribe to host theme changes. The listener is invoked immediately with the
  * current theme, then again on every change. Returns an unsubscribe fn.
  */
-export const onHostThemeChange = (listener: (theme: HostTheme) => void): (() => void) =>
-  channel.onChange(listener);
+export const onHostThemeChange = (listener: (theme: HostTheme) => void): (() => void) => channel.onChange(listener);
 
 /**
  * React hook returning the current host theme, re-rendering when it changes.

@@ -32,13 +32,25 @@ function withEvalSpies(fn) {
     Function: g.Function,
     setTimeout: g.setTimeout,
   };
-  g.fetch = (...a) => { calls.push(['fetch', a[0]]); throw new Error('fetch must not be called'); };
+  g.fetch = (...a) => {
+    calls.push(['fetch', a[0]]);
+    throw new Error('fetch must not be called');
+  };
   // eslint-disable-next-line no-global-assign
-  g.setTimeout = (h, ...rest) => { if (typeof h === 'string') calls.push(['setTimeout(string)', h]); return orig.setTimeout(typeof h === 'function' ? h : () => {}, ...rest); };
-  const FakeFunction = function (...a) { calls.push(['Function', a]); throw new Error('Function must not be constructed'); };
+  g.setTimeout = (h, ...rest) => {
+    if (typeof h === 'string') calls.push(['setTimeout(string)', h]);
+    return orig.setTimeout(typeof h === 'function' ? h : () => {}, ...rest);
+  };
+  const FakeFunction = function (...a) {
+    calls.push(['Function', a]);
+    throw new Error('Function must not be constructed');
+  };
   FakeFunction.prototype = Function.prototype;
   g.Function = FakeFunction;
-  g.eval = (s) => { calls.push(['eval', s]); throw new Error('eval must not be called'); };
+  g.eval = (s) => {
+    calls.push(['eval', s]);
+    throw new Error('eval must not be called');
+  };
   try {
     return fn(calls);
   } finally {
@@ -83,11 +95,15 @@ test('§5.1 fail-safe: parse+render of hostile MDX calls NO evaluator (fetch/Fun
   assert.ok(!('data' in inertExpr) && !('estree' in inertExpr), 'no estree/data — no acorn parsed it');
 
   const html = withEvalSpies((calls) => {
-    const el = createElement('div', null, renderMdast(tree, {
-      // Even a REGISTERED component only receives literal props — never the expressions.
-      components: { WikiEmbed: (props) => createElement('span', { 'data-src': props.src ?? '' }) },
-      resolveWikiLink: () => undefined,
-    }));
+    const el = createElement(
+      'div',
+      null,
+      renderMdast(tree, {
+        // Even a REGISTERED component only receives literal props — never the expressions.
+        components: { WikiEmbed: (props) => createElement('span', { 'data-src': props.src ?? '' }) },
+        resolveWikiLink: () => undefined,
+      }),
+    );
     const out = renderToStaticMarkup(el);
     assert.deepEqual(calls, [], `no evaluator may fire — got ${JSON.stringify(calls)}`);
     return out;
@@ -134,7 +150,10 @@ test('R3-213: the real parse runs the SHARED kernel remark plugins (heading ids,
     let hit = null;
     const walk = (n) => {
       if (hit) return;
-      if (pred(n)) { hit = n; return; }
+      if (pred(n)) {
+        hit = n;
+        return;
+      }
       for (const c of n.children ?? []) walk(c);
     };
     walk(tree);

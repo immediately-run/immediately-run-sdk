@@ -63,10 +63,7 @@ export interface SafeMdxAttribute {
 type MdastMutator = (tree: SafeMdastNode) => void;
 
 type Deps = {
-  fromMarkdown: (
-    value: string,
-    options: { extensions: unknown[]; mdastExtensions: unknown[] },
-  ) => SafeMdastNode;
+  fromMarkdown: (value: string, options: { extensions: unknown[]; mdastExtensions: unknown[] }) => SafeMdastNode;
   mdxJsx: () => unknown;
   mdxJsxFromMarkdown: () => unknown;
   gfm: () => unknown;
@@ -122,10 +119,7 @@ export interface ParseSafeMdastOptions {
  * with LITERAL attributes and set `data.hProperties.id` on headings; they add no evaluator
  * and no acorn, preserving the §5.1 fail-safe.
  */
-export async function parseSafeMdast(
-  source: string,
-  options: ParseSafeMdastOptions = {},
-): Promise<SafeMdastNode> {
+export async function parseSafeMdast(source: string, options: ParseSafeMdastOptions = {}): Promise<SafeMdastNode> {
   const {
     fromMarkdown,
     mdxJsx,

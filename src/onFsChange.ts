@@ -27,16 +27,13 @@ export interface FsChange {
   epoch: number;
 }
 
-const isStringArray = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((p) => typeof p === 'string');
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((p) => typeof p === 'string');
 
 const channel = createPushChannel<FsChange>({
   pushType: FS_CHANGE,
   initial: { paths: [], epoch: 0 },
   parse: (msg) =>
-    isStringArray(msg.paths) && typeof msg.epoch === 'number'
-      ? { paths: msg.paths, epoch: msg.epoch }
-      : undefined,
+    isStringArray(msg.paths) && typeof msg.epoch === 'number' ? { paths: msg.paths, epoch: msg.epoch } : undefined,
 });
 
 /** The most recent working-tree change batch (the empty initial until the first). */
@@ -47,8 +44,7 @@ export const getFsChange = (): FsChange => channel.get();
  * current batch, then on every host push. Returns an unsubscribe fn. The common
  * use: re-read an open file when its path appears in `change.paths`.
  */
-export const onFsChange = (listener: (change: FsChange) => void): (() => void) =>
-  channel.onChange(listener);
+export const onFsChange = (listener: (change: FsChange) => void): (() => void) => channel.onChange(listener);
 
 /** React hook: the current working-tree change batch, re-rendering on every push. */
 export const useFsChange = (): FsChange => channel.use();

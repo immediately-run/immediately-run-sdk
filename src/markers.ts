@@ -22,9 +22,7 @@ interface MarkerDeps {
 }
 
 const realNow = (): number =>
-  typeof performance !== 'undefined' && typeof performance.now === 'function'
-    ? performance.now()
-    : Date.now();
+  typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
 
 const defaultDeps: MarkerDeps = { send: defaultSend, now: realNow };
 

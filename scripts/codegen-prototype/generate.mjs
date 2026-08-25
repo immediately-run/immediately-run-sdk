@@ -44,15 +44,18 @@ function tsType(schema) {
   if (schema.const !== undefined) return strLit(schema.const);
   if (Array.isArray(schema.oneOf)) return schema.oneOf.map(tsType).join(' | ');
   switch (schema.type) {
-    case 'void': return 'void';
-    case 'unknown': return 'unknown';
-    case 'record': return 'Record<string, unknown>';
+    case 'void':
+      return 'void';
+    case 'unknown':
+      return 'unknown';
+    case 'record':
+      return 'Record<string, unknown>';
     case 'string':
-      return Array.isArray(schema.enum)
-        ? schema.enum.map((v) => strLit(v)).join(' | ')
-        : 'string';
-    case 'number': return 'number';
-    case 'boolean': return 'boolean';
+      return Array.isArray(schema.enum) ? schema.enum.map((v) => strLit(v)).join(' | ') : 'string';
+    case 'number':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
     // `T[]`, not `Array<T>`: type-identical to TypeScript, but the hand-written
     // surface uses `T[]`, and the migration's acceptance test is that the emitted
     // `.d.ts` does not change. Cosmetic churn in a "no-op swap" is noise that hides
@@ -64,12 +67,11 @@ function tsType(schema) {
     case 'object': {
       const props = schema.properties ?? {};
       const required = new Set(schema.required ?? []);
-      const lines = Object.entries(props).map(
-        ([k, v]) => `${k}${required.has(k) ? '' : '?'}: ${tsType(v)}`,
-      );
+      const lines = Object.entries(props).map(([k, v]) => `${k}${required.has(k) ? '' : '?'}: ${tsType(v)}`);
       return lines.length ? `{ ${lines.join('; ')} }` : 'Record<string, never>';
     }
-    default: return 'unknown';
+    default:
+      return 'unknown';
   }
 }
 
@@ -98,8 +100,10 @@ function wrap(text, width) {
   const out = [];
   let line = '';
   for (const w of words) {
-    if ((line + ' ' + w).trim().length > width) { out.push(line.trim()); line = w; }
-    else line += ' ' + w;
+    if ((line + ' ' + w).trim().length > width) {
+      out.push(line.trim());
+      line = w;
+    } else line += ' ' + w;
   }
   if (line.trim()) out.push(line.trim());
   return out;
@@ -133,7 +137,10 @@ function emitWrappers() {
   if (anyStream) out.push("import type { StreamError } from '../../../src/protocolStream';");
   out.push('');
 
-  for (const [name, def] of Object.entries(family.types)) { out.push(emitNamedType(name, def)); out.push(''); }
+  for (const [name, def] of Object.entries(family.types)) {
+    out.push(emitNamedType(name, def));
+    out.push('');
+  }
 
   for (const m of family.methods) {
     out.push(`export type ${errUnionName(m)} =`);
@@ -148,9 +155,7 @@ function emitWrappers() {
     if (m.kind === 'stream') {
       const eventType = tsType(m.event);
       const paramsType = tsType(m.params);
-      out.push(
-        `export function ${fn}(req: ${paramsType}): AsyncGenerator<${eventType}, ${resultType}, void> {`,
-      );
+      out.push(`export function ${fn}(req: ${paramsType}): AsyncGenerator<${eventType}, ${resultType}, void> {`);
       out.push(`  return invokeStream<${eventType}, ${resultType}>(${JSON.stringify(m.name)}, req);`);
       out.push('}');
       out.push('');
@@ -168,9 +173,15 @@ function emitWrappers() {
       );
     } else if (positional[0] === 'opts') {
       const paramsType = tsType(m.params);
-      out.push(`export const ${fn} = (opts: ${paramsType} = {}): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(m.name)}, opts);`);
+      out.push(
+        `export const ${fn} = (opts: ${paramsType} = {}): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(
+          m.name,
+        )}, opts);`,
+      );
     } else {
-      out.push(`export const ${fn} = (): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(m.name)}, {});`);
+      out.push(
+        `export const ${fn} = (): Promise<${resultType}> =>\n  invoke<${resultType}>(${JSON.stringify(m.name)}, {});`,
+      );
     }
     out.push('');
   }
@@ -184,9 +195,10 @@ function emitLlmsTxt() {
   out.push('|---|---|---|---|---|---|');
   for (const m of family.methods) {
     const params = m.params.properties ? Object.keys(m.params.properties).join(', ') || '—' : '—';
-    const ret = m.kind === 'stream'
-      ? `${m.event.$ref ?? 'event'} → ${m.result.$ref ?? tsType(m.result)}`
-      : tsType(m.result).replace(/\s+/g, ' ');
+    const ret =
+      m.kind === 'stream'
+        ? `${m.event.$ref ?? 'event'} → ${m.result.$ref ?? tsType(m.result)}`
+        : tsType(m.result).replace(/\s+/g, ' ');
     out.push(`| \`${m.alias.fn}\` | \`${m.name}\` | \`${m.capability}\` | ${m.kind} | ${params} | \`${ret}\` |`);
   }
   return out.join('\n') + '\n';
@@ -194,8 +206,13 @@ function emitLlmsTxt() {
 
 function emitCatalogManifest() {
   return JSON.stringify(
-    family.methods.map((m) => ({ name: m.name, capability: m.capability, stream: m.kind === 'stream' ? true : undefined })),
-    null, 2,
+    family.methods.map((m) => ({
+      name: m.name,
+      capability: m.capability,
+      stream: m.kind === 'stream' ? true : undefined,
+    })),
+    null,
+    2,
   );
 }
 

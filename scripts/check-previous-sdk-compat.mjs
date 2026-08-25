@@ -200,7 +200,9 @@ const problemsFor = (version, result, fixtures) => {
         problems.push(`${version} ${name}.${key}: surfaced a key the wire does not carry`);
       } else if (!eq(seen.last[key], fixtures[name][key])) {
         problems.push(
-          `${version} ${name}.${key}: got ${JSON.stringify(seen.last[key])}, wire carries ${JSON.stringify(fixtures[name][key])}`,
+          `${version} ${name}.${key}: got ${JSON.stringify(seen.last[key])}, wire carries ${JSON.stringify(
+            fixtures[name][key],
+          )}`,
         );
       }
     }

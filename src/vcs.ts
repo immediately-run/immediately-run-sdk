@@ -66,12 +66,7 @@ const EMPTY: VcsState = { changes: [], branch: null, prs: [], diffLoading: false
 
 const isChangeArray = (v: unknown): v is VcsChange[] =>
   Array.isArray(v) &&
-  v.every(
-    (c) =>
-      !!c &&
-      typeof (c as VcsChange).path === 'string' &&
-      typeof (c as VcsChange).status === 'string',
-  );
+  v.every((c) => !!c && typeof (c as VcsChange).path === 'string' && typeof (c as VcsChange).status === 'string');
 
 const channel = createPushChannel<VcsState>({
   pushType: VCS_STATE,
@@ -81,8 +76,7 @@ const channel = createPushChannel<VcsState>({
     // Require a well-formed `changes` array; tolerate an absent branch/prs. A
     // malformed push is ignored (returns undefined) so the last good state stands.
     if (!isChangeArray(msg.changes)) return undefined;
-    const branch =
-      msg.branch && typeof msg.branch === 'object' ? (msg.branch as VcsBranch) : null;
+    const branch = msg.branch && typeof msg.branch === 'object' ? (msg.branch as VcsBranch) : null;
     const prs = Array.isArray(msg.prs) ? (msg.prs as VcsPR[]) : [];
     return {
       changes: msg.changes,
@@ -101,8 +95,7 @@ export const getVcsState = (): VcsState => channel.get();
 /** Subscribe to source-control changes. Invoked immediately with the current
  *  value, then on every host push (diff refresh, PR poll, branch change). Returns
  *  an unsubscribe. */
-export const onVcsStateChange = (listener: (state: VcsState) => void): (() => void) =>
-  channel.onChange(listener);
+export const onVcsStateChange = (listener: (state: VcsState) => void): (() => void) => channel.onChange(listener);
 
 /** React hook: the current source-control state, re-rendering on every change. */
 export const useVcsState = (): VcsState => channel.use();
@@ -126,9 +119,7 @@ export interface VcsActionError extends Error {
     | 'unknown';
 }
 
-type VcsResult =
-  | { ok: true; data: unknown }
-  | { ok: false; code: string; message: string };
+type VcsResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
 const vcsRequest = async (method: string, arg: Record<string, unknown> = {}): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_VCS], method, [arg])) as VcsResult;

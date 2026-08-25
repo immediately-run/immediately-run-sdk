@@ -47,9 +47,13 @@ const wire = (snapshot: Record<string, Record<string, unknown>>, buffered: Ev[])
   const emitter = makeEmitter(buffered);
   jest.mocked(injectedBundler.getInjectedMetadataSnapshot).mockReturnValue(snapshot);
   jest.mocked(injectedBundler.getInjectedMetadataEmitter).mockReturnValue(emitter as never);
-  jest.mocked(injectedBundler.resolveMetadataSource).mockImplementation((inj) =>
-    inj ? { event: (inj as typeof emitter).onMetadataChange, enable: () => (inj as typeof emitter).enable() } : { event: undefined, enable: () => {} },
-  );
+  jest
+    .mocked(injectedBundler.resolveMetadataSource)
+    .mockImplementation((inj) =>
+      inj
+        ? { event: (inj as typeof emitter).onMetadataChange, enable: () => (inj as typeof emitter).enable() }
+        : { event: undefined, enable: () => {} },
+    );
   return emitter;
 };
 
@@ -88,13 +92,10 @@ describe('G-MDX-3c — SDK boot snapshot seeds filesMetadata', () => {
 
   it('renders the full collection on the FIRST frame with ZERO re-render after enable() (identity refs)', () => {
     // Snapshot hands out the SAME value objects the emitter replays.
-    wire(
-      { '/app/a.mdx': vA, '/app/b.mdx': vB },
-      [
-        { type: 'metadata-update', update: { '/app/a.mdx': vA } },
-        { type: 'metadata-update', update: { '/app/b.mdx': vB } },
-      ],
-    );
+    wire({ '/app/a.mdx': vA, '/app/b.mdx': vB }, [
+      { type: 'metadata-update', update: { '/app/a.mdx': vA } },
+      { type: 'metadata-update', update: { '/app/b.mdx': vB } },
+    ]);
     const r = render();
     // First (and only) commit already holds the whole collection — no empty-then-fill.
     expect(r.text()).toBe('Alpha,Beta');
@@ -105,13 +106,10 @@ describe('G-MDX-3c — SDK boot snapshot seeds filesMetadata', () => {
   it('a defensive-CLONE snapshot re-renders after enable() (proves the contract is load-bearing)', () => {
     // Snapshot returns clones; the emitter replays the originals → every replayed
     // value is !== the seed → the whole collection re-applies + re-renders.
-    wire(
-      { '/app/a.mdx': { ...vA }, '/app/b.mdx': { ...vB } },
-      [
-        { type: 'metadata-update', update: { '/app/a.mdx': vA } },
-        { type: 'metadata-update', update: { '/app/b.mdx': vB } },
-      ],
-    );
+    wire({ '/app/a.mdx': { ...vA }, '/app/b.mdx': { ...vB } }, [
+      { type: 'metadata-update', update: { '/app/a.mdx': vA } },
+      { type: 'metadata-update', update: { '/app/b.mdx': vB } },
+    ]);
     const r = render();
     expect(r.text()).toBe('Alpha,Beta'); // same content — the cost is the extra render
     expect(r.commits()).toBeGreaterThan(1);

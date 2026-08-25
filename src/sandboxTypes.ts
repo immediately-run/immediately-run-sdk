@@ -1,21 +1,21 @@
 /** The exports object of an evaluated sandbox module (untyped — shape depends on the module). */
-export type ModuleExports = any
+export type ModuleExports = any;
 
 /** The sandbox runtime's per-module evaluation context: a module's exports plus the
  *  helpers to dynamically import, resolve, and re-evaluate other modules.
  *  (The real type is `EvaluationContext` from `src/bundler/module/Evaluation.ts`.) */
 export type EvaluationContext = {
   exports: ModuleExports;
-  dynamicImport: (moduleToImport: string, symbolToImport:string) => Promise<ModuleExports>;
-  getModuleEvaluationContext: (moduleName: string) =>  Promise<EvaluationContext>;
+  dynamicImport: (moduleToImport: string, symbolToImport: string) => Promise<ModuleExports>;
+  getModuleEvaluationContext: (moduleName: string) => Promise<EvaluationContext>;
   resolve: (moduleName: string) => Promise<string>;
   evaluation: {
     module: {
       source: string;
       filepath: string;
-    }
-  }
-}
+    };
+  };
+};
 
 /**
  * The parsed frontmatter of a single file. Apps can supply their own shape as the
@@ -49,7 +49,7 @@ export type MetadataQueryRecord = { path: string } & Record<string, unknown>;
 
 /** What a {@link MetadataQueryFunction} selected: paths, or {@link MetadataQueryRecord}s.
  *  The two forms may not be mixed in one result — a query returns one or the other. */
-export type FileQueryResult = string[] | MetadataQueryRecord[]
+export type FileQueryResult = string[] | MetadataQueryRecord[];
 
 /**
  * A query over the metadata store: receive every file's frontmatter keyed by path
@@ -80,6 +80,4 @@ export type MetadataQueryEntry<T = Metadata, E extends object = {}> = E & {
  * The result of running a metadata query: the matched entries (path + frontmatter),
  * or the error a throwing query produced.
  */
-export type MetadataQueryResult<T = Metadata, E extends object = {}> =
-  | MetadataQueryEntry<T, E>[]
-  | { error: unknown }
+export type MetadataQueryResult<T = Metadata, E extends object = {}> = MetadataQueryEntry<T, E>[] | { error: unknown };

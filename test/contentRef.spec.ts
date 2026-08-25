@@ -2,10 +2,7 @@ import { makeContentRef } from '../src/mounts';
 
 describe('makeContentRef (plan 12 §E content references)', () => {
   it('produces the §5.7 capFile shape (one capability, two delivery modes)', () => {
-    const ref = makeContentRef(
-      { mountId: 'space:ACME', relPath: 'office-seating/desk.mdx' },
-      { mode: 'ro' },
-    );
+    const ref = makeContentRef({ mountId: 'space:ACME', relPath: 'office-seating/desk.mdx' }, { mode: 'ro' });
     expect(ref).toEqual({
       $cap: 'file',
       mountId: 'space:ACME',

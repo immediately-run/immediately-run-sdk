@@ -8,9 +8,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { SDK_VERSION, sdkHandshake } from '../src/runtime';
 
-const pkgVersion = JSON.parse(
-  readFileSync(join(__dirname, '..', 'package.json'), 'utf8'),
-).version as string;
+const pkgVersion = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8')).version as string;
 
 describe('SDK_VERSION baked from package.json (SP2-6)', () => {
   it('equals the package.json version', () => {

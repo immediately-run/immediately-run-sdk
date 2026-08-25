@@ -16,9 +16,7 @@ export const scrollToId = (id: string): boolean => {
       // A citation that targeted the prose text slug still resolves via the
       // `data-slug` hook the kernel emits alongside the `sec-…` id.
       const escaped =
-        typeof CSS !== 'undefined' && typeof CSS.escape === 'function'
-          ? CSS.escape(id)
-          : id.replace(/["\\]/g, '\\$&');
+        typeof CSS !== 'undefined' && typeof CSS.escape === 'function' ? CSS.escape(id) : id.replace(/["\\]/g, '\\$&');
       el = document.querySelector(`[data-slug="${escaped}"]`);
     }
   } catch {

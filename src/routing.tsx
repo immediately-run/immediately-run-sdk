@@ -11,9 +11,9 @@ import { URLCHANGE } from './generated/protocol';
 
 /** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
 export type AppliedRoutingRule = {
-  routingRule: RoutingRule,
+  routingRule: RoutingRule;
   pathParameters?: Record<string, string>;
-}
+};
 
 /** Build the full outer href for an in-app target (absolute `sandboxPath` or a
  *  path relative to the current route), e.g. for an `href` attribute. */
@@ -21,16 +21,19 @@ export const useTinkerableLink = (newSandboxLocation: string) => {
   const { outerHref, navigationState: navigation } = use(TinkerableContext);
   let newNavigationState = parseTarget(newSandboxLocation, navigation);
   if (!isAbsolutePath(newSandboxLocation)) {
-    newNavigationState.sandboxPath = joinPaths(navigation.sandboxPath, newSandboxLocation)
+    newNavigationState.sandboxPath = joinPaths(navigation.sandboxPath, newSandboxLocation);
   } else {
-    newNavigationState.sandboxPath = newSandboxLocation
+    newNavigationState.sandboxPath = newSandboxLocation;
   }
   return constructUrl(outerHref, newNavigationState);
-}
+};
 
 /** Find the first rule in `routingSpec` whose pattern matches the current
  *  `sandboxPath`, returning it with the captured params (or `undefined`). */
-export const applyRoutingRule = (routingSpec:RoutingSpec, navigationState: NavigationState): AppliedRoutingRule | undefined => {
+export const applyRoutingRule = (
+  routingSpec: RoutingSpec,
+  navigationState: NavigationState,
+): AppliedRoutingRule | undefined => {
   const { sandboxPath } = navigationState;
   for (const routingRule of routingSpec.routes) {
     const pathParameters = matchRoute(routingRule.pattern, sandboxPath);
@@ -39,7 +42,7 @@ export const applyRoutingRule = (routingSpec:RoutingSpec, navigationState: Navig
     }
   }
   return undefined;
-}
+};
 
 /** Render a matched rule, passing params to a `component` and falling back to `element`/`reactNode`. */
 export const renderRoute = (routingRule: RoutingRule, params: RouteParams): ReactNode => {
@@ -53,7 +56,9 @@ export const renderRoute = (routingRule: RoutingRule, params: RouteParams): Reac
 /** Render the route matched for the current location (set up by `boot`'s route table). */
 export const Router = () => {
   const context = useContext(TinkerableContext);
-  const {navigationState: {routingRule, pathParameters}} = context;
+  const {
+    navigationState: { routingRule, pathParameters },
+  } = context;
   if (!routingRule) {
     // TODO: better error
     throw new Error(`No route registered for path ${context.navigationState.sandboxPath}!`);
@@ -85,7 +90,6 @@ export const useRoute = () => {
     ref,
   };
 };
-
 
 /**
  * Navigate within the app. Messages the host to update the URL; the host then
@@ -121,11 +125,8 @@ export const setViewedDocumentResolver = (
   viewedDocumentResolver = resolver;
 };
 
-export const navigate = (
-  target: string,
-  opts?: { viewedDocument?: string | null },
-) => {
-  console.log(`[Sandbox] Navigating to ${target}`)
+export const navigate = (target: string, opts?: { viewedDocument?: string | null }) => {
+  console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
   // wire (the host derives from the URL convention). A resolver throw is
   // swallowed to "no declaration" — a mapping bug must never break navigation.

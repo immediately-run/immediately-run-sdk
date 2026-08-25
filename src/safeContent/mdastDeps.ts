@@ -44,8 +44,4 @@ export { gfmFromMarkdown } from 'mdast-util-gfm';
 // bundles the same package via `noExternal`. The plugins are pure mdast transforms with a
 // type-only `unified` dep and no acorn/`@mdx-js/mdx` edge, so they don't taint the
 // no-evaluator guarantee.
-export {
-  remarkAdmonitions,
-  remarkWikiLinks,
-  remarkHeadingAnchors,
-} from '@immediately-run/mdx-plugins';
+export { remarkAdmonitions, remarkWikiLinks, remarkHeadingAnchors } from '@immediately-run/mdx-plugins';

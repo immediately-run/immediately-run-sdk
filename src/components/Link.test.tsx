@@ -64,9 +64,7 @@ describe('InternalLink — consumer onClick composes with the router interceptio
     expect(onClick).toHaveBeenCalledTimes(1);
     // The interception still ran: default prevented (no iframe navigation), routed.
     expect(ev.defaultPrevented).toBe(true);
-    expect(navigate).toHaveBeenCalledWith(
-      'https://host.example/edit/github/a/b/main/files/premise.mdx',
-    );
+    expect(navigate).toHaveBeenCalledWith('https://host.example/edit/github/a/b/main/files/premise.mdx');
     r.unmount();
   });
 
@@ -120,10 +118,7 @@ describe('Link — the drawer-shaped case end to end', () => {
     const onClose = jest.fn();
     const r = render(
       <TinkerableContext value={state}>
-        <Link
-          href="https://local.immediately.run/edit/github/neumark/book/main/files/premise.mdx"
-          onClick={onClose}
-        >
+        <Link href="https://local.immediately.run/edit/github/neumark/book/main/files/premise.mdx" onClick={onClose}>
           Premise
         </Link>
       </TinkerableContext>,

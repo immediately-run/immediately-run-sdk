@@ -31,10 +31,12 @@ export interface FileCap {
  *
  *   file: capFile({ mountId: 'space:abc', relPath: 'photos/cat.jpg' }, { mode: 'rw' })
  */
-export const capFile = (
-  ref: { mountId: string; relPath: string },
-  opts: { mode: 'ro' | 'rw' },
-): FileCap => ({ $cap: 'file', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
+export const capFile = (ref: { mountId: string; relPath: string }, opts: { mode: 'ro' | 'rw' }): FileCap => ({
+  $cap: 'file',
+  mountId: ref.mountId,
+  relPath: ref.relPath,
+  mode: opts.mode,
+});
 
 /** A delegated DIRECTORY capability marker for a task param (D2). Like {@link FileCap}
  *  but `relPath` names a DIRECTORY: the host chroots the callee AT that directory
@@ -54,10 +56,12 @@ export interface DirCap {
  *
  *   roots: [capDir({ mountId: 'space:abc', relPath: 'boards' }, { mode: 'rw' })]
  */
-export const capDir = (
-  ref: { mountId: string; relPath: string },
-  opts: { mode: 'ro' | 'rw' },
-): DirCap => ({ $cap: 'dir', mountId: ref.mountId, relPath: ref.relPath, mode: opts.mode });
+export const capDir = (ref: { mountId: string; relPath: string }, opts: { mode: 'ro' | 'rw' }): DirCap => ({
+  $cap: 'dir',
+  mountId: ref.mountId,
+  relPath: ref.relPath,
+  mode: opts.mode,
+});
 
 /**
  * Invoke another app via a task contract and await its typed result (Recipe B).
@@ -66,10 +70,7 @@ export const capDir = (
  * delegation you don't hold), `no-such-task`, `task-cycle`/`task-depth-exceeded`/
  * `task-version-mismatch`, or `invalid-params` (result failed the contract schema).
  */
-export const invokeTask = async <R = unknown>(
-  task: string,
-  params: Record<string, unknown> = {},
-): Promise<R> => {
+export const invokeTask = async <R = unknown>(task: string, params: Record<string, unknown> = {}): Promise<R> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_TASK], 'invoke', [{ task, params }])) as
     | { ok: true; data: R }
     | { ok: false; code?: string; message?: string }

@@ -40,10 +40,7 @@ const split = (name: string): [string, string] => {
  * call (an un-granted method → `forbidden`, even if you name it directly). For a
  * STREAMING method (`ApiMethod.stream`), use {@link invokeStream}.
  */
-export const invoke = async <T = unknown>(
-  name: string,
-  params: Record<string, unknown> = {},
-): Promise<T> => {
+export const invoke = async <T = unknown>(name: string, params: Record<string, unknown> = {}): Promise<T> => {
   const [scheme, method] = split(name);
   // The host replies with an `{ ok, data } | { ok:false, code }` envelope; unwrap
   // it and THROW on refusal (a `.code` like `forbidden` for an off-catalog call)
@@ -65,8 +62,7 @@ export const invoke = async <T = unknown>(
 // global), never `bundler.messageBus` directly.
 const streamTransport: StreamTransport = {
   send: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
-  subscribe: (type, handler) =>
-    addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
+  subscribe: (type, handler) => addListener(type, (msg) => handler(msg as { msgId?: number; stream?: StreamFrame })),
   // Early-cancel: route a `{type, msgId, cancel:true}` frame back to the host so it
   // aborts the in-flight generation (and, for `llm:chat`, stops billing) — §3.3.
   cancel: (msg) => sendMessage(msg.type, msg as unknown as Record<string, unknown>),
@@ -99,8 +95,7 @@ export const getCatalog = (): ApiMethod[] => channel.get();
 
 /** Subscribe to catalog changes (e.g. a grant added/revoked). Invoked immediately
  *  with the current catalog, then on every change. Returns an unsubscribe fn. */
-export const onCatalogChange = (listener: (catalog: ApiMethod[]) => void): (() => void) =>
-  channel.onChange(listener);
+export const onCatalogChange = (listener: (catalog: ApiMethod[]) => void): (() => void) => channel.onChange(listener);
 
 /** React hook returning this app's method catalog, re-rendering on change. Hand
  *  it to an embedded agent as its tool list to confine the agent to the app's

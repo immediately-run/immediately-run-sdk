@@ -57,14 +57,12 @@ export const HeadingAnchor = ({
       e.preventDefault();
       if (id) scrollToId(id);
     },
-    [id]
+    [id],
   );
   if (!id) return null;
   // No context (a plain-markdown repo that never called `boot()`) → keep the old bare
   // fragment, which FragmentLink handles on its own.
-  const href = ctx?.navigationState
-    ? constructOuterUrl(ctx.outerHref, `#${id}`, ctx.navigationState)
-    : `#${id}`;
+  const href = ctx?.navigationState ? constructOuterUrl(ctx.outerHref, `#${id}`, ctx.navigationState) : `#${id}`;
   return (
     <FragmentLink
       className="ir-heading-anchor"

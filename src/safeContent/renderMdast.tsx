@@ -80,10 +80,7 @@ const nextKey = () => `sc-${keyCounter++}`;
  * exactly this reason, and the compiled-MDX path has always honoured that component; the
  * safe path silently ignored it, so one document behaved differently on the two renderers.
  */
-function elementFor(
-  tag: 'a' | 'img',
-  components: RenderMdastOptions['components'],
-): React.ElementType {
+function elementFor(tag: 'a' | 'img', components: RenderMdastOptions['components']): React.ElementType {
   return (components?.[tag] as React.ElementType) ?? tag;
 }
 

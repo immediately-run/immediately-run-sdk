@@ -64,9 +64,10 @@ describe('resolveLinkTarget — default space', () => {
 
 describe(`resolveLinkTarget — ${FS_PREFIX} space`, () => {
   it('resolves mount-absolute, ignoring any corpusRoot (the whole point)', () => {
-    expect(
-      resolveLinkTarget('$fs:/app/content/intro.mdx', { corpusRoot: '/app/content' }),
-    ).toEqual({ state: 'resolved', path: '/app/content/intro.mdx' });
+    expect(resolveLinkTarget('$fs:/app/content/intro.mdx', { corpusRoot: '/app/content' })).toEqual({
+      state: 'resolved',
+      path: '/app/content/intro.mdx',
+    });
     expect(resolveLinkTarget('$fs:/mnt/abc/readme.md')).toEqual({
       state: 'resolved',
       path: '/mnt/abc/readme.md',
@@ -173,8 +174,6 @@ describe('$fs: under a bundle chroot (BUNDLE_LAYERS_SPEC §9, R3-319)', () => {
 
   it('relative targets are unaffected by the flag', () => {
     const opts = { currentFile: '/repo/content/notes/a.md', corpusRoot: CORPUS };
-    expect(resolveLinkTarget('b.md', { ...opts, bundleChrooted: true })).toEqual(
-      resolveLinkTarget('b.md', opts),
-    );
+    expect(resolveLinkTarget('b.md', { ...opts, bundleChrooted: true })).toEqual(resolveLinkTarget('b.md', opts));
   });
 });

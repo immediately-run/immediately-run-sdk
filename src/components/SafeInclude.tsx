@@ -96,10 +96,7 @@ function InterpretedBody({
 }) {
   // A caller-supplied reader gets its own cache; the shared one is used otherwise. Memoised
   // on the reader identity so `use()` still sees a stable promise across renders.
-  const sources = useMemo(
-    () => (readSource ? createSourceCache(readSource) : defaultSources),
-    [readSource],
-  );
+  const sources = useMemo(() => (readSource ? createSourceCache(readSource) : defaultSources), [readSource]);
   const raw = use(sources.read(filename));
   const provided = useMDXComponents(components) as Record<string, unknown>;
   const body = stripFrontmatter(raw);

@@ -175,7 +175,7 @@ export const launch = async (
     | { ok: false; code?: LaunchErrorCode }
     | undefined;
   if (!res || res.ok !== true || !res.data?.launchId) {
-    const code = res && res.ok === false ? (res.code ?? 'unknown') : 'unknown';
+    const code = res && res.ok === false ? res.code ?? 'unknown' : 'unknown';
     return { ok: false, code };
   }
   return new LaunchHandleImpl(res.data.launchId);

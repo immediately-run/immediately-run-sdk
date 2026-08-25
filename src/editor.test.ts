@@ -7,13 +7,7 @@ jest.mock('./sandboxUtils', () => ({
 }));
 
 import { protocolRequest } from './sandboxUtils';
-import {
-  openInEditor,
-  setActiveFile,
-  closeFile,
-  createFile,
-  type EditorSessionError,
-} from './editor';
+import { openInEditor, setActiveFile, closeFile, createFile, type EditorSessionError } from './editor';
 
 const mockRequest = protocolRequest as jest.MockedFunction<typeof protocolRequest>;
 

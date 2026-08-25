@@ -42,9 +42,7 @@ describe('navigate viewedDocument encoding (R3-268)', () => {
     afterEach(() => setViewedDocumentResolver(null));
 
     it('fills the declaration when the caller passed none; explicit opts still win', () => {
-      setViewedDocumentResolver((href) =>
-        href.includes('/files/') ? 'content/from-resolver.mdx' : null,
-      );
+      setViewedDocumentResolver((href) => (href.includes('/files/') ? 'content/from-resolver.mdx' : null));
       navigate('/edit/x/y/z/main/files/a.md');
       expect(sendMessage.mock.calls[0][1].viewedDocument).toBe('content/from-resolver.mdx');
       navigate('/edit/x/y/z/main/tags');

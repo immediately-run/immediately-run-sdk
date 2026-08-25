@@ -17,10 +17,7 @@ export interface MountMatchFields {
   name?: string;
 }
 
-export const mountMatches = (
-  mount: MountMatchFields,
-  query: MountMatchFields,
-): boolean =>
+export const mountMatches = (mount: MountMatchFields, query: MountMatchFields): boolean =>
   (query.type === undefined || mount.type === query.type) &&
   (query.id === undefined || mount.id === query.id) &&
   (query.path === undefined || mount.path === query.path) &&
