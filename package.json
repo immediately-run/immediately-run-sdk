@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.48.0",
+  "version": "0.49.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -36,7 +36,7 @@
     "protocol:check": "node scripts/check-protocol-snapshot.mjs",
     "verify:codegen-parity": "node scripts/codegen-prototype/verify-drift.mjs --self-test && node scripts/codegen-prototype/verify-drift.mjs && node scripts/codegen-prototype/verify.streams.mjs --self-test && node scripts/codegen-prototype/verify.streams.mjs",
     "api:update": "node scripts/check-api-stability.mjs --update",
-    "verify": "npm run format:check && npm run check:circular && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run check:selfhost:selftest && npm run check:selfhost && npm run verify:codegen-parity",
+    "verify": "npm run format:check && npm run check:circular && npm run check:bundler:selftest && npm run check:bundler && npm run build && npm test && npm run test:safe-content && npm run test:metadata-e2e && npm run api:check && npm run compat:selftest && npm run compat:previous && npm run protocol:check && npm run protocol:selftest && npm run check:selfhost:selftest && npm run check:selfhost && npm run verify:codegen-parity",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
     "prepublishOnly": "npm run check:circular && npm run build && npm run api:check",
     "test:safe-content": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
@@ -46,7 +46,9 @@
     "compat:selftest": "node scripts/check-previous-sdk-compat.mjs --self-test",
     "check:selfhost": "node scripts/build-selfhost.mjs .selfhost-check && node scripts/check-selfhost-resolvable.mjs --dir .selfhost-check",
     "check:selfhost:selftest": "node scripts/check-selfhost-resolvable.mjs --self-test",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "prepare": "git config core.hooksPath .githooks || true",
+    "check:bundler": "node scripts/check-bundler-reads.mjs",
+    "check:bundler:selftest": "node scripts/check-bundler-reads.mjs --self-test"
   },
   "peerDependencies": {
     "react": "^19.0.0",

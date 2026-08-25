@@ -146,6 +146,12 @@ const asMountRemoveReason = (value: unknown): MountRemoveReason =>
 // The injected sandbox-bundler mount service (`module.evaluation.module.bundler.mounts`),
 // or null when the SDK is npm-fetched with no injection — same dual-mode shape as
 // `sandboxUtils.transport()` and the metadata emitter (SDK_PACKAGING_SPEC §4/§8).
+/** @deprecated-path The injected `bundler.mounts` read — window opened 2026-08-25
+ *  (R3-278). The protocol equivalent is `transportMountService()` below (the
+ *  `mount-add`/`mount-remove` mirror + `request-mounts` replay), which the dual-mode
+ *  chooser already falls back to. Injection stays preferred for byte-compat through
+ *  the window; see DEPRECATION_CANDIDATES.md.
+ */
 const injectedMountService = (): MountService | null => {
   try {
     // @ts-ignore - injected by the sandbox runtime
