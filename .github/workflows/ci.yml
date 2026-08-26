@@ -191,6 +191,13 @@ jobs:
             echo "::notice::integrity trust root already up to date."
           else
             git commit -m "chore(integrity): sync SDK trust root for ${TAG} [skip ci]"
+            # Rebase before pushing: the release job can run minutes behind HEAD
+            # (approvals queue it), and a plain push loses the race to any merge
+            # that landed meanwhile — which aborts the job BEFORE the npm publish
+            # and Pages deploy steps. The trust-root commit is generated; rebasing
+            # it onto the moved main is always safe.
+            git fetch origin main
+            git rebase origin/main
             git push origin HEAD:main
           fi
           # `new_tag` is the "a version actually went out" signal the deploy
