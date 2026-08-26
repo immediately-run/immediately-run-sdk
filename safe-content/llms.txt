@@ -1,0 +1,41 @@
+# @immediately-run/safe-content
+
+> The immediately.run safe renderer: non-executable MDX/Markdown as data, with no evaluator anywhere in the pipeline (TRUST_MODES_SPEC §5.1). Extracted from @immediately-run/sdk's safeContent tier (PLATFORM_LAYERING_SPEC §4, R3-279); the SDK re-exports it, so no import path changes. (v0.1.1)
+
+The non-executable MDX renderer: untrusted Markdown/MDX-syntax content rendered
+as DATA, with no evaluator anywhere in the pipeline (TRUST_MODES_SPEC §5.1). Every
+security property in one sentence: JSX tags resolve ONLY through a component
+registry by name with literal string props only — unknown tags render their
+children inert; expression attributes are dropped; URLs pass an allowlist;
+wiki-links resolve through the shared link-space resolver.
+
+Consumed directly, or re-exported byte-compatibly through `@immediately-run/sdk`
+(`@immediately-run/sdk/safeContent/*`) — no import path changes needed either way.
+
+## Exports
+
+- `ParseSafeMdastOptions` (interface)
+- `RenderMdastOptions` (interface)
+- `SafeContentComponents` (interface)
+- `SafeContentProps` (interface)
+- `SafeMdastNode` (interface)
+- `SafeMdxAttribute` (interface)
+- `WikiLinkToken` (interface)
+- `WikiPart` (type)
+- `parseSafeMdast` (function) — Parse untrusted Markdown/MDX-syntax source to an mdast tree with **no evaluator in the pipeline**: JSX-as-data (no acorn), GFM on, the expression extension OFF, no raw-HTML re-parse.
+- `parseWikiInner` (function) — Parse the `[[label|target]]` / `[[target]]` inner text (label first, then target — the §13.1 order), or `null` for an empty target (leave the literal `[[…]]`).
+- `renderMdast` (function) — Render a safe-parsed mdast tree to React.
+- `SafeContent` (function)
+- `sanitizeUrl` (function) — Return the URL if its scheme is allowed (or it is relative/anchor), else `undefined`.
+- `splitWikiLinks` (function) — Split a text string on its `[[…]]` runs into ordered text / wiki parts, or `null` when there is no usable wiki-link (so the caller keeps the text node untouched).
+
+## Non-negotiables when embedding
+
+- A **T2 tool, not a platform gate**: it stops content executing as code; it
+  certifies nothing to the host — data-fencing is still required for readers.
+- `@immediately-run/mdx-plugins` is a deliberate runtime dep (the anti-drift
+  coupling): the compiled and interpreted paths share ONE grammar.
+- `react` is a peer the host provides.
+
+---
+_Generated from the typed API by `scripts/gen-llms.mjs`; regenerate on export changes (verify checks freshness)._

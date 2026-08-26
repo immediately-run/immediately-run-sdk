@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/safe-content",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "The immediately.run safe renderer: non-executable MDX/Markdown as data, with no evaluator anywhere in the pipeline (TRUST_MODES_SPEC \u00a75.1). Extracted from @immediately-run/sdk's safeContent tier (PLATFORM_LAYERING_SPEC \u00a74, R3-279); the SDK re-exports it, so no import path changes.",
   "license": "MIT",
   "repository": {
@@ -22,13 +22,16 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "llms.txt"
   ],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
     "test:e2e": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
-    "verify": "npm run build && npm run test && npm run test:e2e"
+    "verify": "npm run docs && npm run build && npm run test && npm run test:e2e && npm run check:llms",
+    "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
+    "check:llms": "node scripts/gen-llms.mjs --check"
   },
   "peerDependencies": {
     "react": "^19.0.0"
@@ -49,7 +52,8 @@
     "mdast-util-mdx-jsx": "^3.2.0",
     "micromark-extension-gfm": "^3.0.0",
     "micromark-extension-mdx-jsx": "^3.0.2",
-    "jsdom": "^25.0.0"
+    "jsdom": "^25.0.0",
+    "typedoc": "^0.27.0"
   },
   "engines": {
     "node": ">=18"
