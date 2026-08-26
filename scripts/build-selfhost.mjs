@@ -77,6 +77,10 @@ walk(dist);
 // the per-file subpath identity `bundle: false` exists to preserve.
 const INLINE_WORKSPACE = [
   { spec: '@immediately-run/platform-constants', file: 'platform-constants.js' },
+  { spec: '@immediately-run/safe-content', file: 'safe-content.js' },
+  // R3-279 phase 3: the resolver canon (linkSpace re-exports it) and the kernel the
+  // safe renderer shares — the self-hosted payload carries both.
+  { spec: '@immediately-run/mdx-plugins', file: 'mdx-plugins.js' },
   { spec: '@immediately-run/sandbox-protocol/sdk', file: 'sandbox-protocol-sdk.js' },
 ];
 // What the sandbox itself provides; anything else must end up inlined.
