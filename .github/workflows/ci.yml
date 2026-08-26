@@ -23,6 +23,12 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v6
+        with:
+          # R3-327 check 2 diffs this branch against its merge base, so it needs the
+          # history to find one. A depth-1 checkout has no merge base at all, and the
+          # check refuses to report success without a diff (an undetermined answer is
+          # not a pass), so a shallow clone would fail it rather than skip it.
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -33,6 +39,29 @@ jobs:
       # publish here, and 0.5.0 in the transpiler). 11.x stays >= 11.5.1 and
       # publishes cleanly; revisit when 12.x is fixed.
       - run: npm install -g npm@11
+      # R3-327 — the two cross-repo release mistakes, caught at PR time.
+      #
+      # Both run BEFORE `npm ci`, deliberately: check 1's whole subject is a pin that
+      # `npm ci` cannot resolve, so running it afterwards means the informative message
+      # never appears — the run has already died on 40 lines of `ETARGET` nobody reads,
+      # which is exactly why the red check on sdk #112 read as noise and merged anyway.
+      #
+      # `--self-test` first in each: a gate that cannot fail is not a gate, and both
+      # self-tests replay the real diffs (sdk #112 and sdk #111) rather than a
+      # hypothetical.
+      - name: A pinned @immediately-run/* version exists, and the lockfile agrees (R3-327)
+        run: npm run check:pins
+      # Check 2 answers on a PR the question the release job only asks after merge —
+      # it is `if: github.event_name == 'push'`, so a PR never runs it. That is how
+      # sdk #111 merged with changed shipped bytes and no version bump, and turned
+      # `main` red on an immutability violation for whoever pushed next.
+      - name: Shipped bytes changed ⇒ the version was bumped in this PR (R3-327)
+        # PR-time only, stated rather than left implicit. On a push to `main` the diff
+        # against `origin/main` is empty, so the check would pass having examined
+        # nothing — and a step that passes vacuously reads, in the run log, exactly like
+        # one that passed on the merits.
+        if: github.event_name == 'pull_request'
+        run: npm run check:publish-version
       - run: npm ci
       # The formatting gate. `format:check`, never `format -- --check`: appending
       # --check to a `prettier --write` script does not make it read-only — Prettier
