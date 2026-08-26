@@ -7,13 +7,10 @@
 // It is a **T2 tool, not a platform gate**: it stops content executing as code; it does
 // not certify anything to the host, and CO-4 data-fencing is still required for anything
 // that *reads* the content (the agent case).
-
-export { SafeContent } from './SafeContent';
-export type { SafeContentProps } from './SafeContent';
-export { renderMdast } from './renderMdast';
-export type { RenderMdastOptions, SafeContentComponents } from './renderMdast';
-export { parseSafeMdast } from './parseSafeMdast';
-export type { SafeMdastNode, SafeMdxAttribute, ParseSafeMdastOptions } from './parseSafeMdast';
-export { sanitizeUrl } from './sanitizeUrl';
-export { splitWikiLinks, parseWikiInner } from './wikilink';
-export type { WikiLinkToken, WikiPart } from './wikilink';
+//
+// R3-279 (phase 3): the implementation now lives in `@immediately-run/safe-content`
+// (the S3 content-framework tier's first extraction). This module — and every sibling
+// subpath below — is a byte-compat RE-EXPORT: `api-snapshot.json` is unchanged, every
+// existing `@immediately-run/sdk/safeContent/*` import keeps working, and no consumer
+// changes anywhere.
+export * from '@immediately-run/safe-content';
