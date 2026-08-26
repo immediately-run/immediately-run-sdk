@@ -131,10 +131,15 @@ function makeFixture({ sdkRoot = ROOT, devFs = 'none' }) {
   writeFileSync(join(dir, 'tsconfig.json'), TSCONFIG);
   writeFileSync(join(dir, 'globals.d.ts'), `/// <reference types="@immediately-run/sdk/ambient" />\n`);
   writeFileSync(join(dir, 'src', 'probe.tsx'), PROBE);
+  // mdx-plugins' d.ts has a type-only `import ... from 'unified'` — the SDK carries
+  // `unified` in devDeps (its public d.ts chain references those types; any strict
+  // consumer needs them resolvable) and the fixture symlinks it like react. NOT
+  // skipLibCheck: that would also skip the planted drifted dev-fs copy under
+  // node_modules — the adversarial case this self-test exists for.
 
   symlinkSync(sdkRoot, join(scope, 'sdk'), 'dir');
   // React is a peer every app provides; the SDK repo's own devDeps supply the types.
-  for (const dep of ['react', '@types/react']) {
+  for (const dep of ['react', '@types/react', 'unified']) {
     const target = join(ROOT, 'node_modules', dep);
     if (!existsSync(target)) die(`${target} missing — run 'npm ci' first (the fixture symlinks the peer types).`);
     const at = dep.startsWith('@') ? join(nm, '@types') : nm;
