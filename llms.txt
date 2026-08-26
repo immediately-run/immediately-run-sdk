@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.51.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.52.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -309,6 +309,17 @@ Import: `@immediately-run/sdk/ready`
 - `ReadyState` (interface) — The app's `reportReady()` state, mirrored by onReady/getReadyState.
 - `reportReady` (function) — Signal that the app is usefully interactive (e.g.
 
+## analytics
+
+Import: `@immediately-run/sdk/analytics`
+
+- `AnalyticsAck` (interface) — The acknowledgement.
+- `AnalyticsPropValue` (type) — Property values a declared event may carry.
+- `emitAnalyticsEvent` (function) — Emit one declared analytics event, surfacing refusals as typed errors.
+- `recordRoute` (function) — Record a navigation, as a declared route PATTERN.
+- `track` (function) — Fire-and-forget emitAnalyticsEvent.
+- `trackRoute` (function) — Fire-and-forget recordRoute, on the same reasoning as track.
+
 ## components/Admonition
 
 Import: `@immediately-run/sdk/components/Admonition`
@@ -356,6 +367,20 @@ Import: `@immediately-run/sdk/components/SafeInclude`
 Import: `@immediately-run/sdk/components/WikiLink`
 
 - `WikiLink` (function) — Default MDX `WikiLink` component — the render target for the `[[target]]` / `[[label|target]]` wiki-link syntax.
+
+## corpus
+
+Import: `@immediately-run/sdk/corpus`
+
+- `CorpusContext` (function) — Ambient corpus scope.
+- `CorpusEntry` (interface) — One entry as content sees it: where it is, where it links, and its frontmatter.
+- `CorpusScope` (interface) — What a corpus viewer declares about the corpus it is rendering.
+- `fromCorpusPath` (function) — Corpus-absolute path → filesystem-absolute, or `null` without a root.
+- `toCorpusPath` (function) — Filesystem-absolute path → corpus-absolute, or `null` when the path is not inside the corpus.
+- `useCorpus` (function) — Read the ambient corpus scope.
+- `useCorpusEntries` (function) — Every entry in the surrounding corpus, with corpus-absolute paths and viewer-supplied hrefs — the surface a content component queries instead of useMetadataQuery, whose keys are filesystem-absolute and therefore carry the mount prefix.
+- `useCorpusEntry` (function) — One entry's frontmatter by corpus-absolute path, or `undefined`.
+- `useCurrentEntry` (function) — The entry currently being read — `null` outside a corpus, or when the viewer declares no entry (a directory listing, a 404).
 
 ## debug
 
