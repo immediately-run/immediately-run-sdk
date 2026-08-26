@@ -26,6 +26,7 @@
 // This module is NOT generated — the derivation is the content — so it lives outside
 // `src/generated/`.
 import {
+  PROTOCOL_ANALYTICS,
   PROTOCOL_CONTRIBUTE,
   PROTOCOL_DND,
   PROTOCOL_EDITOR,
@@ -58,6 +59,7 @@ const schemeOf = <N extends `${typeof PREFIX}${string}`>(name: N): SchemeOf<N> =
 
 /** Every `protocol-*` scheme the SDK speaks, keyed by its wire name. */
 export const SCHEMES = {
+  [PROTOCOL_ANALYTICS]: schemeOf(PROTOCOL_ANALYTICS),
   [PROTOCOL_CONTRIBUTE]: schemeOf(PROTOCOL_CONTRIBUTE),
   [PROTOCOL_DND]: schemeOf(PROTOCOL_DND),
   [PROTOCOL_EDITOR]: schemeOf(PROTOCOL_EDITOR),

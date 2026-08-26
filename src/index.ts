@@ -27,6 +27,7 @@ export * from './formFactor';
 export * from './hostAttention';
 export * from './region';
 export * from './mounts';
+export * from './analytics';
 export * from './contribute';
 export * from './catalog';
 export * from './ipc';

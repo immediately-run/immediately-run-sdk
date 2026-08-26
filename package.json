@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@immediately-run/platform-constants": "0.2.0",
-    "@immediately-run/sandbox-protocol": "0.4.0",
+    "@immediately-run/sandbox-protocol": "0.5.0",
     "react-error-boundary": "^6.0.0",
     "@immediately-run/safe-content": "0.1.0",
     "@immediately-run/mdx-plugins": "0.5.0"
