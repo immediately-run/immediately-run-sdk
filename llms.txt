@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.53.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.54.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -409,6 +409,14 @@ Import: `@immediately-run/sdk/editorContext`
 - `getEditorContext` (function) — Returns the current editor context (dirty set).
 - `onEditorContextChange` (function) — Subscribe to editor-context changes.
 - `useEditorContext` (function) — React hook returning the current editor context (dirty set), re-rendering when it changes.
+
+## feed
+
+Import: `@immediately-run/sdk/feed`
+
+- `feedFetch` (function) — Fire one of your app's configured feeds through the host.
+- `FeedFetchResponse` (interface) — The serialized response from feedFetch — the same shape `hostFetch` returns, because reading a feed should feel like reading a fetch.
+- `FeedParams` (type) — Values a feed template's declared slots accept.
 
 ## fs
 
