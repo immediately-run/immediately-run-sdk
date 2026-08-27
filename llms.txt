@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.52.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.53.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -319,6 +319,15 @@ Import: `@immediately-run/sdk/analytics`
 - `recordRoute` (function) — Record a navigation, as a declared route PATTERN.
 - `track` (function) — Fire-and-forget emitAnalyticsEvent.
 - `trackRoute` (function) — Fire-and-forget recordRoute, on the same reasoning as track.
+
+## chromeState
+
+Import: `@immediately-run/sdk/chromeState`
+
+- `ChromeState` (interface) — What the immediately.run host's own chrome is currently doing over your app (PRESENT_MODE_CHROME_SPEC §6).
+- `getChromeState` (function) — Returns the current chrome state.
+- `onChromeStateChange` (function) — Subscribe to chrome-state changes.
+- `useChromeState` (function) — React hook returning the current chrome state, re-rendering on change.
 
 ## components/Admonition
 
