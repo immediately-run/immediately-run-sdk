@@ -35,6 +35,7 @@ export * from './catalog';
 export * from './ipc';
 export * from './dnd';
 export * from './netFetch';
+export * from './feed';
 export * from './secrets';
 export * from './llm';
 export * from './diagnostics';
