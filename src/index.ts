@@ -25,6 +25,7 @@ export * from './theme';
 export * from './editorContext';
 export * from './editor';
 export * from './formFactor';
+export * from './chromeState';
 export * from './hostAttention';
 export * from './region';
 export * from './mounts';

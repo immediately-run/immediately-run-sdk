@@ -64,6 +64,12 @@
     "onCatalogChange": "fn(1..1)",
     "useCatalog": "fn(0..0)"
   },
+  "chromeState": {
+    "ChromeState": "interface(overlay, tab)",
+    "getChromeState": "fn(0..0)",
+    "onChromeStateChange": "fn(1..1)",
+    "useChromeState": "fn(0..0)"
+  },
   "components/Admonition": {
     "Admonition": "fn(1..1)",
     "AdmonitionType": "union('caution'|'important'|'note'|'tip'|'warning')"
@@ -230,6 +236,7 @@
   "generated/protocol": {
     "API_CATALOG": "const(\"api-catalog\")",
     "AUTH_STATE": "const(\"auth-state\")",
+    "CHROME_STATE": "const(\"chrome-state\")",
     "COMPILE": "const(\"compile\")",
     "DEBUG_ENABLED": "const(\"debug-enabled\")",
     "DEBUG_LOG": "const(\"debug-log\")",
@@ -291,6 +298,7 @@
     "REGION_MESSAGE": "const(\"region-message\")",
     "REQUEST_API_CATALOG": "const(\"request-api-catalog\")",
     "REQUEST_AUTH_STATE": "const(\"request-auth-state\")",
+    "REQUEST_CHROME_STATE": "const(\"request-chrome-state\")",
     "REQUEST_DEBUG_ENABLED": "const(\"request-debug-enabled\")",
     "REQUEST_DIAGNOSTICS": "const(\"request-diagnostics\")",
     "REQUEST_EDITOR_CONTEXT": "const(\"request-editor-context\")",
@@ -317,8 +325,8 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
-    "WireName": "union('api-catalog'|'auth-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
   },
   "generated/spaces": {
     "GetSpaceMembersError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -396,6 +404,7 @@
     "ChatResult": "interface(stopReason)",
     "ChatRole": "union('assistant'|'system'|'tool'|'user')",
     "ChatStopReason": "union('end'|'filtered'|'length'|'tool')",
+    "ChromeState": "interface(overlay, tab)",
     "ConsoleEntry": "interface(at, level, text)",
     "ConsoleLevel": "union('debug'|'error'|'info'|'log'|'warn')",
     "ContentPart": "union({content, isError?, toolCallId, type}|{data, mimeType, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
@@ -586,6 +595,7 @@
     "getAppMountPath": "fn(0..0)",
     "getAuthState": "fn(0..0)",
     "getCatalog": "fn(0..0)",
+    "getChromeState": "fn(0..0)",
     "getDiagnostics": "fn(0..0)",
     "getEditorContext": "fn(0..0)",
     "getFormFactor": "fn(0..0)",
@@ -634,6 +644,7 @@
     "onCatalogChange": "fn(1..1)",
     "onChatProviderChange": "fn(1..1)",
     "onChatProviderStateChange": "fn(1..1)",
+    "onChromeStateChange": "fn(1..1)",
     "onDiagnosticsChange": "fn(1..1)",
     "onEditorContextChange": "fn(1..1)",
     "onFormFactorChange": "fn(1..1)",
@@ -700,6 +711,7 @@
     "useCatalog": "fn(0..0)",
     "useChatProvider": "fn(0..0)",
     "useChatProviderState": "fn(0..0)",
+    "useChromeState": "fn(0..0)",
     "useCorpus": "fn(0..0)",
     "useCorpusEntries": "fn(0..0)",
     "useCorpusEntry": "fn(1..1)",
