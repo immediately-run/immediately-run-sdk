@@ -73,9 +73,14 @@ jobs:
       - run: npm run check:circular
       - run: npm test
       - run: npm run build
-      # Fail if a public export was removed/renamed vs api-snapshot.json — pinned
-      # forks depend on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after
-      # build because it reads the emitted dist/*.d.ts.
+      # Fail if the public surface SHRANK vs api-snapshot.json — pinned forks depend
+      # on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after build because
+      # it reads the emitted dist/*.d.ts. Since R3-261 it compares each export's
+      # SHAPE, not just its name: an interface losing a field, a union losing a
+      # member and a function losing a parameter each break a pinned consumer at
+      # compile time and each used to pass. `--self-test` runs first — a gate that
+      # cannot fail proves nothing.
+      - run: npm run api:selftest
       - run: npm run api:check
       # R3-274 (PLATFORM_LAYERING_SPEC §2, Phase 1): the WIRE surface, which
       # `api:check` never sees — it compares module exports, not message names.
