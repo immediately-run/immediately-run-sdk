@@ -90,7 +90,9 @@ globalThis.__immediatelyRun__ = {
 const real = await import(pathToFileURL(resolve(dist, 'mounts.js')).href);
 const { invoke } = await import(pathToFileURL(resolve(dist, 'catalog.js')).href);
 const snapshot = JSON.parse(readFileSync(resolve(root, 'api-snapshot.json'), 'utf8'));
-const pinned = new Set(snapshot.mounts ?? []);
+// R3-261 changed api-snapshot.json from `module → string[]` to
+// `module → { name: shape }`; only the pinned NAMES are needed here.
+const pinned = new Set(Object.keys(snapshot.mounts ?? {}));
 
 // ── sample args derived from the descriptor's own param schema ─────────────────
 // `family.types` is a NAME → { description, schema } map, not an array.

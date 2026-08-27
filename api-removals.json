@@ -1,0 +1,30 @@
+{
+  "_doc": [
+    "The DELIBERATE-REMOVAL ledger for `npm run api:check` (R3-261).",
+    "",
+    "The SDK's public API is additive-only (SDK_PACKAGING_SPEC §9) so a pinned or",
+    "forked app keeps compiling (UI_AS_APPS §0/§7, core value #4). The gate compares",
+    "the SHAPE of every export against api-snapshot.json, so removing an export, an",
+    "interface field, a union member or a parameter all fail it.",
+    "",
+    "A gate with no legitimate way to retire something gets deleted the first time",
+    "someone genuinely needs to retire something. This file is that way: an entry",
+    "here makes one specific removal allowed, and `npm run api:update` REFUSES to",
+    "write a snapshot that drops anything not listed, so re-running the updater is",
+    "not a way past the gate. A deliberate break therefore lands in two reviewed",
+    "diffs — this ledger (with the reason) and the snapshot.",
+    "",
+    "Each entry needs all four fields; `detail` is copied verbatim from the failure",
+    "message (`api:check` prints the exact entry to paste):",
+    "  module  the api-snapshot.json module key, e.g. \"mounts\"",
+    "  export  the exported name, e.g. \"Member\"",
+    "  detail  what is lost — \"the export itself\", \"member `principal?`\",",
+    "          \"union member `'reader'`\", \"now requires 2 parameters (was 1)\", …",
+    "  reason  WHY this is deliberate, and what consumers should use instead.",
+    "          A removal without a stated reason is not a documented removal.",
+    "",
+    "Entries are permanent history: they stay after the snapshot is regenerated, so",
+    "the record of what was retired, when and why survives."
+  ],
+  "removals": []
+}

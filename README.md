@@ -73,6 +73,36 @@ check against the committed snapshot). Run it before pushing; it is the same set
 checks CI enforces, so a local green equals a green CI. (Ways of working §4: the local
 verify gate must equal the deploy gate — one `npm run verify` per repo.)
 
+### The API-stability gate (`api:check`)
+
+A pinned or forked app rides one SDK version forever, so the public API is
+**additive-only** (SDK_PACKAGING_SPEC §9). `api-snapshot.json` records the **shape**
+of every export — not just its name — and `npm run api:check` fails when that shape
+shrinks:
+
+| Recorded as | Example |
+|---|---|
+| `interface(a, b?, c(1..2))` | members, sorted; `?` = optional; `(required..total)` = a callable member's arity |
+| `object(…)` / `class(…)` / `enum(…)` | same member vocabulary |
+| `union(a\|b\|c)` | a type alias's union members, normalised + sorted |
+| `fn(1..2)` | a function's `required..total` parameter arity |
+| `const(T)` / `alias(T)` | the normalised type text |
+
+So removing an export, dropping an interface field, flipping a field's optionality,
+dropping a union member, or dropping a function parameter all fail — each of them
+breaks a pinned consumer at compile time, and each of them passed the pre-R3-261
+names-only check. Member and parameter **types** are deliberately not compared; see
+the "Deliberate limit" note in [`scripts/lib/dts-shape.mjs`](./scripts/lib/dts-shape.mjs).
+
+- **Additive change** (a new export, a new optional field): run `npm run api:update`
+  and commit the snapshot, so every API change lands in a reviewed diff.
+- **Deliberate removal**: add an entry to [`api-removals.json`](./api-removals.json)
+  with a **reason**, then `npm run api:update`. Without an entry the updater refuses
+  to write, so re-running it is not a way past the gate.
+- `npm run api:selftest` proves the gate can fail — it drives the real extractor over
+  crafted `.d.ts` fixtures for each break above, checks that additive changes are
+  *not* reported as breaking, and pins the two documented blind spots.
+
 ## License
 
 [MIT](./LICENSE)
