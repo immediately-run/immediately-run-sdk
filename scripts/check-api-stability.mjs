@@ -107,6 +107,18 @@ const parseShape = (shape) => {
     return { kind, items: splitTop(body, ','), body };
   }
   if (kind === 'union') return { kind, items: splitTop(body, '|'), body };
+  // A const whose TYPE is an unambiguous member list — `const({A, B, C})`, which is
+  // what a `Record`-shaped frozen table (`WIRE_NAMES`) prints as — is comparable
+  // member-by-member like an object, so GROWING it is additive. Without this it fell
+  // into the free-text arm below and every added member read as a removal: the first
+  // wire name added after R3-261 reported the whole 60-name table as BREAKING, and the
+  // only way past would have been an api-removals.json entry recording a removal that
+  // never happened — permanent history, deliberately falsified, to describe an addition.
+  // A gate people have to lie to is a gate that gets deleted. Any other const type
+  // stays free-text and conservative.
+  if (kind === 'const' && /^\{[^{}]*\}$/.test(body.trim())) {
+    return { kind, items: splitTop(body.trim().slice(1, -1), ','), body };
+  }
   return { kind, items: null, body };
 };
 
@@ -310,7 +322,8 @@ type Role = 'owner' | 'writer' | 'reader';
 type Handler = (a: string, b?: number) => void;
 declare const listMembers: (spaceId: string, opts?: { limit: number }) => Promise<Member[]>;
 declare const VERSION: string;
-export { type Handler, type Member, type Role, VERSION, listMembers };
+declare const WIRE: { A: string; B: string };
+export { type Handler, type Member, type Role, VERSION, WIRE, listMembers };
 `;
 
 const withTempDts = (code, fn) => {
@@ -348,6 +361,10 @@ const selfTest = () => {
       BASE_DTS.replace('(a: string, b?: number) => void', '(a: string) => void'),
     ],
     ['a changed const type', BASE_DTS.replace('declare const VERSION: string;', 'declare const VERSION: number;')],
+    [
+      'a const member-table that LOST a member',
+      BASE_DTS.replace('declare const WIRE: { A: string; B: string };', 'declare const WIRE: { A: string };'),
+    ],
   ];
 
   let ok = 0;
@@ -373,6 +390,16 @@ const selfTest = () => {
     [
       'a NEW optional parameter',
       BASE_DTS.replace('opts?: { limit: number }', 'opts?: { limit: number }, extra?: string'),
+    ],
+    // R3-191: adding a wire name grows the frozen `WIRE_NAMES` table. That is additive
+    // for every pinned consumer — nobody loses an export — and must not read as a
+    // removal, or the removals ledger fills up with additions.
+    [
+      'a const member-table that GAINED a member',
+      BASE_DTS.replace(
+        'declare const WIRE: { A: string; B: string };',
+        'declare const WIRE: { A: string; B: string; C: string };',
+      ),
     ],
   ];
   for (const [label, code] of additiveCases) {
