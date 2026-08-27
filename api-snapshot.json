@@ -213,6 +213,11 @@
     "onEditorContextChange": "fn(1..1)",
     "useEditorContext": "fn(0..0)"
   },
+  "feed": {
+    "FeedFetchResponse": "interface(body, headers, status, statusText, truncated)",
+    "FeedParams": "alias(Record<string, string | number>)",
+    "feedFetch": "fn(1..2)"
+  },
   "formFactor": {
     "FormFactor": "interface(class, height, orientation, width)",
     "FormFactorClass": "union('desktop'|'mobile'|'tablet')",
@@ -266,6 +271,7 @@
     "PROTOCOL_CONTRIBUTE": "const(\"protocol-contribute\")",
     "PROTOCOL_DND": "const(\"protocol-dnd\")",
     "PROTOCOL_EDITOR": "const(\"protocol-editor\")",
+    "PROTOCOL_FEED": "const(\"protocol-feed\")",
     "PROTOCOL_FETCH": "const(\"protocol-fetch\")",
     "PROTOCOL_IPC": "const(\"protocol-ipc\")",
     "PROTOCOL_LAUNCH": "const(\"protocol-launch\")",
@@ -280,6 +286,7 @@
     "ProtocolAnalyticsRouteParams": "interface(path)",
     "ProtocolContributeRunParams": "interface(branchName?, commitMessage, mode?)",
     "ProtocolDndStartDragParams": "interface(bytes?, kind, mountId, name, relPath)",
+    "ProtocolFeedFetchParams": "interface(instanceId, params)",
     "ProtocolFetchFetchParams": "interface(body, headers, method, url)",
     "ProtocolFetchFetchStreamParams": "interface(body, headers, method, url)",
     "ProtocolIpcPostParams": "interface(msg, to)",
@@ -325,8 +332,8 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
   },
   "generated/spaces": {
     "GetSpaceMembersError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -432,6 +439,8 @@
     "EditorWriteError": "interface(code)",
     "EvaluationContext": "object(dynamicImport(2..2), evaluation, exports, getModuleEvaluationContext(1..1), resolve(1..1))",
     "FS_PREFIX": "const(\"$fs:\")",
+    "FeedFetchResponse": "interface(body, headers, status, statusText, truncated)",
+    "FeedParams": "alias(Record<string, string | number>)",
     "FileCap": "interface($cap, mode, mountId, relPath)",
     "FileQueryResult": "union(MetadataQueryRecord[]|string[])",
     "FileStat": "interface(kind, mtimeMs?, size)",
@@ -514,7 +523,7 @@
     "Router": "fn(0..0)",
     "Routes": "fn(1..1)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.52.0\")",
+    "SDK_VERSION": "const(\"0.54.0\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
     "SafeContent": "fn(1..1)",
     "SafeContentComponents": "interface([index])",
@@ -587,6 +596,7 @@
     "describeChat": "fn(0..0)",
     "describeChatState": "fn(0..0)",
     "emitAnalyticsEvent": "fn(1..2)",
+    "feedFetch": "fn(1..2)",
     "findMount": "fn(1..1)",
     "firstFrameBoundsFor": "fn(2..2)",
     "firstFrameTimeoutFor": "fn(2..2)",
@@ -932,7 +942,7 @@
     "timeoutFor": "fn(2..2)"
   },
   "protocolSchemes": {
-    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
+    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
   },
   "protocolStream": {
     "StreamError": "class(code)",
@@ -977,7 +987,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.52.0\")",
+    "SDK_VERSION": "const(\"0.54.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1122,6 +1132,6 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.52.0\")"
+    "SDK_VERSION": "const(\"0.54.0\")"
   }
 }
