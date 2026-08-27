@@ -162,6 +162,25 @@ const diffShape = (was, now) => {
   return { breaking: lost.map((i) => `${a.kind === 'union' ? 'union member' : 'member'} \`${i}\``), additive: gained };
 };
 
+/**
+ * Exports whose const TYPE is expected to change on an ordinary release, so a change
+ * to it is not a surface break to report.
+ *
+ * `SDK_VERSION` is generated FROM `package.json` by `gen-version.mjs`, so its literal
+ * type differs on every single version bump — `const("0.52.0")` → `const("0.53.0")`.
+ * Left in the general (conservative) arm it made every release fail the gate as
+ * "the public surface SHRANK", with the only route past being three
+ * `api-removals.json` entries per release describing removals that never happened.
+ * That ledger is permanent history of DELIBERATE removals with a reason; filling it
+ * with release bookkeeping empties it of meaning, and a gate people must lie to is a
+ * gate that gets deleted.
+ *
+ * The narrow claim being made: nobody can pin against this value structurally in a
+ * way worth protecting — reading it is the whole point, and it changing is the whole
+ * point. Its EXISTENCE and kind are still guarded; only the literal is exempt.
+ */
+const VALUE_CHANGES_EVERY_RELEASE = new Set(['SDK_VERSION']);
+
 /** Full diff: `{ breaking: Finding[], additive: string[] }`. */
 const diffSurfaces = (snapshot, current) => {
   const breaking = [];
@@ -174,7 +193,11 @@ const diffSurfaces = (snapshot, current) => {
         continue;
       }
       const d = diffShape(shape, now[name]);
-      for (const detail of d.breaking) breaking.push({ module: mod, export: name, detail });
+      const releaseNoise =
+        VALUE_CHANGES_EVERY_RELEASE.has(name) &&
+        parseShape(shape).kind === 'const' &&
+        parseShape(now[name]).kind === 'const';
+      if (!releaseNoise) for (const detail of d.breaking) breaking.push({ module: mod, export: name, detail });
       for (const a of d.additive) additive.push(`${mod}: ${name} — ${a}`);
     }
   }
@@ -323,7 +346,8 @@ type Handler = (a: string, b?: number) => void;
 declare const listMembers: (spaceId: string, opts?: { limit: number }) => Promise<Member[]>;
 declare const VERSION: string;
 declare const WIRE: { A: string; B: string };
-export { type Handler, type Member, type Role, VERSION, WIRE, listMembers };
+declare const SDK_VERSION: '1.0.0';
+export { type Handler, type Member, type Role, SDK_VERSION, VERSION, WIRE, listMembers };
 `;
 
 const withTempDts = (code, fn) => {
@@ -365,6 +389,15 @@ const selfTest = () => {
       'a const member-table that LOST a member',
       BASE_DTS.replace('declare const WIRE: { A: string; B: string };', 'declare const WIRE: { A: string };'),
     ],
+    [
+      'a version-exempt export that stops being a const entirely',
+      // The exemption is for the VALUE changing, not for the export dissolving.
+      BASE_DTS.replace("declare const SDK_VERSION: '1.0.0';", 'declare function SDK_VERSION(): string;'),
+    ],
+    [
+      'a version-exempt export being REMOVED',
+      BASE_DTS.replace('SDK_VERSION, VERSION', 'VERSION').replace("declare const SDK_VERSION: '1.0.0';\n", ''),
+    ],
   ];
 
   let ok = 0;
@@ -402,6 +435,19 @@ const selfTest = () => {
       ),
     ],
   ];
+  // `SDK_VERSION` is generated from package.json, so its literal type changes on every
+  // release. That must be neither breaking NOR reported as an additive change to review.
+  {
+    const bumped = withTempDts(
+      BASE_DTS.replace("declare const SDK_VERSION: '1.0.0';", "declare const SDK_VERSION: '1.1.0';"),
+      extractSurface,
+    );
+    const { breaking, additive } = diffSurfaces(base, bumped);
+    const quiet = breaking.length === 0 && additive.length === 0;
+    console.log(`${quiet ? 'PASS' : 'FAIL'}  allows (silently): an ordinary SDK_VERSION bump`);
+    if (quiet) ok++;
+    else console.log(`   - reported: ${breaking.map((f) => f.detail).join('; ')}${additive.join('; ')}`);
+  }
   for (const [label, code] of additiveCases) {
     const { breaking, additive } = diffSurfaces(base, withTempDts(code, extractSurface));
     const good = breaking.length === 0 && additive.length > 0;
@@ -445,7 +491,8 @@ const selfTest = () => {
     else console.log('   - now DETECTED: strengthen is welcome — update the documented limits and drop this case.');
   }
 
-  const total = cases.length + additiveCases.length + blindSpots.length + 1;
+  // +1 escape hatch, +1 the inline SDK_VERSION-bump case above.
+  const total = cases.length + additiveCases.length + blindSpots.length + 2;
   console.log(`\n${ok}/${total} self-test cases.`);
   if (ok !== total) {
     console.error('\nself-test FAILED — the API-stability gate is not detecting breakage it must detect.');
