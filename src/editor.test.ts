@@ -19,6 +19,32 @@ beforeEach(() => {
 describe('editor SDK wrappers — request shape', () => {
   it.each([
     ['openInEditor', () => openInEditor('src/App.tsx'), 'open', { path: 'src/App.tsx' }],
+    [
+      'openInEditor + selection',
+      () => openInEditor('src/App.tsx', { line: 12, column: 4 }),
+      'open',
+      { path: 'src/App.tsx', selection: { line: 12, column: 4 } },
+    ],
+    // R3-389: `reveal` travels only as the literal `true`, so a pre-reveal host sees
+    // a plain open, and a selection and a reveal compose.
+    [
+      'openInEditor + reveal',
+      () => openInEditor('src/App.tsx', undefined, { reveal: true }),
+      'open',
+      { path: 'src/App.tsx', reveal: true },
+    ],
+    [
+      'openInEditor + selection + reveal',
+      () => openInEditor('src/App.tsx', { line: 3 }, { reveal: true }),
+      'open',
+      { path: 'src/App.tsx', selection: { line: 3 }, reveal: true },
+    ],
+    [
+      'openInEditor + reveal:false',
+      () => openInEditor('src/App.tsx', undefined, { reveal: false }),
+      'open',
+      { path: 'src/App.tsx' },
+    ],
     ['setActiveFile', () => setActiveFile('src/App.tsx'), 'setActive', { path: 'src/App.tsx' }],
     ['closeFile', () => closeFile('src/App.tsx'), 'close', { path: 'src/App.tsx' }],
     ['createFile', () => createFile('src/new.ts'), 'createFile', { path: 'src/new.ts' }],

@@ -17,7 +17,7 @@ import { PROTOCOL_EDITOR } from './generated/protocol';
 /** An error from {@link openInEditor}, carrying a machine-readable `.code`. */
 export interface EditorOpenError extends Error {
   code:
-    | 'forbidden' // the frame lacks `editor:open`
+    | 'forbidden' // the frame lacks `editor:open` (or `editor:reveal`, for a `reveal`)
     | 'not-found' // no such file in the live working tree (the host never creates)
     | 'invalid-params' // the path was empty / contained `..` / looked like a URI
     | 'no-target' // there is no host editor session to open files in
@@ -45,6 +45,24 @@ export interface EditorSelection {
   column?: number;
 }
 
+/** Options for {@link openInEditor} (R3-389). */
+export interface EditorOpenOptions {
+  /** Also bring the user to the editor, ACROSS activities (TOOLS_ACTIVITY_SPEC §5.2).
+   *  An app that owns the main pane (the Tools activity's runner sits where the editor
+   *  would) cannot rely on the file simply becoming visible — the editor is not on
+   *  screen — so this asks the host to switch to the activity that owns it.
+   *
+   *  This is the elevated `editor:reveal` capability, not `editor:open`: a frame
+   *  without it is refused `forbidden` for the whole call (the file is NOT opened —
+   *  never silently opened-without-moving). The host decides whether the user actually
+   *  moves: it needs a real user gesture (a click in your frame within the last few
+   *  seconds counts; a call on a timer or on run completion does not) and is
+   *  rate-limited. The promise resolves the same either way, so treat a resolved
+   *  reveal as "asked", not "moved", and keep a visible fallback control. Where the
+   *  host owns the editor activity is host state; nothing here can name it. */
+  reveal?: boolean;
+}
+
 /**
  * Ask the host to open `path` (a repo-relative working-tree path, e.g. `src/App.tsx`
  * or `/src/App.tsx`) in the editor. Resolves once the editor switches to it; rejects
@@ -56,11 +74,20 @@ export interface EditorSelection {
  * inside a file the caller could already open, and the capability is unchanged
  * (`editor:open`).
  *
- * Older hosts ignore the extra field and open the file at its existing position, so
- * a caller may pass it unconditionally.
+ * Pass `{ reveal: true }` to ALSO bring the user to the editor across activities —
+ * see {@link EditorOpenOptions.reveal}; that one does need the elevated
+ * `editor:reveal`, and is refused outright without it.
+ *
+ * Older hosts ignore `selection` and open the file at its existing position, so a
+ * caller may pass it unconditionally. `reveal` is only sent when true, so a host that
+ * predates it sees a plain open.
  */
-export const openInEditor = (path: string, selection?: EditorSelection): Promise<void> =>
-  editorRequest('open', selection ? { path, selection } : { path });
+export const openInEditor = (path: string, selection?: EditorSelection, opts?: EditorOpenOptions): Promise<void> =>
+  editorRequest('open', {
+    path,
+    ...(selection ? { selection } : {}),
+    ...(opts?.reveal === true ? { reveal: true } : {}),
+  });
 
 /**
  * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6
