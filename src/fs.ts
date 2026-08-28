@@ -45,7 +45,13 @@ const hasFs = (fs: any): boolean => typeof fs?.promises?.readFile === 'function'
  * 1. `globalThis.__sandpackSharedFs` — the `/`-rooted bound ZenFS the sandbox publishes.
  * 2. fallback: the first `module.evaluation.module.bundler.fs.layers[].boundContext.fs`
  *    whose surface has `readFile` (the bundler ZenFS-layer bound context).
- * 3. else `null` (local `vite dev` / before boot).
+ * 3. else `null` (plain local `vite dev` / before boot).
+ *
+ * Under `vite dev` WITH the `@immediately-run/dev-fs` plugin (>= 0.5.0), step 1
+ * resolves: the plugin publishes its local-disk fs bridge at the same
+ * `__sandpackSharedFs` global, so `openFs` / `readBlob` / `readObjectUrl` /
+ * `useObjectUrl` work locally through this existing path with no special-casing.
+ * Without the plugin they fail with `unavailable`.
  *
  * Prefer {@link openFs}; reach for this only when a system app spans mounts in absolute
  * `/mnt/{hash}` paths (the file explorer / editor).
@@ -77,8 +83,10 @@ export function sandboxFs(): SandboxFsPort | null {
   return null;
 }
 
-/** Is the sandbox filesystem reachable at all? `false` in local `vite dev` and before
- *  boot — gate file affordances on it so an app degrades instead of throwing. */
+/** Is the sandbox filesystem reachable at all? `false` in plain local `vite dev` and
+ *  before boot — gate file affordances on it so an app degrades instead of throwing.
+ *  `true` under `vite dev` with the `@immediately-run/dev-fs` plugin (>= 0.5.0),
+ *  which publishes its bridge where {@link sandboxFs} discovers it. */
 export function fsAvailable(): boolean {
   return sandboxFs() != null;
 }
@@ -282,9 +290,11 @@ const promisesOf = (port: SandboxFsPort): NodeFsPromises => port.promises ?? (po
  * if (fs.canWrite('notes/idea.mdx')) await fs.writeFile('notes/idea.mdx', text);
  * ```
  *
- * Throws {@link FsError} `unavailable` if the sandbox fs is not present (local `vite dev`
- * / before boot — gate with {@link fsAvailable}). Per-op failures throw {@link FsError}
- * with a mapped `.code` (`not-found`, `read-only`, …).
+ * Throws {@link FsError} `unavailable` if the sandbox fs is not present (plain local
+ * `vite dev` / before boot — gate with {@link fsAvailable}; under `vite dev` the
+ * `@immediately-run/dev-fs` plugin >= 0.5.0 provides it, see {@link sandboxFs}).
+ * Per-op failures throw {@link FsError} with a mapped `.code` (`not-found`,
+ * `read-only`, …).
  */
 export function openFs(mount: SandboxMount): MountFs {
   const root = mount.path;

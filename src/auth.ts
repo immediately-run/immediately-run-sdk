@@ -61,6 +61,12 @@ const channel = createPushChannel<AuthState>({
  *
  * `user` is `null` unless this frame holds `auth:identity` (see
  * {@link SandboxUser}); `status` alone is baseline and always available.
+ *
+ * Off-host (plain `vite dev` — no host to report a session) `status` stays
+ * `'unknown'` FOREVER — it never settles to `'signed-out'`. Code that waits for a
+ * settled status before proceeding (e.g. attributing authorship) hangs locally:
+ * gate such flows on `status === 'signed-in'` combined with a timeout or an
+ * explicit local fallback, never on "status is no longer 'unknown'".
  */
 export const getAuthState = (): AuthState => channel.get();
 
@@ -76,5 +82,9 @@ export const onAuthChange = (listener: (state: AuthState) => void): (() => void)
  *
  * `user` is `null` unless this frame holds `auth:identity` (see
  * {@link SandboxUser}); `status` alone is baseline and always available.
+ *
+ * Off-host (plain `vite dev`) `status` stays `'unknown'` forever — see
+ * {@link getAuthState} for why "wait until it settles" hangs locally and how to
+ * gate on it safely (signed-in check plus a timeout/fallback).
  */
 export const useAuth = (): AuthState => channel.use();

@@ -93,10 +93,26 @@ const liveHandles = new Map<string, LaunchHandleImpl>();
 // The host delivers ONE `launch-ended` message per launch when it tears down —
 // the SAME message shape for self-exit, dismiss, and revoke (the host debounces
 // so the timing is not an oracle, §6.4). We fan it out to the matching handle.
-addListener(LAUNCH_ENDED, (m: LaunchEndedMessage) => {
-  const h = liveHandles.get(m.launchId);
-  if (h) h._end(m.status);
-});
+//
+// Registered LAZILY, on the first `launch()` call, not at module evaluation
+// (R3-421 — no subpath may throw at import time off-host). Unlike `task-input`
+// (tasks.ts), first-use registration provably misses nothing here: a
+// `launch-ended` can only ever follow a launch THIS module created, and
+// `launch()` registers the listener before it sends the create request, so the
+// listener always exists before any launchId it must match.
+let endedListenerRegistered = false;
+const ensureEndedListener = (): void => {
+  if (endedListenerRegistered) return;
+  try {
+    addListener(LAUNCH_ENDED, (m: LaunchEndedMessage) => {
+      const h = liveHandles.get(m.launchId);
+      if (h) h._end(m.status);
+    });
+  } catch {
+    return; // off-host: no transport — the create request below will fail anyway
+  }
+  endedListenerRegistered = true;
+};
 
 class LaunchHandleImpl implements LaunchHandle {
   #status: LaunchStatus = 'running';
@@ -163,11 +179,16 @@ class LaunchHandleImpl implements LaunchHandle {
  *   });
  *   if ('ok' in h && h.ok === false) { ...handle h.code... }
  *   else { h.onDismiss(() => ...); }
+ *
+ * Off-host (plain `vite dev` — no host transport) it rejects with a plain
+ * "no host transport" error: there is no host to run a launch in.
  */
 export const launch = async (
   target: LaunchTarget,
   opts: LaunchOptions,
 ): Promise<LaunchHandle | { ok: false; code: LaunchErrorCode }> => {
+  // Before the create request, so the terminal message can never beat the listener.
+  ensureEndedListener();
   // The host wraps a successful handler return as `{ ok:true, data }` (the same
   // Recipe-B framing `invokeTask` uses); a refusal is `{ ok:false, code }`.
   const res = (await protocolRequest(SCHEMES[PROTOCOL_LAUNCH], 'create', [{ target, opts }])) as

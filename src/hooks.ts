@@ -162,6 +162,13 @@ export interface ObjectUrlState {
  * if (error || !url) return <span>missing</span>;
  * return <img src={url} alt="cat" />;
  * ```
+ *
+ * Off-host: under `vite dev` with the `@immediately-run/dev-fs` plugin (>= 0.5.0)
+ * this works against your local disk — the plugin publishes its fs bridge where
+ * the SDK discovers the sandbox fs (see `sandboxFs` in `fs.ts`). Under plain
+ * `vite dev` (no plugin) there is no filesystem at all, and the hook settles to
+ * `{ url: null, loading: false, error }` with `error.code === 'unavailable'` —
+ * render the error/absent state, don't treat it as forever-loading.
  */
 export const useObjectUrl = (
   mount: SandboxMount | null | undefined,
