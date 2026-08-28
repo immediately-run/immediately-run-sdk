@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.54.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.55.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -193,6 +193,7 @@ Import: `@immediately-run/sdk/editor`
 - `createFolder` (function) — Create a working-tree folder at `path` (materialised with a `.gitkeep`).
 - `deleteEntry` (function) — Delete a working-tree file, or a folder and everything under it.
 - `EditorOpenError` (interface) — An error from openInEditor, carrying a machine-readable `.code`.
+- `EditorSelection` (interface) — Where in a file to land when opening it (R3-388).
 - `EditorSessionError` (interface) — An error from a session intent (setActiveFile / closeFile), carrying a machine-readable `.code`.
 - `EditorWriteError` (interface) — An error from a working-tree mutation, carrying a machine-readable `.code`.
 - `EditTarget` (interface) — Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6 Delta A).
