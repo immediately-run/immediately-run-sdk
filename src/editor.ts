@@ -90,25 +90,44 @@ export const openInEditor = (path: string, selection?: EditorSelection, opts?: E
   });
 
 /**
- * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6
- * Delta A). v1 supports only an optional repo-relative `path` in the CURRENT repo
- * (self-scoped — the app you are already running; the host navigates within the
- * current route, never to another repo). A URI or `..` path is refused
- * `invalid-params`. Editing a file in one of your *mounts* (a space) is the
- * `edit-file` task, not this.
+ * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6).
+ *
+ * Two target classes, and **at most one** may be given — supplying both is refused
+ * `invalid-params`. Omit both to edit the current route's entry.
+ *
+ * - **Own-source** (`path`): a repo-relative path in the CURRENT repo. Self-scoped —
+ *   the app you are already running; the host navigates within the current route,
+ *   never to another repo.
+ * - **Mount-file** (`file`): a file in a mount you ALREADY HOLD, opened in the main
+ *   edit experience (§9, settled 2026-08-28). You can only name a mount you hold: an
+ *   unheld one is `forbidden`, and indistinguishably so from one that does not exist,
+ *   because an app must not be able to probe for mounts (no existence oracle).
+ *   Editing a file *outside* your mounts stays picker-mediated (`pick-file`).
+ *
+ * A URI, a `..` segment, or a NUL is refused `invalid-params` in either class.
  */
 export interface EditTarget {
   /** A repo-relative working-tree path in the current repo to focus once in edit
    *  mode (e.g. `src/App.tsx`). Omit to edit the current route's entry. */
   path?: string;
+  /** A file in one of YOUR OWN mounts, by the portable mount reference. `relPath` is
+   *  mount-relative and leading-slash (e.g. `/notes/idea.mdx`). Mutually exclusive
+   *  with {@link EditTarget.path}.
+   *
+   *  There is no `mode` here on purpose: writability is the HOST's live reading of
+   *  the mount, not the caller's claim. A `ro` mount — which is also how an anonymous
+   *  share-link viewer surfaces — is refused `read-only` at call time, before the
+   *  editor is entered, so you never land in an editor that cannot save. */
+  file?: { mountId: string; relPath: string };
 }
 
 /** An error from {@link requestEdit}, carrying a machine-readable `.code`. */
 export interface RequestEditError extends Error {
   code:
     | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer) — HIDE the affordance
-    | 'forbidden' // the host refuses (e.g. a cross-repo / out-of-scope target)
-    | 'invalid-params' // the target was malformed (URI / `..` / a non-current repo)
+    | 'forbidden' // the host refuses: a cross-repo target, or a mount you do not hold
+    | 'invalid-params' // the target was malformed (URI / `..` / NUL / both target classes at once)
+    | 'not-found' // the mount-file target does not exist — and asking did NOT create it
     | 'no-target' // there is no host editor session to enter
     | 'unknown';
 }
@@ -124,9 +143,14 @@ export interface RequestEditError extends Error {
  * the app's own source in the platform editor — instead of shipping a bespoke
  * in-app editor (EDITOR_FIRST_EDITING_SPEC §1).
  *
+ * Also opens a file from a mount you already hold, in the main edit experience:
+ *
+ *   await requestEdit({ file: { mountId: 'space:abc', relPath: '/notes/idea.mdx' } });
+ *
  * Resolves once the host begins the transition; rejects with a
  * {@link RequestEditError} (`.code`). Treat `read-only`/`forbidden` as "editing is
  * not available — hide the affordance," never as an error to surface to the user.
+ * `not-found` means the file is not there; nothing is created by asking to edit it.
  */
 export const requestEdit = (target?: EditTarget): Promise<void> =>
   editorRequest('requestEdit', target ? { ...target } : {});

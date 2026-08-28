@@ -192,7 +192,7 @@
     "useDroppedItem": "fn(0..0)"
   },
   "editor": {
-    "EditTarget": "interface(path?)",
+    "EditTarget": "interface(file?, path?)",
     "EditorOpenError": "interface(code)",
     "EditorOpenOptions": "interface(reveal?)",
     "EditorSelection": "interface(column?, line)",
@@ -434,7 +434,7 @@
     "DirEntry": "interface(kind, name)",
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
     "DroppedItem": "interface(from, item, position)",
-    "EditTarget": "interface(path?)",
+    "EditTarget": "interface(file?, path?)",
     "EditorContext": "interface(activeFile, dirtyPaths, openFiles, viewedFile)",
     "EditorOpenError": "interface(code)",
     "EditorOpenOptions": "interface(reveal?)",
@@ -527,7 +527,7 @@
     "Router": "fn(0..0)",
     "Routes": "fn(1..1)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.56.0\")",
+    "SDK_VERSION": "const(\"0.57.0\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
     "SafeContent": "fn(1..1)",
     "SafeContentComponents": "interface([index])",
@@ -991,7 +991,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.56.0\")",
+    "SDK_VERSION": "const(\"0.57.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1136,6 +1136,6 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.56.0\")"
+    "SDK_VERSION": "const(\"0.57.0\")"
   }
 }
