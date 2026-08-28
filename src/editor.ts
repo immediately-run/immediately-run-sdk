@@ -35,13 +35,32 @@ const editorRequest = async (method: string, arg: Record<string, unknown>): Prom
   }
 };
 
+/** Where in a file to land when opening it (R3-388). 1-indexed `line`, matching every
+ *  diagnostic producer that feeds it (`tsc`, `eslint`, `BuildError`) and both VS Code
+ *  and IntelliJ. A `line` past end-of-file CLAMPS to the last line rather than
+ *  erroring — a diagnostic outlives the edit that shortened the file, and landing
+ *  close beats refusing to navigate. */
+export interface EditorSelection {
+  line: number;
+  column?: number;
+}
+
 /**
  * Ask the host to open `path` (a repo-relative working-tree path, e.g. `src/App.tsx`
  * or `/src/App.tsx`) in the editor. Resolves once the editor switches to it; rejects
  * with an {@link EditorOpenError} (`.code`) if the path is invalid, missing, or this
  * app may not open files.
+ *
+ * Pass `selection` to land the caret on a specific line — what a problems list needs
+ * to make a diagnostic clickable. It widens nothing: a selection says where to look
+ * inside a file the caller could already open, and the capability is unchanged
+ * (`editor:open`).
+ *
+ * Older hosts ignore the extra field and open the file at its existing position, so
+ * a caller may pass it unconditionally.
  */
-export const openInEditor = (path: string): Promise<void> => editorRequest('open', { path });
+export const openInEditor = (path: string, selection?: EditorSelection): Promise<void> =>
+  editorRequest('open', selection ? { path, selection } : { path });
 
 /**
  * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6
