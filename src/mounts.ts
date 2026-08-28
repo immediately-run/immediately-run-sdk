@@ -596,9 +596,16 @@ export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
  */
 export const listSettingsApps = (): Promise<string[]> => settingsRequest<string[]>('list');
 
-/** Create a brand-new, empty platform-hosted space. The app reaches it (or any
- *  other space) afterward through the {@link requestMount} powerbox or
- *  {@link mountSpace}; there is no implicit per-app binding. */
+/** Create a brand-new, empty platform-hosted space, granted to THIS app in full
+ *  (read-write) — the user's create consent is consent for the app to create
+ *  storage for itself, and the host records the same durable grant the
+ *  {@link requestMount} powerbox would. So the returned mount can be re-opened
+ *  later with {@link mountSpace} / {@link mount} (`space:<id>`) with no prompt —
+ *  on the next load, in another tab, after sign-out/sign-in — until the user
+ *  revokes the grant in their grants surface, after which `mount` answers
+ *  `forbidden`. Other apps get nothing: they still reach the space only through
+ *  the powerbox. (Before site-main R3-406 no grant was recorded and the space
+ *  could only be re-found via the powerbox.) */
 export const createSpace = (opts: { name?: string } = {}): Promise<SandboxMount> =>
   requestMountInternal('create', opts);
 
