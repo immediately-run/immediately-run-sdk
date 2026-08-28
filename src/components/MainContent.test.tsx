@@ -8,7 +8,8 @@
 // TypeError escaped through the Suspense boundary's fallback path.
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MainContent, MainContentInner } from './MainContent';
+import { MainContent, MainContentInner, MainContentRedirect } from './MainContent';
+import { navigate } from '../routing';
 import type { FallbackProps } from 'react-error-boundary';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -94,5 +95,52 @@ describe('MainContent with no injected bundler (R3-278)', () => {
     }
     redirect = container.textContent;
     expect(redirect).not.toContain('No main content file present');
+  });
+});
+
+describe('MainContentRedirect navigates once, after commit (not during render)', () => {
+  let container: HTMLElement;
+  let root: Root;
+
+  beforeEach(() => {
+    (navigate as jest.Mock).mockClear();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('calls navigate exactly once for the target, and not again on a re-render', async () => {
+    await act(async () => {
+      root.render(<MainContentRedirect filename="/files/src/App.tsx" />);
+    });
+    await flush();
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledWith('/stubbed/files/src/App.tsx');
+
+    // A re-render with the same target is the slow-host case that used to loop:
+    // navigate() during render → host pushes the href → re-render → navigate() …
+    await act(async () => {
+      root.render(<MainContentRedirect filename="/files/src/App.tsx" />);
+    });
+    await flush();
+    expect(navigate).toHaveBeenCalledTimes(1);
+  });
+
+  it('navigates again only when the target changes', async () => {
+    await act(async () => {
+      root.render(<MainContentRedirect filename="/files/src/App.tsx" />);
+    });
+    await flush();
+    await act(async () => {
+      root.render(<MainContentRedirect filename="/files/README.md" />);
+    });
+    await flush();
+    expect(navigate).toHaveBeenCalledTimes(2);
+    expect(navigate).toHaveBeenLastCalledWith('/stubbed/files/README.md');
   });
 });

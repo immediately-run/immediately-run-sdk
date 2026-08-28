@@ -1,4 +1,4 @@
-import { Suspense, use, useMemo } from 'react';
+import { Suspense, use, useEffect, useMemo } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { navigate, useTinkerableLink } from '../routing';
 import { FILES_PREFIX, underAppRoot } from '../urlUtils';
@@ -48,9 +48,18 @@ const fileExists = async (path: string): Promise<[string, boolean]> => {
   }
 };
 
+// The redirect is a COMMIT-phase effect, not a render-phase call. `navigate()` only
+// posts `urlchange` and relies on the host pushing the resolved href back; calling it
+// during render re-navigated on every re-render, and on a slow host (local dev, a
+// region app booting at `/`) the push-back never settled before the next render —
+// an unbounded "Redirecting to /files/src/App.tsx" loop (site-main worked around it
+// by booting region apps past `/`, R3-240). An effect keyed on the target fires once
+// per distinct URL, which is the only thing a redirect should ever do.
 export const MainContentRedirect = ({ filename }: { filename: string }) => {
   const url = useTinkerableLink(filename);
-  navigate(url);
+  useEffect(() => {
+    navigate(url);
+  }, [url]);
   return <>Redirecting to {filename}</>;
 };
 
