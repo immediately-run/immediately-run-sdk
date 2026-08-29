@@ -106,3 +106,78 @@ it('a terminal message for an unknown launchId is ignored', async () => {
   end('some-other-id', 'revoked');
   expect(handle.status).toBe('running');
 });
+
+// ── the create-window race (review of R3-421) ────────────────────────────────
+// The listener is registered before the create request, but the HANDLE only exists
+// once the create response resolves. A launch that ends inside that gap used to be
+// dropped: the handle stayed `running` for ever and `onDismiss` never fired — the one
+// failure a launcher can neither detect nor recover from. These drive a `launch-ended`
+// in exactly that window.
+describe('a launch-ended that arrives before the handle lands', () => {
+  /** A create whose response we resolve by hand, so the window stays open. */
+  const deferredCreate = (): { resolve: (v: unknown) => void } => {
+    let resolve!: (v: unknown) => void;
+    protocolRequest.mockReturnValue(
+      new Promise((r) => {
+        resolve = r;
+      }),
+    );
+    return { resolve };
+  };
+
+  it('is applied to the handle instead of dropped', async () => {
+    const create = deferredCreate();
+    const pending = mod.launch({ task: 'x' }, { region: 'overlay' });
+    await Promise.resolve(); // let launch() reach its await — the window is now open
+    end('lx7', 'dismissed'); // the launch ends before its handle exists
+    create.resolve({ ok: true, data: { launchId: 'lx7' } });
+    const handle = (await pending) as import('./launch').LaunchHandle;
+
+    expect(handle.status).toBe('dismissed');
+    let fired = 0;
+    handle.onDismiss(() => (fired += 1));
+    await Promise.resolve(); // an already-ended handle fires onDismiss next tick
+    expect(fired).toBe(1);
+    handle.dismiss(); // and it is already terminal: no dismiss goes to the host
+    expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps each launch's own terminal status when two creates overlap", async () => {
+    let resolveA!: (v: unknown) => void;
+    let resolveB!: (v: unknown) => void;
+    protocolRequest
+      .mockReturnValueOnce(
+        new Promise((r) => {
+          resolveA = r;
+        }),
+      )
+      .mockReturnValueOnce(
+        new Promise((r) => {
+          resolveB = r;
+        }),
+      );
+    const a = mod.launch({ task: 'a' }, { region: 'overlay' });
+    const b = mod.launch({ task: 'b' }, { region: 'overlay' });
+    await Promise.resolve();
+    end('lxB', 'revoked'); // only B ends inside the window
+    resolveA({ ok: true, data: { launchId: 'lxA' } });
+    resolveB({ ok: true, data: { launchId: 'lxB' } });
+    const [ha, hb] = (await Promise.all([a, b])) as import('./launch').LaunchHandle[];
+    expect(ha.status).toBe('running');
+    expect(hb.status).toBe('revoked');
+  });
+
+  it('does not retain a buffered message once no create is in flight', async () => {
+    const create = deferredCreate();
+    const pending = mod.launch({ task: 'x' }, { region: 'overlay' });
+    await Promise.resolve();
+    end('lx8', 'revoked'); // buffered — but this create is refused, so it never lands
+    create.resolve({ ok: false, code: 'forbidden' });
+    expect(await pending).toEqual({ ok: false, code: 'forbidden' });
+
+    // A LATER launch that happens to reuse the id must not inherit the stale status.
+    protocolRequest.mockResolvedValue({ ok: true, data: { launchId: 'lx8' } });
+    const handle = (await mod.launch({ task: 'x' }, { region: 'overlay' })) as import('./launch').LaunchHandle;
+    expect(handle.status).toBe('running');
+  });
+});

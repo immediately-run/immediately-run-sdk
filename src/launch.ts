@@ -90,13 +90,62 @@ interface LaunchEndedMessage {
 /** Live handles awaiting their terminal `launch-ended` message, keyed by launchId. */
 const liveHandles = new Map<string, LaunchHandleImpl>();
 
+/**
+ * Terminal statuses that arrived BEFORE their handle existed, keyed by launchId.
+ *
+ * The window is real: `launch()` registers the listener before it sends `create`,
+ * but the handle only enters `liveHandles` once the create RESPONSE resolves. A
+ * short-lived launch (or a revoke during binding) can end inside that gap, and a
+ * dropped terminal message leaves the handle `running` for ever with `onDismiss`
+ * never firing — the one failure a launcher cannot detect or recover from. So the
+ * message is BUFFERED and applied when the handle lands.
+ *
+ * Bounded, because the host is not this module's to trust: entries are only kept
+ * while a create is actually in flight, and no more than {@link MAX_PENDING_ENDED}
+ * of them (oldest evicted). A `launch-ended` for an id we never created is still
+ * ignored, exactly as before.
+ */
+const pendingEnded = new Map<string, Exclude<LaunchStatus, 'running'>>();
+const MAX_PENDING_ENDED = 16;
+/** How many `launch()` calls are between their create request and its response. */
+let createsInFlight = 0;
+
 // The host delivers ONE `launch-ended` message per launch when it tears down —
 // the SAME message shape for self-exit, dismiss, and revoke (the host debounces
-// so the timing is not an oracle, §6.4). We fan it out to the matching handle.
-addListener(LAUNCH_ENDED, (m: LaunchEndedMessage) => {
-  const h = liveHandles.get(m.launchId);
-  if (h) h._end(m.status);
-});
+// so the timing is not an oracle, §6.4). We fan it out to the matching handle, or
+// buffer it for a handle that has not landed yet (above).
+//
+// Registered LAZILY, on the first `launch()` call, not at module evaluation
+// (R3-421 — no subpath may throw at import time off-host). Unlike `task-input`
+// (tasks.ts), first-use registration loses nothing here: a `launch-ended` can only
+// ever follow a launch THIS module created, and `launch()` registers the listener
+// before it sends the create request — so the listener always exists before any
+// launchId it must match. That is a claim about the LISTENER only; the handle it
+// must reach can still be a response away, which is what `pendingEnded` covers.
+let endedListenerRegistered = false;
+const ensureEndedListener = (): void => {
+  if (endedListenerRegistered) return;
+  try {
+    addListener(LAUNCH_ENDED, (m: LaunchEndedMessage) => {
+      const h = liveHandles.get(m.launchId);
+      if (h) {
+        h._end(m.status);
+        return;
+      }
+      // No handle yet. Buffer only while a create could still produce one; anything
+      // else is a stale or unknown id and is ignored.
+      if (createsInFlight === 0) return;
+      if (pendingEnded.size >= MAX_PENDING_ENDED) {
+        const oldest = pendingEnded.keys().next();
+        if (!oldest.done) pendingEnded.delete(oldest.value);
+      }
+      pendingEnded.set(m.launchId, m.status);
+    });
+  } catch {
+    return; // off-host: no transport — the create request below will fail anyway
+  }
+  endedListenerRegistered = true;
+};
 
 class LaunchHandleImpl implements LaunchHandle {
   #status: LaunchStatus = 'running';
@@ -105,6 +154,13 @@ class LaunchHandleImpl implements LaunchHandle {
 
   constructor(readonly launchId: string) {
     liveHandles.set(launchId, this);
+    // A terminal message that beat this handle into existence (see `pendingEnded`):
+    // apply it now, so the handle is born ended rather than stuck `running`.
+    const early = pendingEnded.get(launchId);
+    if (early !== undefined) {
+      pendingEnded.delete(launchId);
+      this._end(early);
+    }
   }
 
   get status(): LaunchStatus {
@@ -163,20 +219,40 @@ class LaunchHandleImpl implements LaunchHandle {
  *   });
  *   if ('ok' in h && h.ok === false) { ...handle h.code... }
  *   else { h.onDismiss(() => ...); }
+ *
+ * Off-host (plain `vite dev` — no host transport) it rejects with a plain
+ * "no host transport" error: there is no host to run a launch in.
  */
 export const launch = async (
   target: LaunchTarget,
   opts: LaunchOptions,
 ): Promise<LaunchHandle | { ok: false; code: LaunchErrorCode }> => {
+  // Before the create request, so the terminal message can never beat the listener.
+  ensureEndedListener();
   // The host wraps a successful handler return as `{ ok:true, data }` (the same
   // Recipe-B framing `invokeTask` uses); a refusal is `{ ok:false, code }`.
-  const res = (await protocolRequest(SCHEMES[PROTOCOL_LAUNCH], 'create', [{ target, opts }])) as
-    | { ok: true; data: { launchId: string } }
-    | { ok: false; code?: LaunchErrorCode }
-    | undefined;
+  createsInFlight += 1;
+  let res: { ok: true; data: { launchId: string } } | { ok: false; code?: LaunchErrorCode } | undefined;
+  try {
+    res = (await protocolRequest(SCHEMES[PROTOCOL_LAUNCH], 'create', [{ target, opts }])) as typeof res;
+  } finally {
+    createsInFlight -= 1;
+  }
+  // Once nothing is in flight, anything still buffered belongs to a launch that will
+  // never produce a handle — drop it rather than keep it for ever. Done AFTER the
+  // handle below is constructed (its constructor drains its own entry first), so the
+  // sweep can never eat the message this very call was waiting for.
+  const sweep = (): void => {
+    if (createsInFlight === 0) pendingEnded.clear();
+  };
   if (!res || res.ok !== true || !res.data?.launchId) {
+    sweep();
     const code = res && res.ok === false ? res.code ?? 'unknown' : 'unknown';
     return { ok: false, code };
   }
-  return new LaunchHandleImpl(res.data.launchId);
+  // The constructor drains a terminal message that arrived while `create` was in
+  // flight, so this handle can be returned already-ended rather than stuck `running`.
+  const handle = new LaunchHandleImpl(res.data.launchId);
+  sweep();
+  return handle;
 };

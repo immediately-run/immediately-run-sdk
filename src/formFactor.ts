@@ -51,7 +51,12 @@ const channel = createPushChannel<FormFactor>({
   parse: (msg) => (isFormFactor(msg.formFactor) ? (msg.formFactor as FormFactor) : undefined),
 });
 
-/** Returns the current form factor. Poll for a one-off read. */
+/** Returns the current form factor. Poll for a one-off read.
+ *
+ *  Off-host (plain `vite dev` — no host to report the region's box) this stays at
+ *  the default forever: `{ class: 'desktop', orientation: 'landscape', width: 1280,
+ *  height: 800 }`. Don't mistake it for a measurement — locally, size your layout
+ *  from the DOM if you need the real viewport. */
 export const getFormFactor = (): FormFactor => channel.get();
 
 /**
@@ -61,5 +66,9 @@ export const getFormFactor = (): FormFactor => channel.get();
 export const onFormFactorChange = (listener: (formFactor: FormFactor) => void): (() => void) =>
   channel.onChange(listener);
 
-/** React hook returning the current form factor, re-rendering on change. */
+/** React hook returning the current form factor, re-rendering on change.
+ *
+ *  Off-host (plain `vite dev`) it returns the desktop default (`desktop`,
+ *  `landscape`, 1280×800) forever — the host never reports, so no re-render ever
+ *  arrives. See {@link getFormFactor}. */
 export const useFormFactor = (): FormFactor => channel.use();
