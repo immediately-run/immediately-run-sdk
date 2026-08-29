@@ -100,6 +100,55 @@ describe('on-host (transport present at module eval)', () => {
   });
 });
 
+// ── the send failure a host DOES hear about (review of R3-421) ───────────────
+// The off-host no-op above must mean exactly "there is nobody to answer". A blanket
+// try/catch also swallowed a real failure against a real host — the usual one being a
+// `DataCloneError` because the result holds a DOM node or a function — which left the
+// host never told the task finished and the CALLER hanging to its `invokeTask`
+// deadline with no diagnostic anywhere.
+describe('on-host, a failed send surfaces (it is not the off-host no-op)', () => {
+  const onHost = (): { tasks: TasksMod; host: MockHost } => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      host.install();
+      tasks = require('./tasks');
+    });
+    return { tasks, host };
+  };
+
+  /** What a browser throws when a postMessage payload holds a DOM node or a function. */
+  const dataCloneError = (): Error => {
+    const e = new Error("Failed to execute 'postMessage': an object could not be cloned.");
+    e.name = 'DataCloneError';
+    return e;
+  };
+
+  it('completeTask throws when the host is there and the send fails', () => {
+    const { tasks, host } = onHost();
+    host.transport.sendMessage = () => {
+      throw dataCloneError();
+    };
+    expect(() => tasks.completeTask({ node: 'a DOM node in disguise' })).toThrow(/could not be cloned/);
+  });
+
+  it('cancelTask throws too — it shares the shape', () => {
+    const { tasks, host } = onHost();
+    host.transport.sendMessage = () => {
+      throw dataCloneError();
+    };
+    expect(() => tasks.cancelTask()).toThrow(/could not be cloned/);
+  });
+
+  it('a cloneable result still just sends (no behaviour change on the happy path)', () => {
+    const { tasks, host } = onHost();
+    tasks.completeTask({ ok: 1 });
+    expect(host.sent).toEqual([{ type: 'task-complete', data: { result: { ok: 1 } } }]);
+  });
+});
+
 describe('host appears after import (dev-server-injected substrate, late boot)', () => {
   it('the first use registers the listener and later inputs are received', () => {
     let tasks!: TasksMod;

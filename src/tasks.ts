@@ -17,8 +17,11 @@
 // host), `completeTask` / `cancelTask` are no-ops, and `invokeTask` rejects with
 // a "no host transport" error. Under the @immediately-run/dev-fs substrate the
 // transport resolves but no task ever arrives — same observable behaviour.
+// The no-op is scoped to the ABSENCE of a host: when there IS one, a failed send
+// throws instead of leaving the caller to hang out its deadline.
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { transport } from './hostTransport';
 import { PROTOCOL_TASK, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -253,29 +256,50 @@ export const getTaskInput = (): TaskInput | null => {
 };
 
 /**
+ * Is a host transport reachable from this realm at all?
+ *
+ * The R3-421 off-host no-op below must mean EXACTLY "there is nobody to answer" —
+ * plain `vite dev`, node, jsdom. A blanket try/catch around the send meant it also
+ * swallowed a genuine failure against a REAL host (`DataCloneError` because the
+ * result holds a DOM node, a function or a live class instance, being the usual
+ * one): the host was then never told the task finished, and the caller's
+ * `invokeTask` hung to its deadline with no diagnostic anywhere. Absence is
+ * therefore decided BEFORE the send, and the send itself is left to throw.
+ */
+const hostReachable = (): boolean => {
+  try {
+    transport();
+    return true;
+  } catch {
+    return false; // no injected bundler bus and no §4 discovery global — off-host
+  }
+};
+
+/**
  * Finish the task, returning a result to the caller. The host validates it against
  * the contract's result schema before resolving the caller (`invalid-params` on
  * violation), then tears down this overlay.
  *
- * Off-host (plain `vite dev` — no host transport) this is a no-op: there is no
- * caller to answer.
+ * `result` must be STRUCTURED-CLONEABLE — it crosses a frame boundary. A DOM node, a
+ * function, a class instance with methods, a `MediaStreamTrack`: all `DataCloneError`.
+ * **That throws**, deliberately and loudly: the alternative is a caller left hanging to
+ * its `invokeTask` deadline while this app believes it answered.
+ *
+ * Off-host (plain `vite dev` — no host transport) this is a no-op: there is no caller
+ * to answer. That case, and only that case, is silent.
  */
 export const completeTask = (result: unknown): void => {
-  try {
-    sendMessage(TASK_COMPLETE, { result });
-  } catch {
-    /* off-host: no transport, no caller to answer — documented no-op */
-  }
+  if (!hostReachable()) return; // off-host: no caller to answer — documented no-op
+  // On-host, a failure here is REAL and the caller is waiting on this exact message.
+  sendMessage(TASK_COMPLETE, { result });
 };
 
 /** Abort the task; the caller's `invokeTask` rejects with `cancelled`.
- *  Off-host (plain `vite dev` — no host transport) this is a no-op. */
+ *  Off-host (plain `vite dev` — no host transport) this is a no-op; on-host a failed
+ *  send throws rather than leaving the caller waiting, exactly as {@link completeTask}. */
 export const cancelTask = (): void => {
-  try {
-    sendMessage(TASK_CANCEL, {});
-  } catch {
-    /* off-host: no transport, no caller to answer — documented no-op */
-  }
+  if (!hostReachable()) return; // off-host: no caller to answer — documented no-op
+  sendMessage(TASK_CANCEL, {});
 };
 
 /** React hook: the task input for this callee, re-rendering when it arrives.
