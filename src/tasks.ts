@@ -93,9 +93,15 @@ export const capDir = (ref: { mountId: string; relPath: string }, opts: { mode: 
  *
  * ── `pick-file`: `roots` is required (SPACES_UI_SPEC §4.1) ───────────────────
  * ```ts
+ * import { invokeTask, capDir, requestMount } from '@immediately-run/sdk';
+ *
  * const mount = await requestMount();                    // the user picks a space
- * const { root, path } = await invokeTask('pick-file', {
- *   roots: [capDir({ mountId: mount.id, relPath: 'boards' }, { mode: 'ro' })],
+ * // `invokeTask` returns `unknown` — name the result type, or the destructuring
+ * // below does not compile.
+ * const { root, path } = await invokeTask<{ root: number; path: string }>('pick-file', {
+ *   // `SandboxMount.id` is optional (absent on the primary repo mount) — fall back to
+ *   // `path`, which is always present and is what the host resolves against.
+ *   roots: [capDir({ mountId: mount.id ?? mount.path, relPath: 'boards' }, { mode: 'ro' })],
  * });
  * ```
  * - `roots` is a NON-EMPTY `DirCap[]` of directories you **already hold**. The result
@@ -171,16 +177,21 @@ export interface CaptureOptions {
  *   is no partial result — do not write error handling that hopes for one.
  *
  * ```ts
- * import { capturePhoto } from '@immediately-run/sdk';
+ * import { capturePhoto, requestMount, openFs } from '@immediately-run/sdk';
  *
  * try {
  *   const { bytes, mimeType } = await capturePhoto({ facing: 'environment' });
- *   await writeFile('photos/latest.jpg', new Uint8Array(bytes));
+ *   const mount = await requestMount();          // the user picks a space to save into
+ *   const fs = openFs(mount);                    // writeFile is a METHOD on the MountFs
+ *   await fs.mkdir('photos', { recursive: true }); // writeFile does not create parents
+ *   await fs.writeFile(`photos/latest.${mimeType === 'image/png' ? 'png' : 'jpg'}`, new Uint8Array(bytes));
  * } catch (e) {
  *   if ((e as { code?: string }).code === 'cancelled') return; // the user said no
  *   throw e;
  * }
  * ```
+ * (The extension follows `mimeType` because the HOST chooses the format — do not assume
+ * JPEG. `openAppFs()` is the variant that writes to your own app space with no pick.)
  *
  * Two things must BOTH be true, exactly as for any other task:
  *  1. `immediately.run.invokes` lists `capture-photo` (or `capture-audio`);
