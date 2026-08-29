@@ -4,9 +4,11 @@
 //   1. `debug.log(...)` — an app→host one-way log surfaced in the host dev panel
 //      / CLI `/debug` stream (instead of hand-fishing console output out of a
 //      cross-origin iframe's devtools).
-//   2. a READ-ONLY DOM/layout responder the host can query from outside — the
-//      thing a cross-origin screenshot can't reliably give you (a blank capture
-//      is ambiguous between a real 0-height collapse and a paint artifact).
+//   2. a DOM/layout responder the host can query from outside — the thing a
+//      cross-origin screenshot can't reliably give you (a blank capture is
+//      ambiguous between a real 0-height collapse and a paint artifact) — which
+//      since R3-423 also carries two BOUNDED INPUT verbs, for the canvas/SVG apps
+//      that have no accessibility node to drive from outside at all.
 //
 // SECURITY (the gating constraint — see the plan's §0):
 //   - Both are inert unless the HOST signals dev mode via the `debug-enabled`
@@ -14,18 +16,32 @@
 //     deep link) or an explicit operator developer-mode. A published app served
 //     to a normal user gets `enabled:false` → `debug.log` is a no-op and the
 //     responder never answers. Production isolation is therefore unchanged.
-//   - The responder is READ-ONLY with a fixed vocabulary (snapshotDom /
-//     computedStyle / rect). There is deliberately NO eval bridge — that would
-//     turn a debug aid into remote code execution into the sandbox.
+//   - The responder's vocabulary is CLOSED and fixed in this file: three READ
+//     verbs (snapshotDom / computedStyle / rect) and two bounded ACTION verbs
+//     (dispatchPointer / dispatchKey, §3 below). It is therefore no longer
+//     read-only, and saying so here is the point — the posture documented is the
+//     one that ships. There is still deliberately NO eval bridge: that would turn
+//     a debug aid into remote code execution into the sandbox, and an unrecognised
+//     method is refused rather than interpreted.
+//   - What bounds an ACTION verb: ONE synthetic event per query; `type` drawn from
+//     a 5-name pointer set or a 3-name key set; coordinates clamped to the
+//     viewport; key/code names truncated to 32 chars; button state limited to
+//     "none" or "primary held"; modifiers coerced to booleans. No caller-supplied
+//     property bag ever reaches an event constructor, and a synthetic event is
+//     `isTrusted:false` in every browser, so it can never satisfy a user-activation
+//     gate (no popup, clipboard write, fullscreen, passkey prompt or download).
 //   - The responder reads only its OWN `document` (it lives in its own opaque
 //     iframe and cannot reach a sibling app), so there is no app↔app leak even
 //     in dev.
 //   - Output is bounded (node/depth/text caps) so a query can't exfiltrate an
 //     unbounded payload or wedge the app.
 //
-// Apps that want the strongest guarantee can additionally guard their own usage
-// behind `import.meta.env.DEV` so the calls are tree-shaken from prod bundles;
-// the runtime gate here is the backstop that holds regardless.
+// DEV-ONLY, read verbs and action verbs alike: the gate above is re-checked on
+// every query, so in a production session this module answers nothing and sends
+// nothing. Apps that want their own call sites GONE from the shipped bytes (rather
+// than merely inert) guard them behind `import.meta.env.DEV`, which lets the
+// bundler drop them from a production build; the runtime gate is the backstop that
+// holds regardless of how the app was built.
 
 import { createPushChannel } from './pushChannel';
 import { sendMessage, addListener } from './sandboxUtils';
@@ -84,10 +100,11 @@ export function log(level: DebugLevel, message: string, data?: unknown): void {
   }
 }
 
-// ── 2. Read-only DOM / layout responder ───────────────────────────────────────
+// ── 2. Read DOM / layout verbs ────────────────────────────────────────────────
 // The host sends `debug-query` { id, method, params }; we reply with
 // `debug-query-result` { id, ok, result | error }. Only ever active while the dev
-// gate is enabled. Vocabulary is fixed and read-only.
+// gate is enabled. The vocabulary is fixed: these three verbs READ, and the two in
+// §3 act — nothing in it interprets caller-supplied code.
 
 interface DomNode {
   tag: string;
@@ -199,8 +216,9 @@ function rects(params: { selector: string }): Array<{ x: number; y: number; w: n
 //     injector from being an escalation, and it is a browser invariant rather than
 //     something this module enforces.
 //   - The event TYPE comes from a closed set, coordinates are finite and clamped to
-//     the viewport, and modifiers are booleans. No arbitrary property bag reaches
-//     the constructor, so a caller cannot forge `isTrusted` or smuggle a handler.
+//     the viewport, the button state is "none" or "primary held" and nothing else,
+//     and modifiers are booleans. No arbitrary property bag reaches the constructor,
+//     so a caller cannot forge `isTrusted` or smuggle a handler.
 //   - It targets whatever is at the point in this frame's OWN document; the frame
 //     cannot reach a sibling app, exactly as for the read verbs.
 
@@ -214,9 +232,34 @@ const clampCoord = (v: unknown, max: number): number => {
 
 const flag = (v: unknown): boolean => v === true;
 
+/** The only button mask this verb will synthesise: the primary button. */
+const PRIMARY = 1;
+
+/**
+ * The `buttons` bitmask (which buttons are HELD, not which one changed) for an
+ * injected pointer event.
+ *
+ * This used to be `1` for everything except an up/click, which made EVERY injected
+ * move read as a drag: a hover test was impossible to write, and a canvas app's
+ * `if (e.buttons)` branch fired on a plain move — exactly the apps the verb targets.
+ * So the caller says which it wants, inside the same closed bound as `type`: a move
+ * carries NO buttons unless the caller asks for `buttons: 1` (or `drag: true`), and
+ * nothing else is accepted. A press is held-by-definition and a release is
+ * released-by-definition, so those two do not read the caller's ask at all.
+ */
+const heldButtons = (type: string, params: Record<string, unknown>): number => {
+  if (type === 'pointerdown') return PRIMARY; // a press: the button is down by definition
+  if (type !== 'pointermove') return 0; // pointerup / click / dblclick: already released
+  return params.buttons === PRIMARY || flag(params.drag) ? PRIMARY : 0;
+};
+
 /** Dispatch one bounded pointer event at a viewport coordinate inside THIS frame.
  *  Returns what it hit, so a drill can assert it aimed at the right thing rather
- *  than clicking into the void and reading a screenshot to find out. */
+ *  than clicking into the void and reading a screenshot to find out.
+ *
+ *  `params`: `{ type, x, y, buttons?: 0 | 1, drag?: boolean, ctrl/shift/alt/metaKey? }`.
+ *  A `pointermove` is a HOVER by default; pass `buttons: 1` (or `drag: true`) for the
+ *  move-with-primary-held that a drag is made of. */
 function dispatchPointer(params: Record<string, unknown>): { type: string; x: number; y: number; target: string } {
   if (typeof document === 'undefined' || typeof window === 'undefined') {
     throw new Error('no document in this realm');
@@ -235,8 +278,11 @@ function dispatchPointer(params: Record<string, unknown>): { type: string; x: nu
     pointerId: 1,
     pointerType: 'mouse',
     isPrimary: true,
-    button: 0,
-    buttons: type === 'pointerup' || type === 'click' || type === 'dblclick' ? 0 : 1,
+    // `button` names the button whose state CHANGED. A move changes nothing, so it is
+    // -1 there (UI Events §5.2.3) — otherwise a `e.button === 0` check reads a hover
+    // as a primary click.
+    button: type === 'pointermove' ? -1 : 0,
+    buttons: heldButtons(type, params),
     ctrlKey: flag(params.ctrlKey),
     shiftKey: flag(params.shiftKey),
     altKey: flag(params.altKey),
@@ -255,9 +301,55 @@ function dispatchPointer(params: Record<string, unknown>): { type: string; x: nu
   return { type, x, y, target: desc };
 }
 
+// Legacy `keyCode` / `which`. Deprecated in the UI Events spec for a decade and still
+// what the arcade/canvas input loops this verb exists for actually read
+// (`switch (e.keyCode)`), so an injected key carrying only `key`/`code` is INVISIBLE to
+// them. Derived here from the key NAME — a bounded table plus the printable-character
+// rule — never taken from the caller, so populating them adds no input surface.
+const LEGACY_KEY_CODES: Record<string, number> = {
+  Backspace: 8,
+  Tab: 9,
+  Enter: 13,
+  Shift: 16,
+  Control: 17,
+  Alt: 18,
+  Pause: 19,
+  CapsLock: 20,
+  Escape: 27,
+  ' ': 32,
+  PageUp: 33,
+  PageDown: 34,
+  End: 35,
+  Home: 36,
+  ArrowLeft: 37,
+  ArrowUp: 38,
+  ArrowRight: 39,
+  ArrowDown: 40,
+  Insert: 45,
+  Delete: 46,
+  Meta: 91,
+  ContextMenu: 93,
+};
+
+const legacyKeyCode = (key: string, code: string): number => {
+  const named = LEGACY_KEY_CODES[key];
+  if (named !== undefined) return named;
+  // F1–F24 → 112…135: the one family worth deriving instead of listing.
+  const fn = /^F([1-9]|1\d|2[0-4])$/.exec(key);
+  if (fn) return 111 + Number(fn[1]);
+  // A single printable character reports its UPPERCASE code unit, which is what a
+  // physical keyboard sends for the letter/digit rows ('a' and 'A' are both 65).
+  if (key.length === 1) return key.toUpperCase().charCodeAt(0);
+  // A named `code` covers a key name that is not a single character (an IME/dead key).
+  const fromCode = /^(?:Key([A-Z])|Digit([0-9]))$/.exec(code);
+  if (fromCode) return (fromCode[1] ?? fromCode[2]).charCodeAt(0);
+  return 0; // unknown — 0 is what a browser reports for a key with no legacy code
+};
+
 /** Dispatch one bounded keyboard event at the focused element (or the body) —
  *  an arcade app's real input surface. `key` is passed through as a name (e.g.
- *  `ArrowLeft`, `a`, ` `); `code` defaults to it. */
+ *  `ArrowLeft`, `a`, ` `); `code` defaults to it, and the deprecated-but-ubiquitous
+ *  `keyCode`/`which` are derived from them so a legacy input loop sees the key. */
 function dispatchKey(params: Record<string, unknown>): { type: string; key: string; target: string } {
   if (typeof document === 'undefined') throw new Error('no document in this realm');
   const type = typeof params.type === 'string' && KEY_TYPES.has(params.type) ? params.type : 'keydown';
@@ -265,6 +357,7 @@ function dispatchKey(params: Record<string, unknown>): { type: string; key: stri
   if (!key) throw new Error('a key name is required');
   const code = typeof params.code === 'string' ? params.code.slice(0, 32) : key;
   const target: EventTarget = document.activeElement ?? document.body;
+  const legacy = legacyKeyCode(key, code);
   target.dispatchEvent(
     new KeyboardEvent(type, {
       bubbles: true,
@@ -272,6 +365,10 @@ function dispatchKey(params: Record<string, unknown>): { type: string; key: stri
       composed: true,
       key,
       code,
+      // Deprecated, and load-bearing: `switch (e.keyCode)` is still how most canvas
+      // games read input. Kept consistent with `key`/`code` above.
+      keyCode: legacy,
+      which: legacy,
       ctrlKey: flag(params.ctrlKey),
       shiftKey: flag(params.shiftKey),
       altKey: flag(params.altKey),
@@ -285,8 +382,14 @@ function dispatchKey(params: Record<string, unknown>): { type: string; key: stri
 
 let responderStarted = false;
 
-/** Wire the read-only DOM/layout responder. Idempotent; called lazily once the
- *  dev gate turns on. No effect when `document` is absent (non-browser realm). */
+/** Wire the debug responder: the READ verbs (snapshotDom / computedStyle / rect) and
+ *  the two BOUNDED ACTION verbs (dispatchPointer / dispatchKey — one synthetic event
+ *  per query, closed type set, clamped coordinates, no caller property bag). Not an
+ *  eval bridge: an unrecognised method is refused, never interpreted.
+ *
+ *  Idempotent; called lazily once the dev gate turns on, and every query re-checks the
+ *  gate — so in a production session it answers nothing, action verbs included. No
+ *  effect when `window` is absent (non-browser realm). */
 function startResponder(): void {
   if (responderStarted || typeof window === 'undefined') return;
   responderStarted = true;
