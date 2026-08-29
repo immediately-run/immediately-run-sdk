@@ -74,9 +74,40 @@ export const capDir = (ref: { mountId: string; relPath: string }, opts: { mode: 
 /**
  * Invoke another app via a task contract and await its typed result (Recipe B).
  * Rejects with a machine `.code` on refusal: `cancelled` (user dismissed the
- * overlay), `timeout` (§5.7.1 liveness), `forbidden` (undeclared task or a file
- * delegation you don't hold), `no-such-task`, `task-cycle`/`task-depth-exceeded`/
- * `task-version-mismatch`, or `invalid-params` (result failed the contract schema).
+ * overlay), `timeout` (§5.7.1 liveness), `forbidden` (missing `task:invoke`, or a
+ * file delegation you don't hold), `not-declared` (the task is missing from your
+ * `immediately.run.invokes`), `no-such-task` (no app is bound to that contract),
+ * `task-cycle`/`task-depth-exceeded`/`task-version-mismatch`, or `invalid-params`
+ * (result failed the contract schema). **Read `err.message`** — since R3-418 the host
+ * says which capability, which declaration or which param was at fault; the code alone
+ * does not distinguish them.
+ *
+ * Two things must BOTH be true before any invoke is admitted, and they are separate:
+ *  1. your `package.json` `immediately.run.invokes` lists the task (else `not-declared`);
+ *  2. your app holds the `task:invoke` capability — declare it in
+ *     `immediately.run.capabilities` so the user can grant it (else `forbidden`).
+ * Declaring the invoke does not imply the capability.
+ *
+ * ── `pick-file`: `roots` is required (SPACES_UI_SPEC §4.1) ───────────────────
+ * ```ts
+ * const mount = await requestMount();                    // the user picks a space
+ * const { root, path } = await invokeTask('pick-file', {
+ *   roots: [capDir({ mountId: mount.id, relPath: 'boards' }, { mode: 'ro' })],
+ * });
+ * ```
+ * - `roots` is a NON-EMPTY `DirCap[]` of directories you **already hold**. The result
+ *   names its target as `{ root, path }` where `root` INDEXES `params.roots`, so
+ *   `invokeTask('pick-file', {})` can never produce a valid result and is rejected.
+ *   There is no rootless "pick from any of my spaces" mode by design: enumerating the
+ *   user's spaces is the host's powerbox (`requestMount()`), and composing the two —
+ *   as above — is that flow. See SPACES_UI_SPEC R-SPACES-5/R-SPACES-12.
+ * - Each `capDir` is attenuated against your own grant. **`{ mode: 'rw' }` over a space
+ *   the user granted `ro` is refused `forbidden`** — the commonest failure, because the
+ *   mount *was* granted and the path *is* inside it. Pass the mode you actually hold;
+ *   `ro` is right for a plain pick.
+ * - The `requestMount()` grant is DURABLE and survives a cancelled pick: the user
+ *   consented to the mount in host chrome, separately from the pick (SPACES_UI_SPEC §4.1).
+ *   Reuse it for later picks rather than re-requesting.
  *
  * Off-host (plain `vite dev` — no host transport) it rejects with a plain
  * "no host transport" error: there is no host to resolve the task binding.
