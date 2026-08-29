@@ -542,6 +542,18 @@ const settingsRequest = async <T = unknown>(method: string, query: Record<string
  * chroots it; a different app can never name it). Read/write config files through
  * the returned mount. Rejects with a {@link SpaceError} (`auth-required`) when
  * signed out. Capability: baseline `settings:app`.
+ *
+ * **Which filesystem you get, and when that can change** (R3-413): for an
+ * ordinary app — including one holding space grants, powerbox-picked or
+ * declared — this is ALWAYS the app-level store (same mount id every call, so
+ * "which space did I pick" style state survives later grants; no need to open
+ * early and keep the handle). The one exception: an instance the host has
+ * **floored** below its app tier (the generic-viewer containment,
+ * `TRUST_MODES_SPEC` §5) gets a per-origin partition instead — a DIFFERENT
+ * filesystem, chosen by the host, that changes when the loaded origin changes
+ * and refuses (`forbidden`) when the floor forbids the write. If your app can
+ * run floored and needs continuity across origins, keep state per-mount (the
+ * returned `SandboxMount.id` tells you which partition you are in).
  */
 export const openSettings = async (): Promise<SandboxMount> => {
   const mount = await settingsRequest<SandboxMount>('open');
