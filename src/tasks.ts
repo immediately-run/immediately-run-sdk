@@ -125,6 +125,84 @@ export const invokeTask = async <R = unknown>(task: string, params: Record<strin
   return res.data;
 };
 
+// ── the host-provided CAPTURE contracts (R3-425) ────────────────────────────
+
+/** Bytes captured by the host, as `capturePhoto()` / `captureAudio()` return them.
+ *  `bytes` is a transferable `ArrayBuffer` — write it to a space, decode it, upload
+ *  it. You never receive a `MediaStream` or a `MediaStreamTrack`, and that is not an
+ *  omission: a track cannot be transferred into an app frame at all
+ *  (`DataCloneError`), and the frame's opaque origin cannot open a device itself
+ *  (`getUserMedia` throws `SecurityError: Invalid security origin`). */
+export interface CaptureResult {
+  bytes: ArrayBuffer;
+  /** e.g. `image/jpeg`, `audio/webm`. Chosen by the HOST, not by you. */
+  mimeType: string;
+  /** How long the device was open, in ms. */
+  durationMs: number;
+}
+
+/** Optional hints for a capture. They deliberately name NOTHING — no device id, no
+ *  camera index — because the host chooses everything about how the capture is
+ *  performed. That is what lets the grant be a plain on/off instead of a per-call
+ *  target list the way `net:fetch` needs. */
+export interface CaptureOptions {
+  /** Which way the camera should face, if the device has a choice. A HINT: the host
+   *  may ignore it. Ignored for audio. */
+  facing?: 'user' | 'environment';
+}
+
+/**
+ * Take one photo, or record one audio clip, through the HOST's capture UI
+ * (`BROWSER_CAPABILITIES_SPEC` §3 grade 1).
+ *
+ * The host opens the device at its own origin, draws the viewfinder, and hands you
+ * the bytes when the user presses Done. **You are never in the loop while the device
+ * is live** — that is the point of the design, not a limitation of it:
+ *
+ * - The capture UI is drawn by the host, so a user can trust it the way they trust
+ *   the sign-in dialog. Do not build a lookalike; imitating host chrome is spoofing.
+ * - While the device is open the host shows a persistent "camera on" / "microphone
+ *   on" indicator in its own chrome, for the whole session. You cannot hide it and
+ *   should not try to.
+ * - If the user cancels, this rejects `cancelled` and **nothing was recorded**. There
+ *   is no partial result — do not write error handling that hopes for one.
+ *
+ * ```ts
+ * import { capturePhoto } from '@immediately-run/sdk';
+ *
+ * try {
+ *   const { bytes, mimeType } = await capturePhoto({ facing: 'environment' });
+ *   await writeFile('photos/latest.jpg', new Uint8Array(bytes));
+ * } catch (e) {
+ *   if ((e as { code?: string }).code === 'cancelled') return; // the user said no
+ *   throw e;
+ * }
+ * ```
+ *
+ * Two things must BOTH be true, exactly as for any other task:
+ *  1. `immediately.run.invokes` lists `capture-photo` (or `capture-audio`);
+ *  2. your app holds `task:invoke` **and** `device:camera` (or `device:microphone`)
+ *     — declare them in `immediately.run.capabilities` so the user can grant them.
+ *
+ * Rejects with `.code`: `cancelled` (the user dismissed the capture — nothing was
+ * recorded), `forbidden` (you lack the capability; `message: 'browser-denied'` means
+ * the BROWSER refused immediately.run itself, which your consent cannot fix),
+ * `unavailable` (no such device on this machine, or it would not start),
+ * `unsupported` (this host cannot capture), `not-declared`, `timeout`.
+ *
+ * *Zero-platform alternative, still worth knowing:* `<input type="file"
+ * accept="image/*" capture="environment">` opens the OS camera from inside the
+ * sandbox (file choosers are not permission-gated). It needs no capability and no
+ * host support; it also gives you no indicator and no host-drawn surface.
+ */
+export const capturePhoto = (options: CaptureOptions = {}): Promise<CaptureResult> =>
+  invokeTask<CaptureResult>('capture-photo', { ...options });
+
+/** Record one audio clip through the host's capture UI. See {@link capturePhoto} —
+ *  every rule there applies verbatim, with `device:microphone` and `capture-audio`. */
+export const captureAudio = (options: CaptureOptions = {}): Promise<CaptureResult> =>
+  invokeTask<CaptureResult>('capture-audio', { ...options });
+
 // ── callee side ─────────────────────────────────────────────────────────────
 
 /** The params this app was invoked with as a task callee. */
