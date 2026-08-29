@@ -15,6 +15,14 @@
 import { createPushChannel } from './pushChannel';
 import { FS_CHANGE } from './generated/protocol';
 
+/** One server-side change in a mount batch: the path (mount-relative, leading
+ *  slash) and its kind — the Node `watch` event mapping is `add`/`remove` →
+ *  `rename`, `change` → `change`. (R3-409.) */
+export interface MountChange {
+  path: string;
+  kind: 'add' | 'change' | 'remove';
+}
+
 /** One working-tree change batch the host pushes: the changed paths plus an epoch. */
 export interface FsChange {
   /** Repo-relative paths (leading slash, e.g. `/src/App.tsx`) that just changed. */
@@ -25,15 +33,47 @@ export interface FsChange {
    * deduplicated away). `0` is the pre-first-event initial.
    */
   epoch: number;
+  /**
+   * R3-409 — a SPACE mount's server-side change batch (another tab's/member's
+   * writes), anchored at the mount path the frame holds. The `fs.watch` events
+   * themselves are delivered by the sandbox's fs shim (no SDK surface needed);
+   * this field is DECLARED so the wire shape has one written-down type on this
+   * side too (the R3-274e lesson), and so an SDK consumer that wants the raw
+   * per-mount batches can read them. Absent on the working-tree leg.
+   */
+  mount?: {
+    /** The sandbox mount root the `changes[].path`s are relative to (e.g. `/mnt/{hash}`). */
+    path: string;
+    changes: MountChange[];
+  };
 }
 
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((p) => typeof p === 'string');
+
+const isMountBatch = (v: unknown): v is FsChange['mount'] => {
+  if (typeof v !== 'object' || v === null) return false;
+  const m = v as { path?: unknown; changes?: unknown };
+  if (typeof m.path !== 'string' || !Array.isArray(m.changes)) return false;
+  return m.changes.every(
+    (c) =>
+      typeof c === 'object' &&
+      c !== null &&
+      typeof (c as { path?: unknown }).path === 'string' &&
+      ['add', 'change', 'remove'].includes((c as { kind?: unknown }).kind as string),
+  );
+};
 
 const channel = createPushChannel<FsChange>({
   pushType: FS_CHANGE,
   initial: { paths: [], epoch: 0 },
   parse: (msg) =>
-    isStringArray(msg.paths) && typeof msg.epoch === 'number' ? { paths: msg.paths, epoch: msg.epoch } : undefined,
+    isStringArray(msg.paths) && typeof msg.epoch === 'number'
+      ? {
+          paths: msg.paths,
+          epoch: msg.epoch,
+          ...(isMountBatch(msg.mount) ? { mount: msg.mount } : {}),
+        }
+      : undefined,
 });
 
 /** The most recent working-tree change batch (the empty initial until the first). */
