@@ -114,3 +114,112 @@ describe('read-only DOM/layout responder', () => {
     expect(String(res!.error)).toMatch(/unknown debug method/);
   });
 });
+
+// ── R3-423: bounded input injection (dispatchPointer / dispatchKey) ───────────
+//
+// The security shape matters more than the happy path here: this is the first ACTION
+// verb on a responder whose header promises read-only + no eval. These cases pin the
+// bounds — closed type vocabulary, clamped coordinates, no arbitrary property bag,
+// and the same dev gate — so a later "just let the caller pass an init object"
+// convenience fails CI instead of quietly reopening the surface.
+describe('bounded input injection (R3-423)', () => {
+  const lastResult = () => {
+    const calls = sendMessage.mock.calls.filter((c) => c[0] === 'debug-query-result');
+    return calls.length ? (calls[calls.length - 1][1] as Record<string, unknown>) : undefined;
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '<canvas id="stage" width="200" height="100"></canvas>';
+    // jsdom has no layout, so elementFromPoint answers null; pin it at the canvas so
+    // the hit-test path is exercised rather than skipped.
+    const canvas = document.getElementById('stage')!;
+    (document as unknown as { elementFromPoint: (x: number, y: number) => Element | null }).elementFromPoint = () =>
+      canvas;
+  });
+
+  const enabled = () => {
+    mod.isDebugEnabled();
+    enable();
+  };
+
+  it('is INERT while the gate is closed (no event, no reply)', () => {
+    let hits = 0;
+    document.getElementById('stage')!.addEventListener('pointerdown', () => (hits += 1));
+    push('debug-query', { id: 1, method: 'dispatchPointer', params: { type: 'pointerdown', x: 10, y: 10 } });
+    expect(hits).toBe(0);
+    expect(lastResult()).toBeUndefined();
+  });
+
+  it('delivers a pointer event to whatever is at the point, and reports the target', () => {
+    enabled();
+    const seen: Array<{ x: number; y: number; trusted: boolean }> = [];
+    document
+      .getElementById('stage')!
+      .addEventListener('pointerdown', (e) =>
+        seen.push({ x: (e as PointerEvent).clientX, y: (e as PointerEvent).clientY, trusted: e.isTrusted }),
+      );
+    push('debug-query', { id: 2, method: 'dispatchPointer', params: { type: 'pointerdown', x: 42, y: 17 } });
+    expect(lastResult()).toMatchObject({ id: 2, ok: true });
+    expect(seen).toEqual([{ x: 42, y: 17, trusted: false }]);
+    // isTrusted:false is THE property that keeps this from being an escalation: a
+    // synthetic event can never satisfy a user-activation gate.
+    expect((lastResult()!.result as { target: string }).target).toBe('canvas');
+  });
+
+  it('CLAMPS coordinates into the viewport (no negative / off-screen aiming)', () => {
+    enabled();
+    const seen: Array<{ x: number; y: number }> = [];
+    document
+      .getElementById('stage')!
+      .addEventListener('click', (e) => seen.push({ x: (e as MouseEvent).clientX, y: (e as MouseEvent).clientY }));
+    push('debug-query', { id: 3, method: 'dispatchPointer', params: { type: 'click', x: -500, y: 10 ** 9 } });
+    expect(seen[0].x).toBe(0);
+    expect(seen[0].y).toBeLessThanOrEqual(window.innerHeight);
+    expect(seen[0].y).toBeGreaterThanOrEqual(0);
+  });
+
+  it('falls back to a click for an out-of-vocabulary event type', () => {
+    enabled();
+    let clicks = 0;
+    let contextmenus = 0;
+    document.getElementById('stage')!.addEventListener('click', () => (clicks += 1));
+    document.getElementById('stage')!.addEventListener('contextmenu', () => (contextmenus += 1));
+    push('debug-query', { id: 4, method: 'dispatchPointer', params: { type: 'contextmenu', x: 1, y: 1 } });
+    expect(contextmenus).toBe(0);
+    expect(clicks).toBe(1);
+  });
+
+  it('ignores an arbitrary property bag (a caller cannot forge isTrusted)', () => {
+    enabled();
+    const seen: Event[] = [];
+    document.getElementById('stage')!.addEventListener('pointerdown', (e) => seen.push(e));
+    push('debug-query', {
+      id: 5,
+      method: 'dispatchPointer',
+      params: { type: 'pointerdown', x: 5, y: 5, isTrusted: true, view: 'nope', detail: 99 },
+    });
+    expect(seen[0].isTrusted).toBe(false);
+    expect((seen[0] as MouseEvent).detail).not.toBe(99);
+  });
+
+  it('dispatches a key event by NAME and refuses an empty one', () => {
+    enabled();
+    const keys: string[] = [];
+    document.addEventListener('keydown', (e) => keys.push(e.key));
+    push('debug-query', { id: 6, method: 'dispatchKey', params: { type: 'keydown', key: 'ArrowLeft' } });
+    expect(keys).toEqual(['ArrowLeft']);
+    expect(lastResult()).toMatchObject({ id: 6, ok: true });
+
+    push('debug-query', { id: 7, method: 'dispatchKey', params: { type: 'keydown' } });
+    expect(lastResult()).toMatchObject({ id: 7, ok: false });
+    expect(String(lastResult()!.error)).toMatch(/key name is required/);
+  });
+
+  it('still has NO eval bridge — the read-only promise is unchanged', () => {
+    enabled();
+    push('debug-query', { id: 8, method: 'dispatchScript', params: { code: 'window.x=1' } });
+    expect(lastResult()).toMatchObject({ id: 8, ok: false });
+    expect(String(lastResult()!.error)).toMatch(/unknown debug method/);
+    expect((window as unknown as { x?: unknown }).x).toBeUndefined();
+  });
+});

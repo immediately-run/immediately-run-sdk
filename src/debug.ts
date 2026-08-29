@@ -178,6 +178,111 @@ function rects(params: { selector: string }): Array<{ x: number; y: number; w: n
   });
 }
 
+// ── 3. Bounded input injection (roadmap R3-423) ───────────────────────────────
+//
+// WHY. A canvas app (arcade) or an SVG app (a hex map) cannot be driven from outside
+// at all: the frame is opaque-origin, so `evaluate_script` cannot reach it, and there
+// is no accessibility node to click — the interactive surface is pixels. The drill
+// either cannot run or degenerates into screenshot-eyeballing.
+//
+// WHY THIS IS NOT AN EVAL BRIDGE. The caller supplies COORDINATES and a key NAME from
+// closed vocabularies, never code and never a selector-driven callback. Everything
+// this can do, a human with a mouse could already do to the same frame; nothing here
+// reads state back beyond the read vocabulary that already exists.
+//
+// WHY IT IS SAFE EVEN SO:
+//   - Same dev gate as the read verbs — inert unless the host pushed
+//     `debug-enabled:true`, which it only does for a dev/override session.
+//   - A synthetic event is `isTrusted: false` in every browser, so it can never
+//     satisfy a USER-ACTIVATION gate: no popup, no clipboard write, no fullscreen,
+//     no passkey prompt, no download. This is the property that keeps a bounded
+//     injector from being an escalation, and it is a browser invariant rather than
+//     something this module enforces.
+//   - The event TYPE comes from a closed set, coordinates are finite and clamped to
+//     the viewport, and modifiers are booleans. No arbitrary property bag reaches
+//     the constructor, so a caller cannot forge `isTrusted` or smuggle a handler.
+//   - It targets whatever is at the point in this frame's OWN document; the frame
+//     cannot reach a sibling app, exactly as for the read verbs.
+
+const POINTER_TYPES = new Set(['pointerdown', 'pointerup', 'pointermove', 'click', 'dblclick']);
+const KEY_TYPES = new Set(['keydown', 'keyup', 'keypress']);
+
+const clampCoord = (v: unknown, max: number): number => {
+  const n = typeof v === 'number' && Number.isFinite(v) ? v : 0;
+  return Math.max(0, Math.min(Math.round(n), Math.max(0, Math.round(max))));
+};
+
+const flag = (v: unknown): boolean => v === true;
+
+/** Dispatch one bounded pointer event at a viewport coordinate inside THIS frame.
+ *  Returns what it hit, so a drill can assert it aimed at the right thing rather
+ *  than clicking into the void and reading a screenshot to find out. */
+function dispatchPointer(params: Record<string, unknown>): { type: string; x: number; y: number; target: string } {
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    throw new Error('no document in this realm');
+  }
+  const type = typeof params.type === 'string' && POINTER_TYPES.has(params.type) ? params.type : 'click';
+  const x = clampCoord(params.x, window.innerWidth);
+  const y = clampCoord(params.y, window.innerHeight);
+  const target = document.elementFromPoint(x, y) ?? document.body;
+  if (!target) throw new Error('nothing at that point');
+  const init: PointerEventInit = {
+    bubbles: true,
+    cancelable: true,
+    composed: true,
+    clientX: x,
+    clientY: y,
+    pointerId: 1,
+    pointerType: 'mouse',
+    isPrimary: true,
+    button: 0,
+    buttons: type === 'pointerup' || type === 'click' || type === 'dblclick' ? 0 : 1,
+    ctrlKey: flag(params.ctrlKey),
+    shiftKey: flag(params.shiftKey),
+    altKey: flag(params.altKey),
+    metaKey: flag(params.metaKey),
+  };
+  // `click`/`dblclick` are MouseEvents; the rest are PointerEvents. Constructing the
+  // right class matters for a canvas app that reads `pointerId`/`pointerType`.
+  // A realm without `PointerEvent` (jsdom, an older engine) falls back to a
+  // MouseEvent of the SAME TYPE — which still reaches a `pointerdown` listener, so
+  // the verb degrades instead of throwing. The responder must never throw into an
+  // app; and a drill that gets a slightly thinner event is strictly better off than
+  // one that gets an error.
+  const usePointer = type !== 'click' && type !== 'dblclick' && typeof PointerEvent === 'function';
+  target.dispatchEvent(usePointer ? new PointerEvent(type, init) : new MouseEvent(type, init));
+  const desc = target instanceof Element ? target.tagName.toLowerCase() : 'unknown';
+  return { type, x, y, target: desc };
+}
+
+/** Dispatch one bounded keyboard event at the focused element (or the body) —
+ *  an arcade app's real input surface. `key` is passed through as a name (e.g.
+ *  `ArrowLeft`, `a`, ` `); `code` defaults to it. */
+function dispatchKey(params: Record<string, unknown>): { type: string; key: string; target: string } {
+  if (typeof document === 'undefined') throw new Error('no document in this realm');
+  const type = typeof params.type === 'string' && KEY_TYPES.has(params.type) ? params.type : 'keydown';
+  const key = typeof params.key === 'string' ? params.key.slice(0, 32) : '';
+  if (!key) throw new Error('a key name is required');
+  const code = typeof params.code === 'string' ? params.code.slice(0, 32) : key;
+  const target: EventTarget = document.activeElement ?? document.body;
+  target.dispatchEvent(
+    new KeyboardEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+      key,
+      code,
+      ctrlKey: flag(params.ctrlKey),
+      shiftKey: flag(params.shiftKey),
+      altKey: flag(params.altKey),
+      metaKey: flag(params.metaKey),
+      repeat: flag(params.repeat),
+    }),
+  );
+  const el = document.activeElement;
+  return { type, key, target: el ? el.tagName.toLowerCase() : 'body' };
+}
+
 let responderStarted = false;
 
 /** Wire the read-only DOM/layout responder. Idempotent; called lazily once the
@@ -203,6 +308,12 @@ function startResponder(): void {
           break;
         case 'rect':
           result = rects(params as never);
+          break;
+        case 'dispatchPointer':
+          result = dispatchPointer(params);
+          break;
+        case 'dispatchKey':
+          result = dispatchKey(params);
           break;
         default:
           ok = false;
