@@ -173,6 +173,16 @@ export interface ChatProviderInfo {
  * cannot tell "you need a key" from "ask again in a moment", and consuming apps
  * rendered a misleading "connect a key" banner at users who had one. `unknown` is the
  * state before the host answers; it is not an error and not a prompt to act.
+ *
+ * **`unknown` is TRANSIENT — the host answers every frame** (R3-419;
+ * `LLM_AND_AGENTS_SPEC §4.1` R-LLM-1..3). An app that does not hold `llm:chat` is not
+ * met with silence: it is answered `not-configured`, the same terminal state as a user
+ * with no key, because from the app's side those are the same fact — do not render a
+ * provider, do offer the connect path. So it is correct to treat a `unknown` that
+ * persists as a host bug rather than as a state to design around, and WRONG to render a
+ * spinner with no timeout on it. (Before R3-419 the host withheld the channel entirely
+ * from an ungranted frame, and `unknown` stood forever — that is the failure this note
+ * exists to keep from being re-created on the app side.)
  */
 export type ChatProviderState =
   | { status: 'unknown' }
