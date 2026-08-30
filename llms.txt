@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.57.1)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.57.3)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -92,7 +92,7 @@ Import: `@immediately-run/sdk/mounts`
 
 - `acceptInvite` (function) — Accept an invitation: materialize your membership at the invited role and clear the invite — `spaces:user`.
 - `awaitMatchingMount` (function) — The framework-free core of waitForMount, with the subscription injected so a test can drive the synchronous-initial-replay case that broke it.
-- `createSpace` (function) — Create a brand-new, empty platform-hosted space.
+- `createSpace` (function) — Create a brand-new, empty platform-hosted space, granted to THIS app in full (read-write) — the user's create consent is consent for the app to create storage for itself, and the host records the same durable grant the requestMount powerbox would.
 - `declineInvite` (function) — Decline (dismiss) an invitation from your inbox; writes no membership — `spaces:user`.
 - `findMount` (function) — Returns the first mount matching `query`, or `undefined`.
 - `getAppMountPath` (function) — The absolute path where this app's own repository filesystem is mounted (FILE_SHARING_SPEC §11.2).
@@ -137,6 +137,10 @@ Import: `@immediately-run/sdk/tasks`
 - `cancelTask` (function) — Abort the task; the caller's `invokeTask` rejects with `cancelled`.
 - `capDir` (function) — Build a delegated DIRECTORY reference for a task param (the directory analogue of capFile).
 - `capFile` (function) — Build a delegated file reference for a task param.
+- `captureAudio` (function) — Record one audio clip through the host's capture UI.
+- `CaptureOptions` (interface) — Optional hints for a capture.
+- `capturePhoto` (function) — Take one photo, or record one audio clip, through the HOST's capture UI (`BROWSER_CAPABILITIES_SPEC` §3 grade 1).
+- `CaptureResult` (interface) — Bytes captured by the host, as `capturePhoto()` / `captureAudio()` return them.
 - `completeTask` (function) — Finish the task, returning a result to the caller.
 - `DirCap` (interface) — A delegated DIRECTORY capability marker for a task param (D2).
 - `FileCap` (interface) — A delegated FILE capability marker for a task param (§5.7).
