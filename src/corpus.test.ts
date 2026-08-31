@@ -1,61 +1,42 @@
-// The corpus scope's path arithmetic (R3-174; MDX_FROM_MOUNT_SPEC §7 1a).
+// R3-480 — the deprecated `Corpus*` alias surface (`./corpus`) is the SAME bindings as
+// `./bundle`, not a parallel copy.
 //
-// The property under test is the one the mount prefix threatens: a path handed to a
-// content component is corpus-absolute and IDENTICAL under every packaging, so a corpus
-// addresses itself the same way whether it was forked, composed as a library, or
-// dispatched into a host-minted chroot. The adversarial half is containment — a sibling
-// mount whose path merely starts with the same characters is not inside this corpus.
+// This is the one property the alias exists to hold, and the one a future edit could
+// silently break: re-declaring `CorpusContext` with its own `createContext` would type-
+// check, publish, and pass every other test — while making a provider written as
+// `<CorpusContext>` invisible to `useBundle`, and vice versa. React context identity is
+// object identity, so an app mid-migration (old provider, new hook) would read the empty
+// default and render nothing, with no error anywhere.
+//
+// Delete this file with the aliases at cutover.
 
-import { fromCorpusPath, toCorpusPath } from './corpus';
+import * as bundle from './bundle';
+import * as corpus from './corpus';
+import * as root from './index';
 
-const FORK = '/app/content';
-const DISPATCH = '/mnt/ec1210aa4dfa0067260861b1eeb31a9b';
-
-describe('toCorpusPath', () => {
-  it('rebases a fork path', () => {
-    expect(toCorpusPath('/app/content/roadmap/R3-174.mdx', FORK)).toBe('/roadmap/R3-174.mdx');
+describe('the Corpus* aliases are re-exports, never re-declarations', () => {
+  it('binds each old name to the very same object as its new name', () => {
+    expect(corpus.CorpusContext).toBe(bundle.BundleContext);
+    expect(corpus.useCorpus).toBe(bundle.useBundle);
+    expect(corpus.useCorpusEntries).toBe(bundle.useBundleEntries);
+    expect(corpus.useCorpusEntry).toBe(bundle.useBundleEntry);
+    expect(corpus.toCorpusPath).toBe(bundle.toBundlePath);
+    expect(corpus.fromCorpusPath).toBe(bundle.fromBundlePath);
   });
 
-  it('rebases a dispatch path to the SAME corpus address', () => {
-    expect(toCorpusPath(`${DISPATCH}/roadmap/R3-174.mdx`, DISPATCH)).toBe('/roadmap/R3-174.mdx');
+  it('agrees across the package root too — one context, two spellings', () => {
+    expect(root.CorpusContext).toBe(root.BundleContext);
+    expect(root.useCorpus).toBe(root.useBundle);
   });
 
-  it('tolerates a trailing slash on the root (the content-root convention carries one)', () => {
-    expect(toCorpusPath('/app/content/home.mdx', '/app/content/')).toBe('/home.mdx');
+  it('keeps `useCurrentEntry` on the ./corpus subpath (it was never renamed)', () => {
+    // `@immediately-run/sdk/corpus` is a real subpath via the `./*` export wildcard, so
+    // dropping an unrelated name from it would still shrink that module's public surface.
+    expect(corpus.useCurrentEntry).toBe(bundle.useCurrentEntry);
   });
 
-  it('returns null outside a corpus rather than a wrong answer', () => {
-    expect(toCorpusPath('/app/src/App.tsx', FORK)).toBeNull();
-    expect(toCorpusPath('/app/content/x.mdx', null)).toBeNull();
-  });
-
-  it('does not treat a look-alike sibling mount as inside — separator boundary', () => {
-    // `/mnt/<hash>` and `/mnt/<hash>2` are two different mounts. A bare `startsWith`
-    // would put the second one's files inside the first one's corpus, which is how a
-    // viewer ends up rendering a neighbouring mount's metadata as its own.
-    expect(toCorpusPath(`${DISPATCH}2/secret.mdx`, DISPATCH)).toBeNull();
-  });
-
-  it('does not treat the root itself as an entry', () => {
-    expect(toCorpusPath(DISPATCH, DISPATCH)).toBeNull();
-  });
-});
-
-describe('fromCorpusPath', () => {
-  it('round-trips under both packagings', () => {
-    for (const root of [FORK, DISPATCH]) {
-      const absolute = `${root}/specs/PLATFORM_LAYERING_SPEC.mdx`;
-      const corpus = toCorpusPath(absolute, root);
-      expect(corpus).toBe('/specs/PLATFORM_LAYERING_SPEC.mdx');
-      expect(fromCorpusPath(corpus as string, root)).toBe(absolute);
-    }
-  });
-
-  it('accepts a path with no leading slash', () => {
-    expect(fromCorpusPath('home.mdx', FORK)).toBe('/app/content/home.mdx');
-  });
-
-  it('returns null without a root', () => {
-    expect(fromCorpusPath('/home.mdx', null)).toBeNull();
+  it('behaves identically when called through the old spelling', () => {
+    expect(corpus.toCorpusPath('/mnt/h/x.mdx', '/mnt/h')).toBe('/x.mdx');
+    expect(corpus.fromCorpusPath('/x.mdx', '/mnt/h')).toBe('/mnt/h/x.mdx');
   });
 });

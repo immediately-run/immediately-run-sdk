@@ -2,8 +2,8 @@
   "_doc": [
     "The DELIBERATE-REMOVAL ledger for `npm run api:check` (R3-261).",
     "",
-    "The SDK's public API is additive-only (SDK_PACKAGING_SPEC §9) so a pinned or",
-    "forked app keeps compiling (UI_AS_APPS §0/§7, core value #4). The gate compares",
+    "The SDK's public API is additive-only (SDK_PACKAGING_SPEC \u00a79) so a pinned or",
+    "forked app keeps compiling (UI_AS_APPS \u00a70/\u00a77, core value #4). The gate compares",
     "the SHAPE of every export against api-snapshot.json, so removing an export, an",
     "interface field, a union member or a parameter all fail it.",
     "",
@@ -12,19 +12,34 @@
     "here makes one specific removal allowed, and `npm run api:update` REFUSES to",
     "write a snapshot that drops anything not listed, so re-running the updater is",
     "not a way past the gate. A deliberate break therefore lands in two reviewed",
-    "diffs — this ledger (with the reason) and the snapshot.",
+    "diffs \u2014 this ledger (with the reason) and the snapshot.",
     "",
     "Each entry needs all four fields; `detail` is copied verbatim from the failure",
     "message (`api:check` prints the exact entry to paste):",
     "  module  the api-snapshot.json module key, e.g. \"mounts\"",
     "  export  the exported name, e.g. \"Member\"",
-    "  detail  what is lost — \"the export itself\", \"member `principal?`\",",
-    "          \"union member `'reader'`\", \"now requires 2 parameters (was 1)\", …",
+    "  detail  what is lost \u2014 \"the export itself\", \"member `principal?`\",",
+    "          \"union member `'reader'`\", \"now requires 2 parameters (was 1)\", \u2026",
     "  reason  WHY this is deliberate, and what consumers should use instead.",
     "          A removal without a stated reason is not a documented removal.",
     "",
     "Entries are permanent history: they stay after the snapshot is regenerated, so",
     "the record of what was retired, when and why survives."
   ],
-  "removals": []
+  "removals": [
+    {
+      "module": "corpus",
+      "export": "CorpusContext",
+      "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
+      "reason": "R3-480 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "date": "2026-08-31"
+    },
+    {
+      "module": "index",
+      "export": "CorpusContext",
+      "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
+      "reason": "R3-480 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "date": "2026-08-31"
+    }
+  ]
 }
