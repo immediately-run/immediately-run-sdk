@@ -39,6 +39,7 @@ export * from './dnd';
 export * from './netFetch';
 export * from './feed';
 export * from './secrets';
+export * from './recents'; // R3-485: the gated recent-projects read (page.home)
 export * from './llm';
 export * from './diagnostics';
 export * from './vcs';
