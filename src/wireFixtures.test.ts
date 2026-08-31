@@ -95,7 +95,7 @@ describe('the shared wire fixture conforms to the SDK’s declarations', () => {
 });
 
 describe('the SDK’s real parsers accept the shared fixture', () => {
-  it('fs-change: onFsChange surfaces BOTH fields, epoch included', () => {
+  it('fs-change: onFsChange surfaces EVERY declared field, epoch and mount included', () => {
     const seen: Array<{ paths: string[]; epoch: number }> = [];
     onFsChange((c) => seen.push(c));
     // The subscription fires immediately with the empty initial, then on the push.
@@ -103,9 +103,16 @@ describe('the SDK’s real parsers accept the shared fixture', () => {
 
     bus.__push(FS_CHANGE, { ...WIRE_FIXTURES['fs-change'] });
 
-    const fixture = WIRE_FIXTURES['fs-change'] as unknown as { paths: string[]; epoch: number };
-    expect(seen[seen.length - 1]).toEqual({ paths: fixture.paths, epoch: fixture.epoch });
-    expect(getFsChange()).toEqual({ paths: fixture.paths, epoch: fixture.epoch });
+    // R3-409: the fixture carries BOTH legs (working-tree paths + the
+    // mount-anchored batch) so every declared key is proven to cross the parser —
+    // the parser (#142) carries `mount` through verbatim.
+    const fixture = WIRE_FIXTURES['fs-change'] as unknown as {
+      paths: string[];
+      epoch: number;
+      mount?: unknown;
+    };
+    expect(seen[seen.length - 1]).toEqual({ paths: fixture.paths, epoch: fixture.epoch, mount: fixture.mount });
+    expect(getFsChange()).toEqual({ paths: fixture.paths, epoch: fixture.epoch, mount: fixture.mount });
     // `epoch` is exactly what the frame does NOT read — this side is why it stayed on
     // the wire, so assert it arrived rather than defaulting back to the initial 0.
     expect(getFsChange().epoch).not.toBe(0);
