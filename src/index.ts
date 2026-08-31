@@ -11,7 +11,7 @@ export * from './sourceCache';
 export * from './components/MDXComponents';
 export * from './linkSpace';
 export * from './bundle';
-// Deprecated `Corpus*` spellings of the above (R3-480); see `src/corpus.ts`.
+// Deprecated `Corpus*` spellings of the above (R3-482); see `src/corpus.ts`.
 export * from './corpus';
 export * from './components/MountImage';
 export * from './components/Routes';

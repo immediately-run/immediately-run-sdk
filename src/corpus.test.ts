@@ -1,4 +1,4 @@
-// R3-480 — the deprecated `Corpus*` alias surface (`./corpus`) is the SAME bindings as
+// R3-482 — the deprecated `Corpus*` alias surface (`./corpus`) is the SAME bindings as
 // `./bundle`, not a parallel copy.
 //
 // This is the one property the alias exists to hold, and the one a future edit could

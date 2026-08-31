@@ -31,14 +31,14 @@
       "module": "corpus",
       "export": "CorpusContext",
       "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
-      "reason": "R3-480 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "reason": "R3-482 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
       "date": "2026-08-31"
     },
     {
       "module": "index",
       "export": "CorpusContext",
       "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
-      "reason": "R3-480 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "reason": "R3-482 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
       "date": "2026-08-31"
     }
   ]

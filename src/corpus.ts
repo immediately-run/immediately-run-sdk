@@ -1,4 +1,4 @@
-// DEPRECATED alias surface — the pre-2026-08-31 spelling of `./bundle` (R3-480).
+// DEPRECATED alias surface — the pre-2026-08-31 spelling of `./bundle` (R3-482).
 //
 // `core_concepts §7a`/§11 renamed the file-collection concept `corpus` → **bundle**
 // on 2026-08-22; `./bundle.ts` is the implementation and the canonical spelling.
@@ -13,24 +13,24 @@
 // is exactly the silent breakage a compatibility alias exists to prevent.
 
 export type {
-  /** @deprecated Renamed to `BundleScope` (R3-480). */
+  /** @deprecated Renamed to `BundleScope` (R3-482). */
   BundleScope as CorpusScope,
-  /** @deprecated Renamed to `BundleEntry` (R3-480). */
+  /** @deprecated Renamed to `BundleEntry` (R3-482). */
   BundleEntry as CorpusEntry,
 } from './bundle';
 
 export {
-  /** @deprecated Renamed to `BundleContext` (R3-480). Same object — safe to mix. */
+  /** @deprecated Renamed to `BundleContext` (R3-482). Same object — safe to mix. */
   BundleContext as CorpusContext,
-  /** @deprecated Renamed to `useBundle` (R3-480). */
+  /** @deprecated Renamed to `useBundle` (R3-482). */
   useBundle as useCorpus,
-  /** @deprecated Renamed to `useBundleEntries` (R3-480). */
+  /** @deprecated Renamed to `useBundleEntries` (R3-482). */
   useBundleEntries as useCorpusEntries,
-  /** @deprecated Renamed to `useBundleEntry` (R3-480). */
+  /** @deprecated Renamed to `useBundleEntry` (R3-482). */
   useBundleEntry as useCorpusEntry,
-  /** @deprecated Renamed to `toBundlePath` (R3-480). */
+  /** @deprecated Renamed to `toBundlePath` (R3-482). */
   toBundlePath as toCorpusPath,
-  /** @deprecated Renamed to `fromBundlePath` (R3-480). */
+  /** @deprecated Renamed to `fromBundlePath` (R3-482). */
   fromBundlePath as fromCorpusPath,
 } from './bundle';
 
