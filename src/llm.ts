@@ -121,9 +121,16 @@ export interface ChatResult {
  * }
  * ```
  *
- * Requires the `llm:chat` capability. If no provider is bound the host fails the
- * stream into the SP-7 connect-me prompt (the user adds a key) — the generator
- * throws with `code: 'auth-required'`; an un-granted call throws `forbidden`.
+ * Requires the `llm:chat` capability. If no provider is bound, the host first
+ * draws the SP-7 connect-me gate itself (R3-456: the app never draws a
+ * credential prompt — that is host chrome, SECRETS_SPEC S3):
+ * - the user connects a key → the call retries once and streams normally;
+ * - the user declines → the generator throws `code: 'cancelled'` (the same code
+ *   a declined powerbox produces — a working degraded state: catch it and
+ *   degrade, e.g. skip the AI feature);
+ * - an older host without the gate throws `code: 'provider-not-configured'`.
+ * A signed-out user throws `code: 'auth-required'`; an un-granted call throws
+ * `forbidden`.
  */
 export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, void> {
   // Peel `signal` out of the request before it becomes wire params — an AbortSignal

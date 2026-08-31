@@ -454,7 +454,7 @@
     "FormFactor": "interface(class, height, orientation, width)",
     "FormFactorClass": "union('desktop'|'mobile'|'tablet')",
     "ForwardedMarker": "interface(at, attrs?, name)",
-    "FsChange": "interface(epoch, paths)",
+    "FsChange": "interface(epoch, mount?, paths)",
     "FsError": "interface(code)",
     "GrantRecord": "interface(appKey, mode, mountId, name?, spaceId, subtree?)",
     "HeadingAnchor": "fn(1..1)",
@@ -497,6 +497,7 @@
     "MetadataSourceMode": "union('merge'|'replace')",
     "MetadataSourceProps": "interface(children?, mode?, value)",
     "ModuleExports": "alias(any)",
+    "MountChange": "interface(kind, path)",
     "MountFs": "interface(canWrite(0..1), exists(1..1), mkdir(1..2), mount, onChange(1..1), readBlob(1..2), readFile(1..1), readFile(2..2), readObjectUrl(1..2), readdir(0..1), rename(2..2), rm(1..2), stat(1..1), writeFile(2..2))",
     "MountImage": "fn(1..1)",
     "MountImageProps": "interface(fallback?, mount, placeholder?, relPath, type?)",
@@ -529,7 +530,7 @@
     "Router": "fn(0..0)",
     "Routes": "fn(1..1)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.57.0\")",
+    "SDK_VERSION": "const(\"0.57.3\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
     "SafeContent": "fn(1..1)",
     "SafeContentComponents": "interface([index])",
@@ -916,7 +917,8 @@
     "hostFetchStream": "fn(1..2)"
   },
   "onFsChange": {
-    "FsChange": "interface(epoch, paths)",
+    "FsChange": "interface(epoch, mount?, paths)",
+    "MountChange": "interface(kind, path)",
     "getFsChange": "fn(0..0)",
     "onFsChange": "fn(1..1)",
     "useFsChange": "fn(0..0)"
@@ -995,7 +997,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.57.0\")",
+    "SDK_VERSION": "const(\"0.57.3\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1144,6 +1146,6 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.57.0\")"
+    "SDK_VERSION": "const(\"0.57.3\")"
   }
 }

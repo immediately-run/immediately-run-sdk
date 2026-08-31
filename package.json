@@ -61,11 +61,11 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@immediately-run/mdx-plugins": "0.5.0",
     "@immediately-run/platform-constants": "0.2.0",
-    "@immediately-run/sandbox-protocol": "0.7.1",
-    "react-error-boundary": "^6.0.0",
     "@immediately-run/safe-content": "0.1.0",
-    "@immediately-run/mdx-plugins": "0.5.0"
+    "@immediately-run/sandbox-protocol": "0.7.3",
+    "react-error-boundary": "^6.0.0"
   },
   "devDependencies": {
     "@immediately-run/prettier-config": "0.1.0",
