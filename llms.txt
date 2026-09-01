@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.57.4)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.58.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -758,6 +758,15 @@ Import: `@immediately-run/sdk/vcs`
 Import: `@immediately-run/sdk/version`
 
 - `SDK_VERSION` (const) — This SDK's package version, baked from package.json at build (SP2-6).
+
+## workspace
+
+Import: `@immediately-run/sdk/workspace`
+
+- `getWorkspace` (function) — Returns the current workspace, or `null` outside an editing session.
+- `onWorkspaceChange` (function) — Subscribe to workspace changes.
+- `useWorkspace` (function) — React hook returning the current workspace, re-rendering on change.
+- `Workspace` (interface) — Which project the immediately.run workbench currently has open — the repository the user is editing, not your app's own repository.
 
 ---
 _Generated from the typed API by `scripts/gen-llms.mjs`._
