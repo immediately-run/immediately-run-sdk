@@ -289,6 +289,7 @@
     "PROTOCOL_IPC": "const(\"protocol-ipc\")",
     "PROTOCOL_LAUNCH": "const(\"protocol-launch\")",
     "PROTOCOL_LLM": "const(\"protocol-llm\")",
+    "PROTOCOL_RECENTS": "const(\"protocol-recents\")",
     "PROTOCOL_SECRETS": "const(\"protocol-secrets\")",
     "PROTOCOL_SETTINGS": "const(\"protocol-settings\")",
     "PROTOCOL_SPACES": "const(\"protocol-spaces\")",
@@ -306,6 +307,7 @@
     "ProtocolIpcRevealParams": "interface(to)",
     "ProtocolLaunchCreateParams": "interface(opts, target)",
     "ProtocolLlmChatParams": "interface(maxTokens?, messages, modelHint?, responseFormat?, tools?)",
+    "ProtocolRecentsListParams": "interface(clear?)",
     "ProtocolSpacesInviteParams": "interface(login, role, spaceId)",
     "ProtocolSpacesListParams": "interface(app?)",
     "ProtocolSpacesLookupUserParams": "interface(login)",
@@ -345,8 +347,8 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_VCS_STATE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, URLCHANGE, VCS_STATE})",
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-vcs-state'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'urlchange'|'vcs-state')"
   },
   "generated/spaces": {
     "GetSpaceMembersError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -529,6 +531,7 @@
     "ProtocolCancelledError": "class(code)",
     "ProtocolTimeoutError": "class(attendance, bound, call, code, timeoutMs)",
     "ReadyState": "interface(reported, reportedAt?)",
+    "RecentProject": "interface(namespace, provider, ref, repository, ts)",
     "RegionMessage": "interface(data, from)",
     "RemovedMount": "interface(reason)",
     "RenderExportedComponent": "fn(1..1)",
@@ -604,6 +607,7 @@
     "captureAudio": "fn(0..1)",
     "capturePhoto": "fn(0..1)",
     "chat": "fn(1..1)",
+    "clearRecentProjects": "fn(0..0)",
     "closeFile": "fn(1..1)",
     "completeTask": "fn(1..1)",
     "consumeStream": "fn(4..7)",
@@ -663,6 +667,7 @@
     "listGrants": "fn(0..0)",
     "listMyInvites": "fn(0..0)",
     "listPendingInvites": "fn(1..1)",
+    "listRecentProjects": "fn(0..0)",
     "listSettingsApps": "fn(0..0)",
     "listSpaces": "fn(0..1)",
     "log": "fn(2..3)",
@@ -971,7 +976,7 @@
     "timeoutFor": "fn(2..2)"
   },
   "protocolSchemes": {
-    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
+    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
   },
   "protocolStream": {
     "StreamError": "class(code)",
@@ -992,6 +997,11 @@
     "getReadyState": "fn(0..0)",
     "onReady": "fn(1..1)",
     "reportReady": "fn(0..0)"
+  },
+  "recents": {
+    "RecentProject": "interface(namespace, provider, ref, repository, ts)",
+    "clearRecentProjects": "fn(0..0)",
+    "listRecentProjects": "fn(0..0)"
   },
   "region": {
     "getRegion": "fn(0..0)",
