@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.57.3)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.57.4)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -288,6 +288,7 @@ Import: `@immediately-run/sdk/onFsChange`
 
 - `FsChange` (interface) — One working-tree change batch the host pushes: the changed paths plus an epoch.
 - `getFsChange` (function) — The most recent working-tree change batch (the empty initial until the first).
+- `MountChange` (interface) — One server-side change in a mount batch: the path (mount-relative, leading slash) and its kind — the Node `watch` event mapping is `add`/`remove` → `rename`, `change` → `change`.
 - `onFsChange` (function) — Subscribe to working-tree changes.
 - `useFsChange` (function) — React hook: the current working-tree change batch, re-rendering on every push.
 
@@ -315,6 +316,66 @@ Import: `@immediately-run/sdk/ready`
 - `ReadyState` (interface) — The app's `reportReady()` state, mirrored by onReady/getReadyState.
 - `reportReady` (function) — Signal that the app is usefully interactive (e.g.
 
+## agentChatClient
+
+Import: `@immediately-run/sdk/agentChatClient`
+
+- `createChatModelClient` (function) — A ModelClient over the host `llm.chat` slot.
+
+## agentContext
+
+Import: `@immediately-run/sdk/agentContext`
+
+- `AgentContextAppFields` (interface) — The app-local half of the deixis block — supplied by the app at call time.
+- `AgentContextBlock` (interface) — The whole block, as it enters the loop.
+- `renderAgentContext` (function) — Serialize the block as the fenced data segment that enters the system prompt.
+- `useAgentContext` (function) — Assemble the deixis block: the platform fields from the SDK's own state, the app's local fields spread in.
+
+## agentLoop
+
+Import: `@immediately-run/sdk/agentLoop`
+
+- `AgentEvents` (interface) — Optional UI hooks so a panel can render the loop as it runs.
+- `AgentMessage` (interface)
+- `AgentRole` (type)
+- `AgentTool` (interface) — A tool the model may call: name, description, and a JSON Schema for its input (`input_schema`, the Anthropic wire name — createChatModelClient maps it to the chat slot's `ToolDef`).
+- `COMPACTION_MARKER` (const) — Prefix marking a `user` message as a compaction summary (not a real user turn), so the transcript renderer shows a "compacted N turns" affordance on replay.
+- `compactTranscript` (function) — Compact `messages` by folding the older head into a structured summary and keeping a verbatim recent tail.
+- `ContentBlock` (type)
+- `detectStall` (function) — Classify a NO-tool-call turn as a stall (nudge-worthy) vs a genuine finish.
+- `estimateTokens` (function) — Rough token estimate (~4 chars/token) over a message array, used only when the provider reports no `usage` delta.
+- `ImageBlock` (type) — An image the model can look at (R3-339).
+- `isContextOverflow` (function) — Does this thrown error look like a hard context-window overflow?
+- `ModelClient` (interface) — The provider seam — one model turn.
+- `ModelResponse` (interface) — One model turn: the assistant's emitted blocks + why it stopped (+ usage).
+- `NUDGE_TEXT` (const)
+- `ReasoningBlock` (type) — A block of the model's own reasoning (R3-335).
+- `runAgent` (function) — Drive the agent loop to completion.
+- `RunAgentOptions` (interface)
+- `shouldCompact` (function) — Should the loop compact now?
+- `StallReason` (type) — Why a no-tool-call turn looked like a stall rather than a genuine finish.
+- `TextBlock` (type)
+- `TokenUsage` (interface) — Provider-reported token counts for one turn (R3-220).
+- `ToolExecutor` (type) — Executes one tool call, returning a string result (and whether it errored — a `forbidden`/failed call comes back as `is_error` so the model can adapt).
+- `ToolOutcome` (interface) — What one tool call produced.
+- `ToolResultBlock` (type)
+- `ToolUseBlock` (type)
+
+## agentSteering
+
+Import: `@immediately-run/sdk/agentSteering`
+
+- `anySignal` (function) — Combine abort signals into one that fires when any of them does.
+- `INTERRUPTED_TURN_TEXT` (const) — Text recorded in place of the assistant turn a steer cut short.
+- `parseSteer` (function) — Recognise a steer on replay; returns the mode + text, or `null`.
+- `STEER_INTERRUPT_MARKER` (const) — As above, for a steer that ABORTED an in-flight turn.
+- `STEER_MARKER` (const) — Prefix marking a `user` message as a STEER rather than something typed at the start of a run — so a replayed conversation shows the interruption where it happened, instead of reconstructing a history that never ran (scope 5).
+- `SteerController` (class) — The live steering queue.
+- `SteerMessage` (interface)
+- `SteerMode` (type) — How a steer applies.
+- `SteerSource` (interface) — What the loop needs from a steering source (so it can be faked in tests).
+- `steerWireText` (function) — Wrap a steer's text for the wire.
+
 ## analytics
 
 Import: `@immediately-run/sdk/analytics`
@@ -326,6 +387,20 @@ Import: `@immediately-run/sdk/analytics`
 - `track` (function) — Fire-and-forget emitAnalyticsEvent.
 - `trackRoute` (function) — Fire-and-forget recordRoute, on the same reasoning as track.
 
+## bundle
+
+Import: `@immediately-run/sdk/bundle`
+
+- `BundleContext` (function) — Ambient bundle scope.
+- `BundleEntry` (interface) — One entry as content sees it: where it is, where it links, and its frontmatter.
+- `BundleScope` (interface) — What a bundle viewer declares about the bundle it is rendering.
+- `fromBundlePath` (function) — Bundle-absolute path → filesystem-absolute, or `null` without a root.
+- `toBundlePath` (function) — Filesystem-absolute path → bundle-absolute, or `null` when the path is not inside the bundle.
+- `useBundle` (function) — Read the ambient bundle scope.
+- `useBundleEntries` (function) — Every entry in the surrounding bundle, with bundle-absolute paths and viewer-supplied hrefs — the surface a content component queries instead of useMetadataQuery, whose keys are filesystem-absolute and therefore carry the mount prefix.
+- `useBundleEntry` (function) — One entry's frontmatter by bundle-absolute path, or `undefined`.
+- `useCurrentEntry` (function) — The entry currently being read — `null` outside a bundle, or when the viewer declares no entry (a directory listing, a 404).
+
 ## chromeState
 
 Import: `@immediately-run/sdk/chromeState`
@@ -334,6 +409,12 @@ Import: `@immediately-run/sdk/chromeState`
 - `getChromeState` (function) — Returns the current chrome state.
 - `onChromeStateChange` (function) — Subscribe to chrome-state changes.
 - `useChromeState` (function) — React hook returning the current chrome state, re-rendering on change.
+
+## collectHeadings
+
+Import: `@immediately-run/sdk/collectHeadings`
+
+- `collectHeadings` (function) — Collect an entry's headings from its MDX/Markdown BODY (frontmatter already stripped — `parseFrontmatter(...).body`).
 
 ## components/Admonition
 
@@ -383,20 +464,6 @@ Import: `@immediately-run/sdk/components/WikiLink`
 
 - `WikiLink` (function) — Default MDX `WikiLink` component — the render target for the `[[target]]` / `[[label|target]]` wiki-link syntax.
 
-## corpus
-
-Import: `@immediately-run/sdk/corpus`
-
-- `CorpusContext` (function) — Ambient corpus scope.
-- `CorpusEntry` (interface) — One entry as content sees it: where it is, where it links, and its frontmatter.
-- `CorpusScope` (interface) — What a corpus viewer declares about the corpus it is rendering.
-- `fromCorpusPath` (function) — Corpus-absolute path → filesystem-absolute, or `null` without a root.
-- `toCorpusPath` (function) — Filesystem-absolute path → corpus-absolute, or `null` when the path is not inside the corpus.
-- `useCorpus` (function) — Read the ambient corpus scope.
-- `useCorpusEntries` (function) — Every entry in the surrounding corpus, with corpus-absolute paths and viewer-supplied hrefs — the surface a content component queries instead of useMetadataQuery, whose keys are filesystem-absolute and therefore carry the mount prefix.
-- `useCorpusEntry` (function) — One entry's frontmatter by corpus-absolute path, or `undefined`.
-- `useCurrentEntry` (function) — The entry currently being read — `null` outside a corpus, or when the viewer declares no entry (a directory listing, a 404).
-
 ## debug
 
 Import: `@immediately-run/sdk/debug`
@@ -423,6 +490,12 @@ Import: `@immediately-run/sdk/feed`
 - `feedFetch` (function) — Fire one of your app's configured feeds through the host.
 - `FeedFetchResponse` (interface) — The serialized response from feedFetch — the same shape `hostFetch` returns, because reading a feed should feel like reading a fetch.
 - `FeedParams` (type) — Values a feed template's declared slots accept.
+
+## fence
+
+Import: `@immediately-run/sdk/fence`
+
+- `fenceUntrusted` (function) — Wrap untrusted, corpus-derived content in a labelled fence for a prompt.
 
 ## fs
 
@@ -534,6 +607,22 @@ Import: `@immediately-run/sdk/loading`
 - `SkeletonRow` (function) — A single placeholder bar — compose these into a custom skeleton shape.
 - `Spinner` (function) — An indeterminate spinner for waits where a shaped skeleton doesn't fit (a pending button, a small inline fetch).
 
+## metadataQueryTool
+
+Import: `@immediately-run/sdk/metadataQueryTool`
+
+- `createMetadataQueryTool` (function) — A loop-ready tool over an index the app supplies per call (the metadata store can be rescanned; the executor reads through the getter, so it never goes stale).
+- `executeMetadataQuery` (function) — Execute the tool for an agent loop: validate, query, and return the fenced result (index rows are corpus-derived bytes — R-GA-7 fences them where they enter the loop).
+- `globToRegExp` (function) — `*` within a segment, `**` across segments — the whole vocabulary.
+- `HeadingSummary` (interface) — One heading of an indexed entry — the additive index extension (GROVE_AGENT_SPEC §4: `headings: [{id, text, depth}]`, ids from the mdx-plugins heading-anchor canon).
+- `METADATA_HEADINGS_KEY` (const) — The `headings` index field rides the row itself; `runMetadataQuery` hoists it out of `meta`.
+- `METADATA_QUERY_TOOL_DESCRIPTOR` (const) — Canonical, catalog-shaped descriptor for the tool — the same definition every consumer reads (the app's loop, the MCP bridge, a future external executor), so there is exactly one `metadata:query` in the world.
+- `METADATA_QUERY_TOOL_NAME` (const) — The tool's canonical name — `metadata:query`, catalog-shaped.
+- `MetadataQueryError` (class) — A validation failure — the boundary's only error shape (`invalid-params`, the platform's typed-error vocabulary).
+- `MetadataQueryInput` (interface) — The declarative filter set — the tool's whole argument vocabulary.
+- `MetadataQueryRow` (interface) — One query result row: the path (chroot-relative), the selected frontmatter (or all of it), and the entry's headings when the index carries them.
+- `runMetadataQuery` (function) — Run a metadata query over an index — PURE (G-GA-4: it cannot read a file body).
+
 ## metadataSource
 
 Import: `@immediately-run/sdk/metadataSource`
@@ -608,6 +697,14 @@ Import: `@immediately-run/sdk/protocolStream`
 - `StreamError` (class) — Thrown when a stream ends in an `error` frame; carries the host's `code`.
 - `StreamFrame` (type) — One frame of a host stream: an `event` value, the terminal `done` value, or an `error`.
 - `StreamTransport` (interface) — The send/subscribe transport consumeStream drives (injected so it can be faked in tests).
+
+## recents
+
+Import: `@immediately-run/sdk/recents`
+
+- `clearRecentProjects` (function) — Clear the user's recent-projects record (the surface afterwards is absent, not empty).
+- `listRecentProjects` (function) — The user's recently opened projects, newest-first, or `null` when the record is absent (R-OSO-22: cleared is absent, never an empty list).
+- `RecentProject` (interface) — One recently opened project — repository coordinates, never an in-repo path.
 
 ## runtime
 
