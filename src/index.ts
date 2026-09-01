@@ -56,3 +56,14 @@ export * from './protocolStream';
 export * from './protocolDeadline';
 export * from './sandboxTypes';
 export * from './safeContent';
+// R3-489 (GROVE_AGENT_SPEC): the embedded-agent seam every app shares — the tool-use
+// loop ported from agent-demo (`runAgent` over the host chat slot), the MDX metadata
+// query tool, the headings index collector, the deixis context block, and the fence
+// for corpus-derived bytes entering a loop.
+export * from './agentLoop';
+export * from './agentSteering';
+export * from './agentChatClient';
+export * from './metadataQueryTool';
+export * from './collectHeadings';
+export * from './agentContext';
+export * from './fence';
