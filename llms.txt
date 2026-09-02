@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.58.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.59.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -164,11 +164,25 @@ Import: `@immediately-run/sdk/catalog`
 
 Import: `@immediately-run/sdk/theme`
 
-- `getHostTheme` (function) — Returns the current host theme.
-- `HostTheme` (type) — The host UI theme, mirrored from the immediately.run host window into the sandbox.
-- `onHostThemeChange` (function) — Subscribe to host theme changes.
-- `setHostTheme` (function) — Set the host UI theme — the ELEVATED `theme:set` action (§8.5).
-- `useHostTheme` (function) — React hook returning the current host theme, re-rendering when it changes.
+- `addThemeSource` (function) — Add a theme source — the ELEVATED `theme:sources` `add-source` verb (HOST_THEMING_SPEC §9.3).
+- `getHostTheme` (function) — Returns the current host theme polarity.
+- `getHostThemeSelection` (function) — Returns the current full host theme selection — polarity, active theme key, and resolved mode.
+- `getThemeCatalog` (function) — Returns the current theme catalogue (themes + their modes).
+- `HostTheme` (type) — The host UI theme polarity, mirrored from the immediately.run host window into the sandbox.
+- `HostThemeSelection` (interface) — The full host theme selection (HOST_THEMING_SPEC §2/§9.1): the resolved polarity plus the active theme's registry key and resolved mode.
+- `onHostThemeChange` (function) — Subscribe to host theme polarity changes.
+- `onHostThemeSelectionChange` (function) — Subscribe to full host theme selection changes.
+- `onThemeCatalogChange` (function) — Subscribe to theme catalogue changes.
+- `removeThemeSource` (function) — Remove a theme source — the `theme:sources` `remove-source` verb (§9.3).
+- `setHostTheme` (function) — Set the host UI theme polarity — the LEGACY form of `theme:set` (§9.3).
+- `setHostThemeSelection` (function) — Set the host theme selection — the ELEVATED `theme:set` action (HOST_THEMING_SPEC §9.3).
+- `SetHostThemeSelectionParams` (interface) — The canonical `theme:set` params (HOST_THEMING_SPEC §9.3).
+- `ThemeBundleLocation` (type) — A location the open-bundle picker returned — a repo or a space, with a confined in-bundle path (OPEN_BUNDLE_SPEC §2).
+- `ThemeCatalog` (interface) — The loaded-theme catalogue (HOST_THEMING_SPEC §9.2): every selectable theme, so a theme-aware app can render a picker and match chrome.
+- `ThemeCatalogEntry` (interface) — One entry of the theme catalogue: a selectable theme and its modes.
+- `useHostTheme` (function) — React hook returning the current host theme polarity, re-rendering when it changes.
+- `useHostThemeSelection` (function) — React hook returning the current full host theme selection.
+- `useThemeCatalog` (function) — React hook returning the current theme catalogue.
 
 ## region
 
