@@ -14,7 +14,7 @@ import { mountMatches } from './mountMatch';
 // `Role` is imported (not only re-exported) because `Invite` below still uses it —
 // the invite methods are the same `spaces:` scheme but are NOT yet described, so
 // they remain hand-written. That split is the next migration increment.
-import type { Role, SpaceInfo, Member, GrantRecord } from './generated/spaces';
+import type { Role } from './generated/spaces';
 export type { Role, SpaceInfo, Member, ResolvedUser, GrantRecord } from './generated/spaces';
 export {
   listSpaces,

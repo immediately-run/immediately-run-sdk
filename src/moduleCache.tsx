@@ -1,6 +1,6 @@
 // based on: https://www.bbss.dev/posts/react-learn-suspense/#fetchcache-provider
 
-import { createContext, ReactNode, useCallback, useState } from 'react';
+import { createContext, ReactNode } from 'react';
 import { EvaluationContext } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
 import { COMPILE } from './generated/protocol';
@@ -10,13 +10,14 @@ export class ModuleCache {
   evaluationContextPromises: Record<string, Promise<EvaluationContext>> = {};
 
   constructor() {
-    // reset cache on compile
+    // A compile-time cache reset, deliberately NOT performed. Resetting here
+    // replaced every <Include>'s module-evaluation-context promise with a new
+    // promise for the same value on EVERY compilation, including compilations that
+    // do not affect that module, so the component lost its state for nothing. The
+    // listener stays registered (and the reset stays here, disabled) because the
+    // fix is to scope the reset to the modules a compile actually changed, not to
+    // drop the seam.
     addListener(COMPILE, () => {
-      // NOTE: THIS CAUSES AN UNNECESSARY RELOAD
-      // the <Include> component's module evaluation context promise is replaced
-      // with a new promise for the same value when a compilation occurs which
-      // doesn't affect the current module. Commenting out the following lines
-      // eliminates the unnecessary component state loss.
       // this.nameResolutionPromises = {};
       // this.evaluationContextPromises = {};
     });
