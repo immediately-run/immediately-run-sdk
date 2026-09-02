@@ -14,11 +14,13 @@ import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 
 jest.mock('../routing', () => ({ navigate: jest.fn() }));
+jest.mock('../scrollToId', () => ({ scrollToId: jest.fn(() => true) }));
 
 import { navigate } from '../routing';
+import { scrollToId } from '../scrollToId';
 import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
 import { parseHref } from '../urlUtils';
-import { InternalLink, Link } from './Link';
+import { FragmentLink, InternalLink, Link } from './Link';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,6 +52,7 @@ const click = (el: HTMLElement, init?: MouseEventInit): MouseEvent => {
 
 beforeEach(() => {
   (navigate as jest.Mock).mockClear();
+  (scrollToId as jest.Mock).mockClear();
 });
 
 describe('InternalLink — consumer onClick composes with the router interception', () => {
@@ -102,6 +105,51 @@ describe('InternalLink — consumer onClick composes with the router interceptio
     const ev = click(r.anchor());
     expect(navigate).not.toHaveBeenCalled();
     expect(ev.defaultPrevented).toBe(false);
+    r.unmount();
+  });
+});
+
+// FragmentLink is the OTHER implementation of the same composed-click contract
+// (`useComposedAnchorClick`). It was the untested half: the InternalLink
+// regression above is what a divergence between the two looks like, so both
+// halves are pinned here.
+describe('FragmentLink — consumer onClick composes with the scroll interception', () => {
+  it('a consumer onClick does not replace the interception', () => {
+    const onClick = jest.fn();
+    const r = render(
+      <FragmentLink href="#sec-8-9" onClick={onClick}>
+        8.9
+      </FragmentLink>,
+    );
+    const ev = click(r.anchor());
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(ev.defaultPrevented).toBe(true);
+    expect(scrollToId).toHaveBeenCalledWith('sec-8-9');
+    r.unmount();
+  });
+
+  it('a consumer that calls preventDefault() opts out of scrolling', () => {
+    const r = render(
+      <FragmentLink href="#sec-8-9" onClick={(e) => e.preventDefault()}>
+        8.9
+      </FragmentLink>,
+    );
+    click(r.anchor());
+    expect(scrollToId).not.toHaveBeenCalled();
+    r.unmount();
+  });
+
+  it('a non-fragment href keeps the browser default', () => {
+    const onClick = jest.fn();
+    const r = render(
+      <FragmentLink href="/elsewhere" onClick={onClick}>
+        x
+      </FragmentLink>,
+    );
+    const ev = click(r.anchor());
+    expect(onClick).toHaveBeenCalledTimes(1);
+    expect(ev.defaultPrevented).toBe(false);
+    expect(scrollToId).not.toHaveBeenCalled();
     r.unmount();
   });
 });

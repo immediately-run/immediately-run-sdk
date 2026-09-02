@@ -4,6 +4,31 @@ import { scrollToId } from '../scrollToId';
 import { TinkerableContext } from '../TinkerableContext';
 import { constructOuterUrl, isInternalHref } from '../urlUtils';
 
+/** The click contract shared by this module's link primitives: a consumer-supplied
+ *  `onClick` is COMPOSED with the interception, never substituted for it. The
+ *  consumer handler runs FIRST and calling `preventDefault()` in it opts the click
+ *  out of the interception entirely; otherwise `intercept` runs. Both primitives
+ *  spelled this out inline until they were one named contract, which is how they
+ *  drifted apart once already (see {@link InternalLink}).
+ *
+ *  `intercept` is re-created on every render, so it is deliberately NOT a
+ *  dependency: `interceptDeps` names the values it closes over, and the memo is
+ *  invalidated exactly when those change — the dependency set each call site had
+ *  when it wrote the handler out by hand. */
+const useComposedAnchorClick = (
+  onClick: React.MouseEventHandler<HTMLAnchorElement> | undefined,
+  intercept: (e: React.MouseEvent<HTMLAnchorElement>) => void,
+  interceptDeps: React.DependencyList,
+): React.MouseEventHandler<HTMLAnchorElement> =>
+  useCallback(
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      onClick?.(e);
+      if (e.defaultPrevented) return;
+      intercept(e);
+    },
+    [onClick, ...interceptDeps],
+  );
+
 /** A same-page anchor (`#frag`): scrolls the addressed section into view on click
  *  **without a route change** (MARKDOWN_SYNTAX_SPEC §13.5). The default behavior of a
  *  bare `#`-href is intercepted so the sandbox URL the host owns is never mutated
@@ -15,16 +40,15 @@ export const FragmentLink = ({
   onClick,
   ...props
 }: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
-  const clickHandler = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>) => {
-      onClick?.(e);
-      if (e.defaultPrevented) return;
+  const clickHandler = useComposedAnchorClick(
+    onClick,
+    (e) => {
       if (href && href.startsWith('#')) {
         e.preventDefault();
         scrollToId(href.slice(1));
       }
     },
-    [href, onClick],
+    [href],
   );
   return (
     <a href={href} onClick={clickHandler} {...props}>
@@ -37,7 +61,7 @@ export const FragmentLink = ({
  *  full-page load and routes via {@link navigate}).
  *
  *  A consumer-supplied `onClick` is COMPOSED with the router interception, never
- *  substituted for it (the {@link FragmentLink} contract): it runs first, and
+ *  substituted for it (`useComposedAnchorClick` above): it runs first, and
  *  calling `preventDefault()` opts out of routing. Regression guard: `...props`
  *  used to spread AFTER `onClick={clickHandler}`, so a consumer `onClick` (e.g. a
  *  drawer's close-on-navigate) silently REPLACED the interception — the default
@@ -53,10 +77,9 @@ export const InternalLink = ({
   target,
   ...props
 }: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
-  const clickHandler = useCallback(
-    (e: React.MouseEvent<HTMLAnchorElement>) => {
-      onClick?.(e);
-      if (e.defaultPrevented) return;
+  const clickHandler = useComposedAnchorClick(
+    onClick,
+    (e) => {
       if (!href) return;
       // Open-in-new-tab gestures (and an explicit target) are the browser's.
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
@@ -64,7 +87,7 @@ export const InternalLink = ({
       e.preventDefault();
       navigate(href);
     },
-    [href, onClick, target],
+    [href, target],
   );
   // Spread FIRST so no forwarded prop can clobber the interception or the href.
   return (
