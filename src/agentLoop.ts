@@ -436,6 +436,19 @@ const TRUNCATED_RETRY_TEXT =
   'That turn was cut off at the token limit mid tool-call, so the call was NOT executed. ' +
   'Emit a smaller step: fewer/shorter tool calls, or a smaller file write.';
 
+/** The cumulative cache counters, as the event fields that carry them. A counter no
+ *  provider has reported yet is OMITTED, never zeroed: "the provider reports nothing"
+ *  and "the provider cached nothing" are different facts and the consumer must be able
+ *  to tell them apart. Three event payloads state this rule; this is the one place it
+ *  is spelled out. */
+const cacheCounterFields = (
+  cacheReadTokens: number | undefined,
+  cacheWriteTokens: number | undefined,
+): { cacheReadTokens?: number; cacheWriteTokens?: number } => ({
+  ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
+  ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
+});
+
 /**
  * Drive the agent loop to completion. Returns the full message transcript
  * (including the kickoff user turn). Stops when the model returns without tool
@@ -470,6 +483,22 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
   let cacheReadTokens: number | undefined;
   let cacheWriteTokens: number | undefined;
 
+  // Compact the transcript and, when anything was actually folded in, adopt the
+  // compacted messages, re-estimate the running context, and report it. Returns how
+  // many messages were summarized — 0 means "there was nothing to compact", which is
+  // what the overflow-recovery path below treats as unrecoverable. Both compaction
+  // sites (near-window before a request, and hard-overflow recovery) go through here,
+  // so they cannot drift on what a compaction updates or reports.
+  const compactAndReport = async (): Promise<number> => {
+    const { messages: compacted, summarizedCount } = await compactTranscript(messages, client, keepRecentTurns);
+    if (summarizedCount > 0) {
+      messages = compacted;
+      contextTokens = estimateTokens(messages);
+      events?.onCompact?.({ summarizedCount, ...cacheCounterFields(cacheReadTokens, cacheWriteTokens) });
+    }
+    return summarizedCount;
+  };
+
   for (let turn = 0; turn < maxTurns; turn++) {
     // R3-224 (§3.3): the stop button, checked between turns. Combined with the
     // per-request `signal` below (which aborts the in-flight upstream turn), this
@@ -494,18 +523,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
     }
 
     // Compact BEFORE the next request when the running context is near the window.
-    if (shouldCompact(contextTokens, window, reserveTokens)) {
-      const { messages: compacted, summarizedCount } = await compactTranscript(messages, client, keepRecentTurns);
-      if (summarizedCount > 0) {
-        messages = compacted;
-        contextTokens = estimateTokens(messages);
-        events?.onCompact?.({
-          summarizedCount,
-          ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
-          ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
-        });
-      }
-    }
+    if (shouldCompact(contextTokens, window, reserveTokens)) await compactAndReport();
 
     // The in-flight turn is abortable by EITHER verb: STOP (ends the run) or an
     // `interrupt`-mode STEER (ends the turn, keeps the run). They are composed into
@@ -540,15 +558,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
         // re-send. If there is nothing to compact, or the retry also overflows, the
         // error propagates — a bounded recovery, never a dead loop.
         if (turnAbort.signal.aborted || !isContextOverflow(e)) throw e;
-        const { messages: compacted, summarizedCount } = await compactTranscript(messages, client, keepRecentTurns);
-        if (summarizedCount === 0) throw e;
-        messages = compacted;
-        contextTokens = estimateTokens(messages);
-        events?.onCompact?.({
-          summarizedCount,
-          ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
-          ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
-        });
+        if ((await compactAndReport()) === 0) throw e;
         res = await sendTurn();
       }
     } catch (e) {
@@ -596,8 +606,7 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
       contextTokens,
       window,
       spentTokens,
-      ...(cacheReadTokens !== undefined ? { cacheReadTokens } : {}),
-      ...(cacheWriteTokens !== undefined ? { cacheWriteTokens } : {}),
+      ...cacheCounterFields(cacheReadTokens, cacheWriteTokens),
     });
 
     const assistantText = textOf(res.content);
