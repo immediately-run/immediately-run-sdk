@@ -13,6 +13,12 @@
 
 import { sendMessage as defaultSend } from './sandboxUtils';
 
+// The `{ send, now }` seam and the `realNow` fallback below are mirrored in
+// `markers.ts`, which emits the other half of the boot marks over the same
+// transport. They stay two copies because the only way to share them is a new
+// module-level export, and this package's surface is additive-only: every export
+// is a public subpath API a pinned app can import forever.
+
 /** The app's `reportReady()` state, mirrored by {@link onReady}/{@link getReadyState}. */
 export interface ReadyState {
   /** Whether the app has called `reportReady()`. */

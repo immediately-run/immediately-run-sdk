@@ -1,6 +1,6 @@
 import { ReactNode, use } from 'react';
 import { Admonition } from './Admonition';
-import { FS_PREFIX, LinkSpaceContext, normalizeAbsolute, resolveLinkTarget } from '../linkSpace';
+import { FS_PREFIX, LinkSpaceContext, resolveLinkTarget } from '../linkSpace';
 import { splitHash } from '../urlUtils';
 import { HeadingAnchor } from './HeadingAnchor';
 import { Link } from './Link';

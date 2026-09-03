@@ -12,7 +12,10 @@
 //
 // Mirrors `ready.ts`'s dependency seam so the emission is unit-testable without a
 // host transport, and is idempotent per name so React StrictMode's double-invoke
-// (or any re-commit) can't mint a boot mark twice.
+// (or any re-commit) can't mint a boot mark twice. The seam and the `realNow`
+// fallback are a deliberate second copy, not an oversight: sharing them would mean
+// a new module-level export, and this package's surface is additive-only, so every
+// export is a public subpath API a pinned app can import forever.
 import { sendMessage as defaultSend } from './sandboxUtils';
 import { isIrMarkerName, type IrMarkerName } from './irMarkers';
 

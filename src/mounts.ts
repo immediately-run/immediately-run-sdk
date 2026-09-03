@@ -14,7 +14,7 @@ import { mountMatches } from './mountMatch';
 // `Role` is imported (not only re-exported) because `Invite` below still uses it —
 // the invite methods are the same `spaces:` scheme but are NOT yet described, so
 // they remain hand-written. That split is the next migration increment.
-import type { Role, SpaceInfo, Member, GrantRecord } from './generated/spaces';
+import type { Role } from './generated/spaces';
 export type { Role, SpaceInfo, Member, ResolvedUser, GrantRecord } from './generated/spaces';
 export {
   listSpaces,
@@ -464,6 +464,12 @@ export const requestSpace = requestMount;
  * viewer. Cross-app/cross-project references default to `ro`.
  *
  *   const ref = makeContentRef({ mountId: 'space:ACME', relPath: 'office-seating/desk.mdx' }, { mode: 'ro' });
+ *
+ * The body repeats {@link capFile} rather than calling it, and that is deliberate:
+ * `tasks.ts` registers a host listener at module load, so a VALUE import of it here
+ * would run that side effect in every importer of `mounts` (which is why the
+ * `FileCap` import above is type-only). The shape the two share is the spec's, and
+ * the `FileCap` type is what holds them to it.
  */
 export const makeContentRef = (ref: { mountId: string; relPath: string }, opts: { mode: 'ro' | 'rw' }): FileCap => ({
   $cap: 'file',

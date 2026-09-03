@@ -523,6 +523,66 @@ describe('runAgent — the agentic tool-use loop (§3.3)', () => {
       expect(last.content.some((b) => b.type === 'text' && b.text === 'Done.')).toBe(true);
     });
 
+    // Both compaction sites report through the same `compactAndReport`, so the
+    // payload rule is pinned at BOTH: the cache counters are omitted, not zeroed,
+    // until a provider has actually reported them.
+    it('the pre-request compaction reports summarizedCount and OMITS unreported cache counters', async () => {
+      const onCompact = jest.fn();
+      await runAgent({
+        client: compactionClient(),
+        tools: TOOLS,
+        execute: async () => ({ content: 'ok' }),
+        prompt: 'build a thing',
+        contextWindow: 1000,
+        reserveTokens: 250,
+        keepRecentTurns: 2,
+        events: { onCompact },
+      });
+      const info = onCompact.mock.calls[0][0];
+      expect(Object.keys(info)).toEqual(['summarizedCount']);
+      expect(info.summarizedCount).toBeGreaterThan(0);
+    });
+
+    it('the pre-request compaction carries the run-total cache counters once a provider reports them', async () => {
+      // Same client, but every real turn reports cache usage, so the counters are
+      // defined by the time the loop compacts.
+      let real = 0;
+      const client = {
+        async createMessage(req: { tools: AgentTool[] }): Promise<ModelResponse> {
+          if (req.tools.length === 0) {
+            return { stopReason: 'end_turn', content: [{ type: 'text', text: 'Goal: build.' }] };
+          }
+          real++;
+          if (real <= 3) {
+            return {
+              stopReason: 'tool_use',
+              content: [{ type: 'tool_use', id: `t${real}`, name: 'spaces__share', input: {} }],
+              usage: { inputTokens: 900, outputTokens: 200, cacheReadTokens: 10, cacheWriteTokens: 4 },
+            };
+          }
+          return {
+            stopReason: 'end_turn',
+            content: [{ type: 'text', text: 'Done.' }],
+            usage: { inputTokens: 300, outputTokens: 20 },
+          };
+        },
+      };
+      const onCompact = jest.fn();
+      await runAgent({
+        client,
+        tools: TOOLS,
+        execute: async () => ({ content: 'ok' }),
+        prompt: 'build a thing',
+        contextWindow: 1000,
+        reserveTokens: 250,
+        keepRecentTurns: 2,
+        events: { onCompact },
+      });
+      // Two real turns are billed before the loop first compacts, so the reported
+      // counters are the RUN TOTALS at that moment (2 x 10 read, 2 x 4 write).
+      expect(onCompact.mock.calls[0][0]).toEqual({ summarizedCount: 3, cacheReadTokens: 20, cacheWriteTokens: 8 });
+    });
+
     it('(exit-c) a hard context-overflow error triggers recover-then-retry, not a dead loop', async () => {
       let threw = false;
       const client = {
@@ -544,6 +604,7 @@ describe('runAgent — the agentic tool-use loop (§3.3)', () => {
         { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'h', content: 'x' }] },
         { role: 'assistant', content: [{ type: 'text', text: 'ok' }] },
       ];
+      const onCompact = jest.fn();
       const transcript = await runAgent({
         client,
         tools: TOOLS,
@@ -552,11 +613,16 @@ describe('runAgent — the agentic tool-use loop (§3.3)', () => {
         prompt: 'continue',
         contextWindow: 1000,
         keepRecentTurns: 2,
+        events: { onCompact },
       });
       expect(isContextOverflow(new Error('maximum context length exceeded'))).toBe(true);
       // It recovered: the run ends with the post-recovery assistant turn, not a throw.
       const last = transcript[transcript.length - 1];
       expect(last.content.some((b) => b.type === 'text' && b.text === 'recovered.')).toBe(true);
+      // The recovery compaction is reported with the same payload shape as the
+      // pre-request one — no provider reported cache usage here, so no counters.
+      expect(onCompact).toHaveBeenCalledTimes(1);
+      expect(Object.keys(onCompact.mock.calls[0][0])).toEqual(['summarizedCount']);
     });
   });
 });
