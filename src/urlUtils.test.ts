@@ -1,4 +1,4 @@
-import { constructOuterUrl, splitHash, getOuterHostname, isInternalHref } from './urlUtils';
+import { constructOuterUrl, constructUrl, splitHash, getOuterHostname, isInternalHref, platformHref } from './urlUtils';
 import type { NavigationState } from './TinkerableContext';
 
 const nav: NavigationState = {
@@ -97,5 +97,44 @@ describe('repositoryPrefixURL — a page with a fragment must not break its own 
     expect(isInternalHref(outer, 'https://immediately.run/present/github/acme/blog/main/files/x.mdx', withHash)).toBe(
       true,
     );
+  });
+});
+
+describe('platformHref (R3-529) — a PLATFORM-space path resolves against the OUTER origin', () => {
+  // The producer of outer hrefs feeds the consumer: the fixture is built by the SDK's own
+  // constructUrl from a NavigationState, not hand-typed.
+  const hostOuter = constructUrl('https://immediately.run', {
+    ...nav,
+    sandboxPath: '',
+    hash: '',
+    search: '',
+  });
+
+  it('resolves a root-relative platform path against the outer origin', () => {
+    // The producer's real output: with an empty sandboxPath the segments join ends in `/`.
+    expect(hostOuter).toBe('https://immediately.run/present/github/acme/blog/main/');
+    expect(platformHref(hostOuter, '/home')).toBe('https://immediately.run/home');
+  });
+
+  it('keeps query and fragment of the PATH, not of the current page', () => {
+    expect(platformHref(hostOuter, '/settings/language-model?x=1#sec')).toBe(
+      'https://immediately.run/settings/language-model?x=1#sec',
+    );
+  });
+
+  it('an absolute path is returned as-is', () => {
+    expect(platformHref(hostOuter, 'https://example.com/elsewhere')).toBe('https://example.com/elsewhere');
+  });
+
+  it('an empty outerHref (vite dev — no host) returns the path unchanged', () => {
+    expect(platformHref('', '/home')).toBe('/home');
+  });
+
+  it('an unresolvable pair returns the path rather than throwing', () => {
+    expect(platformHref('not a url at all', '/home')).toBe('/home');
+  });
+
+  it('a non-string path throws', () => {
+    expect(() => platformHref(hostOuter, 42 as unknown as string)).toThrow(TypeError);
   });
 });

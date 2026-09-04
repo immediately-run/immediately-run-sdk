@@ -608,6 +608,8 @@
     "ParseSafeMdastOptions": "interface(sectionIds?)",
     "PendingAttention": "interface(kind, since)",
     "PendingState": "interface(attendance, awaiting?, call, elapsedMs, reason?)",
+    "PlatformLink": "fn(1..1)",
+    "PlatformLinkProps": "interface(children?, path)",
     "ProtocolCancelledError": "class(code)",
     "ProtocolTimeoutError": "class(attendance, bound, call, code, timeoutMs)",
     "ReadyState": "interface(reported, reportedAt?)",
@@ -629,7 +631,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.58.0\")",
+    "SDK_VERSION": "const(\"0.60.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -902,6 +904,7 @@
     "useMetadataStore": "fn(0..0)",
     "useMounts": "fn(0..0)",
     "useObjectUrl": "fn(2..3)",
+    "usePlatformHref": "fn(0..0)",
     "useRegion": "fn(0..0)",
     "useRegionMessage": "fn(0..0)",
     "useRoute": "fn(0..0)",
@@ -1094,6 +1097,11 @@
     "absPath": "fn(1..1)",
     "joinPaths": "fn(0..1)"
   },
+  "platformLink": {
+    "PlatformLink": "fn(1..1)",
+    "PlatformLinkProps": "interface(children?, path)",
+    "usePlatformHref": "fn(0..0)"
+  },
   "protocolDeadline": {
     "ATTENDED_FIRST_FRAME_MS": "const(300000)",
     "ATTENDED_TIMEOUT_MS": "const(600000)",
@@ -1169,7 +1177,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.58.0\")",
+    "SDK_VERSION": "const(\"0.60.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1314,6 +1322,7 @@
     "parseHref": "fn(1..1)",
     "parsePath": "fn(1..1)",
     "parseTarget": "fn(2..2)",
+    "platformHref": "fn(2..2)",
     "repositoryPrefixURL": "fn(2..2)",
     "splitHash": "fn(1..1)",
     "underAppRoot": "fn(1..1)"
@@ -1332,7 +1341,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.58.0\")"
+    "SDK_VERSION": "const(\"0.60.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

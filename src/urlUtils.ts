@@ -129,6 +129,31 @@ export const isInternalHref = (outerHref: string, target: string, navigationStat
   return true;
 };
 
+/**
+ * The href to render for a PLATFORM-space path — `/present/github/…`, `/edit/github/…`,
+ * `/home`, `/settings/language-model`. These are the HOST's URLs, not this app's: inside the
+ * sandboxed frame a root-relative `href` resolves against the SANDBOX origin, which serves no
+ * such page, so the path is resolved against the OUTER origin (`outerHref`) instead. An
+ * absolute `path` (`https://…`) is returned as-is, which `new URL` already does. With no host
+ * (`vite dev`, an empty `outerHref`) or an unresolvable pair, `path` is returned unchanged so
+ * the local dev server keeps working. A non-string `path` throws: a caller passing one has a
+ * bug worth surfacing, not silently rendering.
+ *
+ * Render the result through `PlatformLink` (`./platformLink`), which also carries
+ * `target="_top"` — an anchor inside the sandboxed frame otherwise navigates the frame.
+ */
+export const platformHref = (outerHref: string, path: string): string => {
+  if (typeof path !== 'string') {
+    throw new TypeError(`platformHref: path must be a string, got ${typeof path}`);
+  }
+  if (!outerHref) return path;
+  try {
+    return new URL(path, outerHref).toString();
+  } catch {
+    return path;
+  }
+};
+
 export type PathSegment = {
   name: string;
   pattern: string;

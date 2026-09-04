@@ -68,3 +68,4 @@ export * from './metadataQueryTool';
 export * from './collectHeadings';
 export * from './agentContext';
 export * from './fence';
+export * from './platformLink';
