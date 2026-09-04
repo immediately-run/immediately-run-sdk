@@ -17,11 +17,13 @@ const nav: NavigationState = {
   namespace: 'acme',
   repository: 'todo',
   ref: 'main',
-  sandboxPath: '/present/github/acme/todo/main',
+  sandboxPath: '',
   hash: '',
   search: '',
 };
 
+// The producer feeds the consumer: the outer href a host would hold at the app root is what
+// constructUrl builds from this state — exactly, so a drift in either module fails here.
 const outerHref = constructUrl('https://immediately.run', nav);
 
 const render = (ui: React.ReactElement, state?: Partial<TinkerableState>) => {

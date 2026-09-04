@@ -7,8 +7,8 @@ import { platformHref } from './urlUtils';
 /**
  * Build a PLATFORM-space href (`/present/…`, `/edit/github/…`, `/home`) in the host's URL
  * space, reading `outerHref` from {@link TinkerableContext} the way `useTinkerableLink` does.
- * The returned function is stable per render; its output is `platformHref`'s, so an empty
- * context (no host, `vite dev`) yields the path unchanged.
+ * The returned closure is fresh each render (its output is pure, so identity churn is
+ * harmless); an empty context (no host, `vite dev`) yields the path unchanged.
  *
  * Render the result through {@link PlatformLink}, which also carries `target="_top"` —
  * a root-relative href inside the sandboxed frame would resolve against the SANDBOX origin
