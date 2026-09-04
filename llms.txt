@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.59.1)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.60.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -674,6 +674,14 @@ Import: `@immediately-run/sdk/node_modules/@immediately-run/safe-content/dist/in
 - `splitWikiLinks` (function) — Split a text string on its `[[…]]` runs into ordered text / wiki parts, or `null` when there is no usable wiki-link (so the caller keeps the text node untouched).
 - `WikiLinkToken` (interface)
 - `WikiPart` (type)
+
+## platformLink
+
+Import: `@immediately-run/sdk/platformLink`
+
+- `PlatformLink` (function) — The ONE way to render an anchor to a PLATFORM route: it builds the href with platformHref (resolving against the host's outer origin) and always carries `target="_top"`, because an anchor inside the sandboxed frame otherwise navigates the frame instead of the host document.
+- `PlatformLinkProps` (interface)
+- `usePlatformHref` (function) — Build a PLATFORM-space href (`/present/…`, `/edit/github/…`, `/home`) in the host's URL space, reading `outerHref` from TinkerableContext the way `useTinkerableLink` does.
 
 ## protocolDeadline
 
