@@ -16,16 +16,6 @@ import type { MockHost } from './testing';
 
 type TasksMod = typeof import('./tasks');
 
-const freshRequire = (): { tasks: TasksMod; host: () => MockHost } => {
-  let mod!: TasksMod;
-  let createMockHost!: typeof import('./testing').createMockHost;
-  jest.isolateModules(() => {
-    createMockHost = require('./testing').createMockHost;
-    mod = require('./tasks');
-  });
-  return { tasks: mod, host: () => createMockHost() };
-};
-
 afterEach(() => {
   delete (globalThis as { __immediatelyRun__?: unknown }).__immediatelyRun__;
 });

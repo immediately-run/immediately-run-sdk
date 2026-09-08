@@ -39,13 +39,6 @@ describe('isBrowserGestureClick', () => {
 });
 
 describe('useComposedAnchorClick', () => {
-  const render = (handler: (el: HTMLAnchorElement) => void) => {
-    const container = document.createElement('div');
-    document.body.appendChild(container);
-    const root = createRoot(container);
-    return { container, root, handler };
-  };
-
   const mount = (
     onClick: ((e: ReactMouseEvent<HTMLAnchorElement>) => void) | undefined,
     intercept: (e: ReactMouseEvent<HTMLAnchorElement>) => void,

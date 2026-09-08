@@ -4,7 +4,6 @@
 // configured and when the channel had never answered, so a consuming app could not tell
 // "you need a key" from "ask again in a moment" — and grove's embedded agent rendered a
 // "connect a key" banner at a user who had one.
-import { jest } from '@jest/globals';
 import { createPushChannel, type ChannelTransport } from './pushChannel';
 
 /** Rebuild the channel over a fake transport so pushes can be driven frame by frame. */
