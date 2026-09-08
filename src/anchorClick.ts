@@ -38,6 +38,5 @@ export const useComposedAnchorClick = (
       if (e.defaultPrevented) return;
       intercept(e);
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [onClick, ...interceptDeps],
   );

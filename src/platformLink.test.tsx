@@ -180,8 +180,14 @@ describe('PlatformLink asks the HOST to navigate (R3-568)', () => {
     rendered.unmount();
   });
 
-  // The sandbox is what decides which targets an anchor can reach on its own, so that is
-  // what the interception rule follows — not "the default one".
+  // The sandbox decides which targets an anchor can reach on its own, so that is what the
+  // interception rule follows — not "the default one", and not "whatever the caller chose".
+  //
+  // `components/Link.tsx`'s InternalLink scopes this differently on purpose (it intercepts
+  // `_self` only, handing `_top`/`_parent` to the browser). It is navigating INSIDE the app,
+  // where `_top` genuinely means "leave, and the browser can do that". PlatformLink is
+  // navigating OUT, where `_top` and `_parent` are precisely what the sandbox refuses — so
+  // the same prop is scoped to the opposite set, and that is the correct call in both.
   it.each(['_top', '_self', '_parent'])(
     'intercepts target=%p — it reuses an existing browsing context the anchor cannot reach',
     (target) => {
@@ -229,26 +235,7 @@ describe('PlatformLink asks the HOST to navigate (R3-568)', () => {
     },
   );
 
-  it('honours a caller-supplied target and does not intercept it — one meaning for the prop', () => {
-    // `PlatformLinkProps` permits `target`, and the props are spread onto the anchor, so it
-    // must mean the same thing here as on `components/Link.tsx`'s InternalLink: a caller that
-    // chose its own target meant the browser to handle the click. Before this was decided,
-    // PlatformLink silently overrode the caller's value AND intercepted anyway.
-    const rendered = render(
-      <PlatformLink path="/home" target="_blank">
-        Home
-      </PlatformLink>,
-      { outerHref },
-    );
-    const a = rendered.anchor();
-    expect(a.getAttribute('target')).toBe('_blank');
-    const event = click(a);
-    expect(event.defaultPrevented).toBe(false);
-    expect(sent).toEqual([]);
-    rendered.unmount();
-  });
-
-  it('defaults target to _top, which is the one it intercepts', () => {
+  it('defaults target to _top, one of the three it intercepts', () => {
     const rendered = render(<PlatformLink path="/home">Home</PlatformLink>, { outerHref });
     expect(rendered.anchor().getAttribute('target')).toBe('_top');
     expect(click(rendered.anchor()).defaultPrevented).toBe(true);
