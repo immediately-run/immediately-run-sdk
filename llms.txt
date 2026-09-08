@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.60.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.61.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -246,6 +246,7 @@ Import: `@immediately-run/sdk/llm`
 
 - `chat` (function) — Stream a chat completion from whichever provider the user has configured.
 - `ChatDelta` (type) — One streamed chunk.
+- `ChatExecutor` (type) — How the resolved provider's requests physically leave the browser.
 - `ChatFeatures` (interface) — The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read to branch/degrade (offer image upload only when `vision`).
 - `ChatMessage` (interface) — One message in a ChatRequest: a role plus its content parts.
 - `ChatProviderInfo` (interface) — Info about the provider the host resolved for this app.
@@ -254,9 +255,11 @@ Import: `@immediately-run/sdk/llm`
 - `ChatResult` (interface) — The terminal value of the chat stream.
 - `ChatRole` (type) — Who authored a ChatMessage.
 - `ChatStopReason` (type) — Why generation stopped: natural `end`, `length` cap, a `tool` call, or content `filtered`.
+- `ChatTierModels` (interface) — The concrete model each abstract tier resolves to right now.
 - `ContentPart` (type) — A part of a message.
 - `describeChat` (function) — The provider the host resolved for this app, or `null`.
 - `describeChatState` (function) — The three-state read: `unknown` before the host answers, then configured or not.
+- `normalizeProviderInfo` (function)
 - `onChatProviderChange` (function) — Subscribe to provider changes (key added/revoked, preference changed).
 - `onChatProviderStateChange` (function) — Subscribe to the three-state provider description.
 - `ToolDef` (interface) — A tool the model may call — honored only when `features.tools`.
