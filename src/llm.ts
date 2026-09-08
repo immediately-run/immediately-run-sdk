@@ -153,6 +153,18 @@ export interface ChatFeatures {
   maxContextTokens: number;
 }
 
+/** How the resolved provider's requests physically leave the browser. Read it to
+ *  DESCRIBE routing where that matters to the person ("runs in your browser" vs
+ *  "routed through immediately.run") — never to draw host chrome or a consent prompt,
+ *  which remain the host's (UI_AS_APPS §8 T15). */
+export type ChatExecutor = 'browser-direct' | 'backend-proxied';
+
+/** The concrete model each abstract tier resolves to right now. */
+export interface ChatTierModels {
+  fast: string;
+  smart: string;
+}
+
 /** Info about the provider the host resolved for this app. `null` when no provider
  *  is bound (SP-7: prompt the user to add a key before calling {@link chat}). */
 export interface ChatProviderInfo {
@@ -162,14 +174,29 @@ export interface ChatProviderInfo {
    *  whose `features` are an untrusted claim. */
   hostVouched: boolean;
   features: ChatFeatures;
-  // NOTE (R3-300): `displayName`, `executor` and the resolved per-tier `models` belong
-  // here — an app rendering provider state wants all three. They are NOT added yet,
-  // deliberately: this interface IS the `llm-provider` channel's declared value, so
-  // adding a field is a WIRE change, and the wire is owned by
-  // `@immediately-run/sandbox-protocol` (descriptor edit → publish → pin bump on both
-  // sides). The protocol snapshot gate enforces exactly that, and it is right to. The
-  // enrichment rides R3-307's publish, which already has to touch those descriptors —
-  // one publish for two additions rather than two.
+  /** The provider's human name, e.g. `OpenRouter` — what to put in front of a person.
+   *  Absent on a host that predates the field: fall back to your own copy rather than
+   *  rendering the id, which is a platform identifier and not a name. */
+  displayName?: string;
+  /** How this provider's requests leave the browser. Absent on a host that predates the
+   *  field, which is NOT the same as `browser-direct` — say nothing about routing rather
+   *  than guess at it. */
+  executor?: ChatExecutor;
+  /**
+   * The concrete model each {@link ChatRequest.modelHint} tier resolves to — what a
+   * `smart` request would actually run, after the user's own preference.
+   *
+   * Read-only, and it does not weaken `LLM_AND_AGENTS_SPEC §0`: an app still names no
+   * model, and {@link ChatRequest} still carries only the abstract hint. It is here so an
+   * app can be HONEST about what answered — a transcript that says which model wrote a
+   * reply, a warning that names the model about to be spent on — instead of showing a
+   * blank where the platform knows the answer. The user picks the model in host settings;
+   * the app reports it.
+   *
+   * Absent on a host that predates the field. It changes when the user changes their
+   * preference, so read it through {@link onChatProviderChange} rather than caching it.
+   */
+  models?: ChatTierModels;
 }
 
 /**
@@ -207,7 +234,7 @@ export type ChatProviderState =
 // state rather than widening the channel keeps the wire contract byte-identical, which it
 // is (SDK_PACKAGING_SPEC §9: the wire is additive-only, and this is not a wire change).
 /**
- * Fill in feature flags a host older than the field does not send (R3-335).
+ * Reconcile what the host actually sent with what this SDK declares.
  *
  * `features.reasoning` arrived after `ChatFeatures` shipped, so a host predating it
  * omits the key. `undefined` reads as falsy everywhere EXCEPT a `'reasoning' in
@@ -215,17 +242,44 @@ export type ChatProviderState =
  * branch a year later — so it is normalized here, once, rather than left to every
  * caller. Absent means "does not reason": the fail-closed reading.
  *
+ * `displayName`, `executor` and `models` arrived later still, and for them absence is a
+ * REAL answer an app is told to handle ("this host does not say"), so they are left
+ * absent rather than filled in. What is dropped is a value that is present but not
+ * usable — an `executor` outside the union, a `models` missing a tier — because a
+ * half-answer rendered as fact is worse than the honest blank the app already handles.
+ *
  * Exported for its own test; not part of the public surface (`index.ts` re-exports
  * this module wholesale, so it is reachable — it is documented as internal rather
  * than hidden behind a lie).
  * @internal
  */
+const EXECUTORS: readonly ChatExecutor[] = ['browser-direct', 'backend-proxied'];
+
+const usableModels = (raw: unknown): ChatTierModels | undefined => {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { fast, smart } = raw as Partial<ChatTierModels>;
+  return typeof fast === 'string' && fast && typeof smart === 'string' && smart ? { fast, smart } : undefined;
+};
+
 export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatProviderInfo | null {
   if (!provider) return null;
-  // The wire value is whatever the host sent, which may predate `reasoning` — so read
-  // it as partial rather than trusting the declared type, and decide the flag explicitly.
+  // The three later fields are taken OFF the value and put back only if usable — spreading
+  // and then overwriting would leave an unusable key present, and `key in provider` is
+  // exactly how an app is told to ask whether the host said anything.
+  const { displayName: rawName, executor: rawExecutor, models: rawModels, ...rest } = provider;
+  // The wire value is whatever the host sent, which may predate any of these fields — so
+  // read it as partial rather than trusting the declared type, and decide each explicitly.
   const wire = provider.features as Partial<ChatFeatures>;
-  return { ...provider, features: { ...wire, reasoning: wire.reasoning === true } as ChatFeatures };
+  const executor = EXECUTORS.includes(rawExecutor as ChatExecutor) ? (rawExecutor as ChatExecutor) : undefined;
+  const displayName = typeof rawName === 'string' && rawName ? rawName : undefined;
+  const models = usableModels(rawModels);
+  return {
+    ...rest,
+    features: { ...wire, reasoning: wire.reasoning === true } as ChatFeatures,
+    ...(displayName ? { displayName } : {}),
+    ...(executor ? { executor } : {}),
+    ...(models ? { models } : {}),
+  };
 }
 
 let answered = false;
