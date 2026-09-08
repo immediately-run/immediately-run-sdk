@@ -5,13 +5,7 @@
 //            whole design: there is no fs in scope to spy on — asserted by shape).
 //   G-GA-11 — results are filtered to the read chroot; out-of-chroot rows
 //            (app-source MDX) and app-excluded rows (`_layout.mdx`) never return.
-import {
-  runMetadataQuery,
-  executeMetadataQuery,
-  createMetadataQueryTool,
-  globToRegExp,
-  MetadataQueryError,
-} from './metadataQueryTool';
+import { runMetadataQuery, createMetadataQueryTool, globToRegExp, MetadataQueryError } from './metadataQueryTool';
 
 const CHROOT = '/app/content/';
 
