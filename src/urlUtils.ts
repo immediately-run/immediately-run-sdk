@@ -139,8 +139,12 @@ export const isInternalHref = (outerHref: string, target: string, navigationStat
  * the local dev server keeps working. A non-string `path` throws: a caller passing one has a
  * bug worth surfacing, not silently rendering.
  *
- * Render the result through `PlatformLink` (`./platformLink`), which also carries
- * `target="_top"` — an anchor inside the sandboxed frame otherwise navigates the frame.
+ * Render the result through `PlatformLink` (`./platformLink`), which does the part an href
+ * cannot: it asks the HOST to navigate. An anchor alone does NOT reach a platform route from
+ * inside the app frame — the sandbox withholds top-navigation deliberately, so `target="_top"`
+ * is refused by the browser (R3-568). A consumer that renders its own anchor from this href
+ * gets copy-link and open-in-new-tab, but its plain clicks will do nothing unless it asks the
+ * host too.
  */
 export const platformHref = (outerHref: string, path: string): string => {
   if (typeof path !== 'string') {
