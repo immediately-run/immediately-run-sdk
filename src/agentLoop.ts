@@ -29,6 +29,7 @@
 // the tests rather than left as a convention.
 
 import { anySignal, steerWireText, INTERRUPTED_TURN_TEXT, type SteerMessage, type SteerSource } from './agentSteering';
+import type { PauseSource } from './agentPause';
 
 export type TextBlock = { type: 'text'; text: string };
 /**
@@ -182,6 +183,11 @@ export interface AgentEvents {
    *  true when an `interrupt`-mode steer cut an in-flight model turn short (as
    *  opposed to being applied at an ordinary turn boundary). */
   onSteer?(info: { messages: SteerMessage[]; interrupted: boolean }): void;
+  /** R3-562: the loop reached a turn boundary while its region was hidden and stopped
+   *  advancing. A surface can say "paused — this view is hidden" instead of looking hung. */
+  onPause?(info: { turn: number }): void;
+  /** R3-562: the region was revealed (or the run was stopped) and the loop resumed. */
+  onResume?(info: { turn: number }): void;
 }
 
 export interface RunAgentOptions {
@@ -232,6 +238,17 @@ export interface RunAgentOptions {
    *  keep every `tool_use` paired with a `tool_result`. Absent ⇒ the loop behaves
    *  exactly as before. */
   steering?: SteerSource;
+  /**
+   * R3-562 (AGENT_RUN_DURABILITY_SPEC §7 R-ARD-20a): pause the run while nobody can see
+   * or stop it — the host has hidden this app's region but kept the frame mounted.
+   *
+   * Read at the TURN BOUNDARY only, so every `tool_use` still has its `tool_result` when
+   * the loop stops advancing. Nothing is torn down and nothing is injected: the run
+   * simply does not start its next turn until the region is revealed, then continues
+   * with no repair pass and no resume gate. Omitted ⇒ the loop never pauses, exactly as
+   * before.
+   */
+  pause?: PauseSource;
   events?: AgentEvents;
 }
 
@@ -457,7 +474,7 @@ const cacheCounterFields = (
  * accounts tokens and compacts automatically so it can run long.
  */
 export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
-  const { client, tools, execute, system, prompt, events, signal, steering } = opts;
+  const { client, tools, execute, system, prompt, events, signal, steering, pause } = opts;
   const maxTurns = opts.maxTurns ?? 100;
   const maxNudges = opts.maxNudges ?? 1;
   const maxTruncationRetries = opts.maxTruncationRetries ?? 2;
@@ -504,6 +521,19 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentMessage[]> {
     // per-request `signal` below (which aborts the in-flight upstream turn), this
     // halts "the loop between tool calls AND aborts the in-flight LLM request".
     if (signal?.aborted) break;
+
+    // R3-562 (§7 R-ARD-20a): if the region is hidden, stop HERE — at the boundary, with
+    // the previous turn's tool batch fully paired — and wait for the reveal. Placed after
+    // the stop check and before the steer drain so a correction queued while hidden is
+    // applied on the way back in, as the very next turn, rather than a turn late.
+    if (pause?.isPaused()) {
+      events?.onPause?.({ turn });
+      await pause.whenResumed(signal);
+      events?.onResume?.({ turn });
+      // `whenResumed` also resolves on abort, so a run stopped while hidden lands here
+      // rather than awaiting a reveal that never comes.
+      if (signal?.aborted) break;
+    }
 
     // R3-333: apply any queued corrections at the TURN BOUNDARY, before the next
     // request, so the model's very next turn reflects them. Draining here (rather

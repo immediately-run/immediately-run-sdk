@@ -63,6 +63,7 @@ export * from './safeContent';
 // for corpus-derived bytes entering a loop.
 export * from './agentLoop';
 export * from './agentSteering';
+export * from './agentPause';
 export * from './agentChatClient';
 export * from './metadataQueryTool';
 export * from './collectHeadings';
