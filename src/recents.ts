@@ -33,17 +33,37 @@ interface RecentsReply {
 }
 
 /**
+ * The host wraps every action result as `{ ok: true, data }` and every refusal
+ * as `{ ok: false, code, message }` INSIDE the reply's `result` — refusals
+ * resolve rather than reject, because the sandbox's protocolRequest rejects
+ * with a bare `Error` and would drop the `code` (requestDispatcher's reply
+ * contract). Unwrap here, like every other gated module, so callers see the
+ * coded refusal and never a silent `null`.
+ */
+type RecentsResult = { ok: true; data: RecentsReply } | { ok: false; code: string; message?: string };
+
+/**
  * The one call shape the SDK speaks under `protocol-recents` — read, or clear
  * (same gated surface). A single typed call site keeps the wire contract exact:
  * the snapshot gate reads THIS shape, and the host handler accepts the same.
  */
-const recentsRequest = (params: { clear?: boolean }): Promise<RecentsReply> =>
-  protocolRequest(SCHEMES[PROTOCOL_RECENTS], 'list', [params]) as Promise<RecentsReply>;
+const recentsRequest = async (params: { clear?: boolean }): Promise<RecentsReply> => {
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_RECENTS], 'list', [params])) as RecentsResult;
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? 'recents request failed') as Error & { code: string };
+    err.code = res?.code ?? 'unknown';
+    throw err;
+  }
+  return res.data;
+};
 
 /**
  * The user's recently opened projects, newest-first, or `null` when the record is
  * absent (R-OSO-22: cleared is absent, never an empty list). Refuses for any app
  * that is not the `page.home` binding.
+ *
+ * @throws a coded error — `forbidden` without the grant or the binding, or the
+ *         host's own code; never a silent `null` for a refusal.
  */
 export async function listRecentProjects(): Promise<RecentProject[] | null> {
   const res = await recentsRequest({});
@@ -53,6 +73,9 @@ export async function listRecentProjects(): Promise<RecentProject[] | null> {
 /**
  * Clear the user's recent-projects record (the surface afterwards is absent, not
  * empty). Rides the same page.home binding gate as the read.
+ *
+ * @throws a coded error when the clear is refused — the caller must not treat
+ *         the record as cleared.
  */
 export async function clearRecentProjects(): Promise<void> {
   await recentsRequest({ clear: true });
