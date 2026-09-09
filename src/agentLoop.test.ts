@@ -13,6 +13,19 @@ import {
   type ModelResponse,
 } from './agentLoop';
 import type { AgentTool } from './agentLoop';
+import { PauseController } from './agentPause';
+import { SteerController } from './agentSteering';
+
+/** Let the microtask queue drain — enough for the loop to reach its next await. */
+const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
+/** Poll a predicate across macrotasks. Bounded, so a broken loop fails rather than hangs. */
+const waitFor = async (p: () => boolean, tries = 50): Promise<void> => {
+  for (let i = 0; i < tries; i++) {
+    if (p()) return;
+    await tick();
+  }
+  throw new Error('waitFor: condition never became true');
+};
 
 const TOOLS: AgentTool[] = [
   {
@@ -701,5 +714,171 @@ describe('runAgent — mid-stream abort / stop button (R3-224 §3.3)', () => {
     await expect(
       runAgent({ client, tools: TOOLS, execute: async () => ({ content: 'r' }), prompt: 'go', signal: ctrl.signal }),
     ).rejects.toThrow(/genuine provider failure/);
+  });
+});
+
+// R3-562 (AGENT_RUN_DURABILITY_SPEC §7 R-ARD-20a). The host keeps a hidden region's frame
+// MOUNTED so an activity switch does not reboot it, but hiding stops a frame painting, not
+// executing — so a loop behind `display:none` + `inert` would keep running where §3.3's
+// stop button and tool-call log are unreachable. Kept-mounted, not kept-executing.
+describe('runAgent — pausing while the region is hidden (R-ARD-20a)', () => {
+  it('takes effect at the NEXT TURN BOUNDARY, with every tool_use still paired', async () => {
+    // The property the placement buys, and the reason it is not a race the loop has to
+    // win: pausing mid-batch would leave a `tool_use` block without its `tool_result`,
+    // and the provider rejects the whole conversation on the next request.
+    const pause = new PauseController();
+    const client = scriptedClient([
+      {
+        stopReason: 'tool_use',
+        content: [
+          { type: 'tool_use', id: 't1', name: 'spaces__share', input: {} },
+          { type: 'tool_use', id: 't2', name: 'spaces__share', input: {} },
+        ],
+      },
+      { stopReason: 'end_turn', content: [{ type: 'text', text: 'done' }] },
+    ]);
+
+    let executed = 0;
+    const run = runAgent({
+      client,
+      tools: TOOLS,
+      pause,
+      // The pause arrives in the MIDDLE of the batch — after the first tool, before the
+      // second. It must not stop the batch.
+      execute: async () => {
+        executed++;
+        if (executed === 1) pause.set(true);
+        return { content: 'r' };
+      },
+      prompt: 'go',
+    });
+
+    // Both tools ran despite the mid-batch pause, and the loop is now parked at the
+    // boundary rather than having made a second model call.
+    await waitFor(() => executed === 2);
+    await tick();
+    expect(client.calls).toBe(1);
+
+    pause.set(false);
+    const transcript = await run;
+
+    // Every tool_use has its tool_result, in order — the invariant the boundary protects.
+    const uses = transcript.flatMap((m) => m.content.filter((b) => b.type === 'tool_use').map((b) => b.id));
+    const results = transcript.flatMap((m) =>
+      m.content.filter((b) => b.type === 'tool_result').map((b) => b.tool_use_id),
+    );
+    expect(uses).toEqual(['t1', 't2']);
+    expect(results).toEqual(['t1', 't2']);
+  });
+
+  it('continues on reveal with no repair pass and nothing lost', async () => {
+    const pause = new PauseController();
+    pause.set(true);
+    const client = scriptedClient([{ stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] }]);
+
+    const run = runAgent({ client, tools: TOOLS, pause, execute: async () => ({ content: 'r' }), prompt: 'go' });
+    await tick();
+    expect(client.calls).toBe(0); // parked before the FIRST turn
+
+    pause.set(false);
+    const transcript = await run;
+    expect(client.calls).toBe(1);
+    // The transcript is the ordinary one: no marker, no injected message, no resume gate.
+    // A pause is the host's fact about who is watching, not something the user did.
+    expect(transcript.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('applies a correction queued while hidden as the very next turn, not a turn late', async () => {
+    // The pause block sits BEFORE the steer drain so a correction queued during the
+    // hidden park is drained on the way back in — the model's next turn reflects it.
+    // If the two were swapped, the newly-drained steer would skip a turn (land a turn
+    // late), because the drain would already have run before the park began.
+    const pause = new PauseController();
+    const steering = new SteerController();
+    pause.set(true);
+
+    const firstCallMessages: string[] = [];
+    const client: ModelClient = {
+      async createMessage(req) {
+        if (firstCallMessages.length === 0) {
+          firstCallMessages.push(
+            ...req.messages.flatMap((m) => m.content.map((b) => (b.type === 'text' ? b.text : ''))),
+          );
+        }
+        return { stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] };
+      },
+    };
+
+    const run = runAgent({
+      client,
+      tools: TOOLS,
+      pause,
+      steering,
+      execute: async () => ({ content: 'r' }),
+      prompt: 'go',
+    });
+    await tick();
+    expect(firstCallMessages).toHaveLength(0); // parked before the first turn
+
+    steering.enqueue('do the other thing'); // queued while hidden
+    pause.set(false);
+    await run;
+
+    // The very first model call carries the correction — not the second.
+    expect(firstCallMessages.join('\n')).toContain('do the other thing');
+    expect(steering.hasPending()).toBe(false);
+  });
+
+  it('reports the pause and the resume, so a surface need not look hung', () => {
+    // Without this a hidden-then-revealed conversation is indistinguishable from a stuck
+    // one — which is the observability complaint in a different coat.
+    const pause = new PauseController();
+    const seen: string[] = [];
+    pause.set(true);
+    const client = scriptedClient([{ stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] }]);
+    const run = runAgent({
+      client,
+      tools: TOOLS,
+      pause,
+      execute: async () => ({ content: 'r' }),
+      prompt: 'go',
+      events: { onPause: () => seen.push('pause'), onResume: () => seen.push('resume') },
+    });
+    return tick()
+      .then(() => {
+        expect(seen).toEqual(['pause']);
+        pause.set(false);
+        return run;
+      })
+      .then(() => expect(seen).toEqual(['pause', 'resume']));
+  });
+
+  it('a run STOPPED while paused ends, instead of awaiting a reveal that never comes', async () => {
+    // The leak this closes: `whenResumed` resolving only on reveal would hold the loop —
+    // transcript, tools, client — alive for the life of the tab after a sign-out.
+    const pause = new PauseController();
+    pause.set(true);
+    const stop = new AbortController();
+    const client = scriptedClient([{ stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] }]);
+
+    const run = runAgent({
+      client,
+      tools: TOOLS,
+      pause,
+      signal: stop.signal,
+      execute: async () => ({ content: 'r' }),
+      prompt: 'go',
+    });
+    await tick();
+    stop.abort();
+    const transcript = await run; // resolves — this is the whole assertion
+    expect(client.calls).toBe(0);
+    expect(transcript.map((m) => m.role)).toEqual(['user']);
+  });
+
+  it('does not pause a loop given no pause source (unchanged for every existing caller)', async () => {
+    const client = scriptedClient([{ stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] }]);
+    await runAgent({ client, tools: TOOLS, execute: async () => ({ content: 'r' }), prompt: 'go' });
+    expect(client.calls).toBe(1);
   });
 });
