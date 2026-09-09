@@ -7,7 +7,7 @@
 // tool-call log are unreachable. Everything below is about that one boolean arriving
 // correctly, and about the DEFAULT, which is the only thing an app running outside the
 // workbench will ever see.
-// The import above makes this file a MODULE; without a top-level import/export TypeScript
+// The import makes this file a MODULE; without a top-level import/export TypeScript
 // treats a test as a script and the probe helpers below collide with the identically-shaped
 // ones in `debug.test.ts` (TS2451, tsc only — jest is fine).
 import { REGION_VISIBILITY, REQUEST_REGION_VISIBILITY } from './generated/protocol';
