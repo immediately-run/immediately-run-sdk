@@ -7,10 +7,10 @@
 // tool-call log are unreachable. Everything below is about that one boolean arriving
 // correctly, and about the DEFAULT, which is the only thing an app running outside the
 // workbench will ever see.
-// `export {}` makes this file a MODULE: without it TypeScript treats a test with no
-// top-level import/export as a script, and its `listeners`/`sendMessage` helpers collide
-// with the identically-shaped ones in `debug.test.ts` (TS2451, tsc only — jest is fine).
-export {};
+// The import above makes this file a MODULE; without a top-level import/export TypeScript
+// treats a test as a script and the probe helpers below collide with the identically-shaped
+// ones in `debug.test.ts` (TS2451, tsc only — jest is fine).
+import { REGION_VISIBILITY, REQUEST_REGION_VISIBILITY } from './generated/protocol';
 
 type Listener = (msg: Record<string, unknown>) => void;
 const listeners: Record<string, Listener[]> = {};
@@ -28,7 +28,7 @@ jest.mock('./hostTransport', () => ({
 
 type Mod = typeof import('./region');
 let mod: Mod;
-const push = (msg: Record<string, unknown>) => (listeners['region-visibility'] || []).forEach((l) => l(msg));
+const push = (msg: Record<string, unknown>) => (listeners[REGION_VISIBILITY] || []).forEach((l) => l(msg));
 
 beforeEach(() => {
   jest.resetModules();
@@ -47,7 +47,7 @@ it('assumes VISIBLE until the host says otherwise', () => {
 
 it('polls on first read, so an app that mounted while hidden is not left guessing', () => {
   mod.isRegionHidden();
-  expect(sendMessage).toHaveBeenCalledWith('request-region-visibility');
+  expect(sendMessage).toHaveBeenCalledWith(REQUEST_REGION_VISIBILITY);
 });
 
 it('replays the current value, then fires on every change, and stops on unsubscribe', () => {

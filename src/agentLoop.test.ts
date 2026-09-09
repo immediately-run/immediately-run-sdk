@@ -14,6 +14,7 @@ import {
 } from './agentLoop';
 import type { AgentTool } from './agentLoop';
 import { PauseController } from './agentPause';
+import { SteerController } from './agentSteering';
 
 /** Let the microtask queue drain — enough for the loop to reach its next await. */
 const tick = (): Promise<void> => new Promise((r) => setTimeout(r, 0));
@@ -785,6 +786,47 @@ describe('runAgent — pausing while the region is hidden (R-ARD-20a)', () => {
     // The transcript is the ordinary one: no marker, no injected message, no resume gate.
     // A pause is the host's fact about who is watching, not something the user did.
     expect(transcript.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('applies a correction queued while hidden as the very next turn, not a turn late', async () => {
+    // The pause block sits BEFORE the steer drain so a correction queued during the
+    // hidden park is drained on the way back in — the model's next turn reflects it.
+    // If the two were swapped, the newly-drained steer would skip a turn (land a turn
+    // late), because the drain would already have run before the park began.
+    const pause = new PauseController();
+    const steering = new SteerController();
+    pause.set(true);
+
+    const firstCallMessages: string[] = [];
+    const client: ModelClient = {
+      async createMessage(req) {
+        if (firstCallMessages.length === 0) {
+          firstCallMessages.push(
+            ...req.messages.flatMap((m) => m.content.map((b) => (b.type === 'text' ? b.text : ''))),
+          );
+        }
+        return { stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }] };
+      },
+    };
+
+    const run = runAgent({
+      client,
+      tools: TOOLS,
+      pause,
+      steering,
+      execute: async () => ({ content: 'r' }),
+      prompt: 'go',
+    });
+    await tick();
+    expect(firstCallMessages).toHaveLength(0); // parked before the first turn
+
+    steering.enqueue('do the other thing'); // queued while hidden
+    pause.set(false);
+    await run;
+
+    // The very first model call carries the correction — not the second.
+    expect(firstCallMessages.join('\n')).toContain('do the other thing');
+    expect(steering.hasPending()).toBe(false);
   });
 
   it('reports the pause and the resume, so a surface need not look hung', () => {
