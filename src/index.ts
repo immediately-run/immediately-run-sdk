@@ -41,6 +41,7 @@ export * from './netFetch';
 export * from './feed';
 export * from './secrets';
 export * from './recents'; // R3-485: the gated recent-projects read (page.home)
+export * from './openRepository'; // R3-476: host-mediated open-in-a-new-tab (route:read)
 export * from './llm';
 export * from './diagnostics';
 export * from './vcs';
