@@ -25,7 +25,7 @@
     "useAgentContext": "fn(0..1)"
   },
   "agentLoop": {
-    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
+    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onPause?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onResume?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
     "AgentMessage": "interface(content, role)",
     "AgentRole": "union('assistant'|'user')",
     "AgentTool": "interface(description, input_schema, name)",
@@ -36,7 +36,7 @@
     "ModelResponse": "interface(content, stopReason, usage?)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
     "ReasoningBlock": "object(redactedData?, signature?, text, type)",
-    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
+    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "StallReason": "union('announced-no-call'|'empty')",
     "TextBlock": "object(text, type)",
     "TokenUsage": "interface(cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens)",
@@ -50,6 +50,10 @@
     "isContextOverflow": "fn(1..1)",
     "runAgent": "fn(1..1)",
     "shouldCompact": "fn(3..3)"
+  },
+  "agentPause": {
+    "PauseController": "class(isPaused(0..0), listeners, onChange(1..1), paused, set(1..1), waiters, whenResumed(0..1))",
+    "PauseSource": "interface(isPaused(0..0), whenResumed(0..1))"
   },
   "agentSteering": {
     "INTERRUPTED_TURN_TEXT": "const(\"(turn interrupted by the user)\")",
@@ -377,6 +381,7 @@
     "ProtocolTaskInvokeParams": "interface(params, task)",
     "ProtocolThemeSetParams": "interface(mode?, theme)",
     "REGION_MESSAGE": "const(\"region-message\")",
+    "REGION_VISIBILITY": "const(\"region-visibility\")",
     "REQUEST_API_CATALOG": "const(\"request-api-catalog\")",
     "REQUEST_AUTH_STATE": "const(\"request-auth-state\")",
     "REQUEST_CHROME_STATE": "const(\"request-chrome-state\")",
@@ -389,6 +394,7 @@
     "REQUEST_INVITATIONS": "const(\"request-invitations\")",
     "REQUEST_LLM_PROVIDER": "const(\"request-llm-provider\")",
     "REQUEST_MOUNTS": "const(\"request-mounts\")",
+    "REQUEST_REGION_VISIBILITY": "const(\"request-region-visibility\")",
     "REQUEST_SECRETS_METADATA": "const(\"request-secrets-metadata\")",
     "REQUEST_SESSION_MOUNTS": "const(\"request-session-mounts\")",
     "REQUEST_THEME": "const(\"request-theme\")",
@@ -409,9 +415,9 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
   },
   "generated/spaces": {
     "GetSpaceMembersError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -470,7 +476,7 @@
     "AdmonitionType": "union('caution'|'important'|'note'|'tip'|'warning')",
     "AgentContextAppFields": "interface(entryPath?, entryTitle?, heading?, selection?)",
     "AgentContextBlock": "interface(entryPath?, entryTitle?, heading?, mounts, repository, revision, selection?, signedIn?, sourceShared, sourceSharedBasis)",
-    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
+    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onPause?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onResume?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
     "AgentMessage": "interface(content, role)",
     "AgentRole": "union('assistant'|'user')",
     "AgentTool": "interface(description, input_schema, name)",
@@ -612,6 +618,8 @@
     "Orientation": "union('landscape'|'portrait')",
     "PENDING_NOTICE_MS": "const(3000)",
     "ParseSafeMdastOptions": "interface(sectionIds?)",
+    "PauseController": "class(isPaused(0..0), listeners, onChange(1..1), paused, set(1..1), waiters, whenResumed(0..1))",
+    "PauseSource": "interface(isPaused(0..0), whenResumed(0..1))",
     "PendingAttention": "interface(kind, since)",
     "PendingState": "interface(attendance, awaiting?, call, elapsedMs, reason?)",
     "PlatformLink": "fn(1..1)",
@@ -635,9 +643,9 @@
     "RouteProps": "object(component?, element?, name?, path)",
     "Router": "fn(0..0)",
     "Routes": "fn(1..1)",
-    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
+    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.63.0\")",
+    "SDK_VERSION": "const(\"0.64.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -785,6 +793,7 @@
     "isContextOverflow": "fn(1..1)",
     "isDebugEnabled": "fn(0..0)",
     "isIrMarkerName": "fn(1..1)",
+    "isRegionHidden": "fn(0..0)",
     "launch": "fn(2..2)",
     "listAllSpaces": "fn(0..0)",
     "listGrants": "fn(0..0)",
@@ -819,6 +828,7 @@
     "onMountsChange": "fn(1..1)",
     "onReady": "fn(1..1)",
     "onRegionMessage": "fn(1..1)",
+    "onRegionVisibilityChange": "fn(1..1)",
     "onSecretsChange": "fn(1..1)",
     "onSessionMountsChange": "fn(1..1)",
     "onThemeCatalogChange": "fn(1..1)",
@@ -912,6 +922,7 @@
     "useObjectUrl": "fn(2..3)",
     "usePlatformHref": "fn(0..0)",
     "useRegion": "fn(0..0)",
+    "useRegionHidden": "fn(0..0)",
     "useRegionMessage": "fn(0..0)",
     "useRoute": "fn(0..0)",
     "useRouteParams": "fn(0..0)",
@@ -1164,7 +1175,10 @@
   },
   "region": {
     "getRegion": "fn(0..0)",
-    "useRegion": "fn(0..0)"
+    "isRegionHidden": "fn(0..0)",
+    "onRegionVisibilityChange": "fn(1..1)",
+    "useRegion": "fn(0..0)",
+    "useRegionHidden": "fn(0..0)"
   },
   "routeMatch": {
     "compileTemplate": "fn(1..1)",
@@ -1185,7 +1199,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.63.0\")",
+    "SDK_VERSION": "const(\"0.64.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1349,7 +1363,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.63.0\")"
+    "SDK_VERSION": "const(\"0.64.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
