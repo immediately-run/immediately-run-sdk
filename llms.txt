@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.61.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.64.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -189,7 +189,10 @@ Import: `@immediately-run/sdk/theme`
 Import: `@immediately-run/sdk/region`
 
 - `getRegion` (function) — The chrome region this app instance is mounted in (e.g.
+- `isRegionHidden` (function) — Whether the host has hidden this app's region — it is still mounted and running, but off screen and `inert`, so the user can neither see it nor interact with it.
+- `onRegionVisibilityChange` (function) — Subscribe to this region's visibility.
 - `useRegion` (function) — React hook form of getRegion.
+- `useRegionHidden` (function) — React hook form of isRegionHidden, re-rendering on change.
 
 ## formFactor
 
@@ -377,6 +380,13 @@ Import: `@immediately-run/sdk/agentLoop`
 - `ToolOutcome` (interface) — What one tool call produced.
 - `ToolResultBlock` (type)
 - `ToolUseBlock` (type)
+
+## agentPause
+
+Import: `@immediately-run/sdk/agentPause`
+
+- `PauseController` (class) — The live pause state.
+- `PauseSource` (interface) — What the loop needs from a pause source (so it can be faked in tests).
 
 ## agentSteering
 
@@ -678,11 +688,20 @@ Import: `@immediately-run/sdk/node_modules/@immediately-run/safe-content/dist/in
 - `WikiLinkToken` (interface)
 - `WikiPart` (type)
 
+## openRepository
+
+Import: `@immediately-run/sdk/openRepository`
+
+- `openRepository` (function) — Ask the host to open a repository in a new browser tab.
+- `OpenRepositoryError` (interface)
+- `OpenRepositoryErrorCode` (type) — Why the host refused to open a tab.
+- `RepositoryCoordinates` (interface) — Where a repository lives.
+
 ## platformLink
 
 Import: `@immediately-run/sdk/platformLink`
 
-- `PlatformLink` (function) — The ONE way to render an anchor to a PLATFORM route: it builds the href with platformHref (resolving against the host's outer origin) and always carries `target="_top"`, because an anchor inside the sandboxed frame otherwise navigates the frame instead of the host document.
+- `PlatformLink` (function) — The ONE way to render an anchor to a PLATFORM route.
 - `PlatformLinkProps` (interface)
 - `usePlatformHref` (function) — Build a PLATFORM-space href (`/present/…`, `/edit/github/…`, `/home`) in the host's URL space, reading `outerHref` from TinkerableContext the way `useTinkerableLink` does.
 
