@@ -352,6 +352,7 @@
     "PROTOCOL_IPC": "const(\"protocol-ipc\")",
     "PROTOCOL_LAUNCH": "const(\"protocol-launch\")",
     "PROTOCOL_LLM": "const(\"protocol-llm\")",
+    "PROTOCOL_OPENREPO": "const(\"protocol-openrepo\")",
     "PROTOCOL_RECENTS": "const(\"protocol-recents\")",
     "PROTOCOL_SECRETS": "const(\"protocol-secrets\")",
     "PROTOCOL_SETTINGS": "const(\"protocol-settings\")",
@@ -370,6 +371,7 @@
     "ProtocolIpcRevealParams": "interface(to)",
     "ProtocolLaunchCreateParams": "interface(opts, target)",
     "ProtocolLlmChatParams": "interface(maxTokens?, messages, modelHint?, responseFormat?, tools?)",
+    "ProtocolOpenrepoOpenParams": "interface(namespace, provider, repository)",
     "ProtocolRecentsListParams": "interface(clear?)",
     "ProtocolSpacesInviteParams": "interface(login, role, spaceId)",
     "ProtocolSpacesListParams": "interface(app?)",
@@ -415,9 +417,9 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
   },
   "generated/spaces": {
     "GetSpaceMembersError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -615,6 +617,8 @@
     "NO_HOST_ATTENTION": "const(HostAttention)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
     "ObjectUrlState": "interface(error, loading, url)",
+    "OpenRepositoryError": "interface(code)",
+    "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
     "Orientation": "union('landscape'|'portrait')",
     "PENDING_NOTICE_MS": "const(3000)",
     "ParseSafeMdastOptions": "interface(sectionIds?)",
@@ -635,6 +639,7 @@
     "RenderExportedComponentContext": "const(react.Context<RenderFileContextType | null>)",
     "RenderFileContextType": "object(evaluationContext)",
     "RenderMdastOptions": "interface(components?, resolveWikiLink?(1..1))",
+    "RepositoryCoordinates": "interface(namespace, provider, repository)",
     "RequestEditError": "interface(code)",
     "ResolvedLinkTarget": "union({path, state}|{state})",
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
@@ -837,6 +842,7 @@
     "openAppFs": "fn(0..0)",
     "openFs": "fn(1..1)",
     "openInEditor": "fn(1..3)",
+    "openRepository": "fn(1..1)",
     "openSettings": "fn(0..0)",
     "openSettingsOf": "fn(1..1)",
     "parseSafeMdast": "fn(1..2)",
@@ -1112,6 +1118,12 @@
     "onFsChange": "fn(1..1)",
     "useFsChange": "fn(0..0)"
   },
+  "openRepository": {
+    "OpenRepositoryError": "interface(code)",
+    "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
+    "RepositoryCoordinates": "interface(namespace, provider, repository)",
+    "openRepository": "fn(1..1)"
+  },
   "pathUtils": {
     "absPath": "fn(1..1)",
     "joinPaths": "fn(0..1)"
@@ -1146,7 +1158,7 @@
     "timeoutFor": "fn(2..2)"
   },
   "protocolSchemes": {
-    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
+    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-openrepo\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
   },
   "protocolStream": {
     "StreamError": "class(code)",
