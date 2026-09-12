@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.64.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.64.1)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -113,6 +113,7 @@ Import: `@immediately-run/sdk/mounts`
 - `onInvitesChange` (function) — Subscribe to invitation-inbox changes (arrived / accepted / declined).
 - `onMountsChange` (function) — Subscribe to mount changes.
 - `onSessionMountsChange` (function) — Subscribe to Session-lens mount changes.
+- `openLocalStore` (function) — Mount this app's **device-local** store — a private, per-device, IndexedDB-backed filesystem, NOT synced (unlike openSettings).
 - `openSettings` (function) — Mount this app's per-user settings — a private `~/.config`-style filesystem, auto-provisioned for the signed-in user and isolated to THIS app (the host chroots it; a different app can never name it).
 - `openSettingsOf` (function) — Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file commander" surface.
 - `RemovedMount` (interface) — A descriptor delivered as REMOVED to a mounts-change listener: the mount that went away, plus the `reason` it did.
