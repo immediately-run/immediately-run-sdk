@@ -34,6 +34,7 @@ import {
   INVITATIONS,
   MOUNT_ADD,
   MOUNT_REMOVE,
+  PROTOCOL_LOCALSTORE,
   PROTOCOL_SETTINGS,
   PROTOCOL_SPACES,
   REQUEST_INVITATIONS,
@@ -613,6 +614,53 @@ export const openSettingsOf = async (appKey: string): Promise<SandboxMount> => {
  * `forbidden` unless this app holds the first-party-only `settings:all`.
  */
 export const listSettingsApps = (): Promise<string[]> => settingsRequest<string[]>('list');
+
+// ---------------------------------------------------------------------------
+// Device-local store — the per-app, device-local, IndexedDB-backed filesystem
+// (FILESYSTEM_SPEC §2.8). The distinction from `settings:` is durability, stated
+// to the app via the mount's `type: 'localstore'`, never a guess.
+// ---------------------------------------------------------------------------
+
+// Issue a `protocol-localstore` request, unwrapping {ok,data} and throwing a typed
+// SpaceError on failure (mirrors `settingsRequest`).
+const localStoreRequest = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_LOCALSTORE], method, [query])) as SpaceResult;
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? 'localstore request failed') as SpaceError;
+    err.code = (res?.code as SpaceError['code']) ?? 'unknown';
+    throw err;
+  }
+  return res.data as T;
+};
+
+/**
+ * Mount this app's **device-local** store — a private, per-device, IndexedDB-backed
+ * filesystem, NOT synced (unlike {@link openSettings}). The cheap, throwaway-able
+ * home for a cache, a draft, a scroll position, a checkpoint; the wrong home for
+ * anything the user would mourn (the browser may evict it under storage pressure,
+ * and the docs say so). Read/write it through `fs` at the returned mount's `path`,
+ * with `type: 'localstore'`.
+ *
+ * Isolation is the store itself, keyed on the app's `appKey` — an app can never
+ * name another app's local store, there is deliberately no `openOf` sibling, and
+ * nothing written here is synced. Capability: baseline `storage:local` (no consent
+ * prompt). Rejects with a {@link SpaceError}: `auth-required` when signed out,
+ * `forbidden` when the capability is absent. A quota/external failure surfaces the
+ * underlying error unchanged, so an app can tell "the browser evicted me" from
+ * "I never wrote anything".
+ */
+export const openLocalStore = async (): Promise<SandboxMount> => {
+  const mount = await localStoreRequest<SandboxMount>('open');
+  // The host has already accepted the request and announced the mount, so this
+  // normally resolves on the initial replay. Bounded anyway, for the same reason
+  // `openSettings()` bounds its wait: an unbounded wait turns any delivery failure
+  // into a promise that never settles, and the caller reached for durable state.
+  return waitForMount({ id: mount.id ?? mount.path }, LOCALSTORE_MOUNT_TIMEOUT_MS);
+};
+
+/** How long `openLocalStore()` waits for the host to deliver the mount it just
+ *  agreed to create. Generous — this is a hang-breaker, not a latency budget. */
+const LOCALSTORE_MOUNT_TIMEOUT_MS = 15_000;
 
 /** Create a brand-new, empty platform-hosted space, granted to THIS app in full
  *  (read-write) — the user's create consent is consent for the app to create
