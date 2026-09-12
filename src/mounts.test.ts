@@ -34,7 +34,7 @@ describe('openLocalStore over the transport (FILESYSTEM_SPEC sec 2.8)', () => {
     host.emit({ type: 'mount-add', mount: { id: 'localstore:abc', path: '/local/abc', type: 'localstore' } });
 
     expect(await pending).toMatchObject({ id: 'localstore:abc', path: '/local/abc', type: 'localstore' });
-    expect(host.protocolCalls).toEqual([{ protocol: 'localstore', method: 'open', params: [] }]);
+    expect(host.protocolCalls).toEqual([{ protocol: 'localstore', method: 'open', params: [{}] }]);
   });
 
   it('surfaces a typed failure rather than hanging (auth-required)', async () => {

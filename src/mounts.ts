@@ -623,8 +623,8 @@ export const listSettingsApps = (): Promise<string[]> => settingsRequest<string[
 
 // Issue a `protocol-localstore` request, unwrapping {ok,data} and throwing a typed
 // SpaceError on failure (mirrors `settingsRequest`).
-const localStoreRequest = async <T = unknown>(method: string): Promise<T> => {
-  const res = (await protocolRequest(SCHEMES[PROTOCOL_LOCALSTORE], method, [])) as SpaceResult;
+const localStoreRequest = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_LOCALSTORE], method, [query])) as SpaceResult;
   if (!res || res.ok !== true) {
     const err = new Error(res?.message ?? 'localstore request failed') as SpaceError;
     err.code = (res?.code as SpaceError['code']) ?? 'unknown';

@@ -25,7 +25,7 @@
     "useAgentContext": "fn(0..1)"
   },
   "agentLoop": {
-    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
+    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onPause?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onResume?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
     "AgentMessage": "interface(content, role)",
     "AgentRole": "union('assistant'|'user')",
     "AgentTool": "interface(description, input_schema, name)",
@@ -36,7 +36,7 @@
     "ModelResponse": "interface(content, stopReason, usage?)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
     "ReasoningBlock": "object(redactedData?, signature?, text, type)",
-    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
+    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "StallReason": "union('announced-no-call'|'empty')",
     "TextBlock": "object(text, type)",
     "TokenUsage": "interface(cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens)",
@@ -50,6 +50,10 @@
     "isContextOverflow": "fn(1..1)",
     "runAgent": "fn(1..1)",
     "shouldCompact": "fn(3..3)"
+  },
+  "agentPause": {
+    "PauseController": "class(isPaused(0..0), listeners, onChange(1..1), paused, set(1..1), waiters, whenResumed(0..1))",
+    "PauseSource": "interface(isPaused(0..0), whenResumed(0..1))"
   },
   "agentSteering": {
     "INTERRUPTED_TURN_TEXT": "const(\"(turn interrupted by the user)\")",
@@ -475,7 +479,7 @@
     "AdmonitionType": "union('caution'|'important'|'note'|'tip'|'warning')",
     "AgentContextAppFields": "interface(entryPath?, entryTitle?, heading?, selection?)",
     "AgentContextBlock": "interface(entryPath?, entryTitle?, heading?, mounts, repository, revision, selection?, signedIn?, sourceShared, sourceSharedBasis)",
-    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
+    "AgentEvents": "interface(onAssistantDelta?(1..1), onAssistantText?(1..1), onBudgetStop?(1..1), onCompact?(1..1), onNudge?(1..1), onPause?(1..1), onReasoning?(1..1), onReasoningDelta?(1..1), onResume?(1..1), onSteer?(1..1), onToolResult?(2..2), onToolUse?(2..2), onTruncatedToolCall?(0..0), onUsage?(1..1))",
     "AgentMessage": "interface(content, role)",
     "AgentRole": "union('assistant'|'user')",
     "AgentTool": "interface(description, input_schema, name)",
@@ -614,9 +618,13 @@
     "NO_HOST_ATTENTION": "const(HostAttention)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
     "ObjectUrlState": "interface(error, loading, url)",
+    "OpenRepositoryError": "interface(code)",
+    "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
     "Orientation": "union('landscape'|'portrait')",
     "PENDING_NOTICE_MS": "const(3000)",
     "ParseSafeMdastOptions": "interface(sectionIds?)",
+    "PauseController": "class(isPaused(0..0), listeners, onChange(1..1), paused, set(1..1), waiters, whenResumed(0..1))",
+    "PauseSource": "interface(isPaused(0..0), whenResumed(0..1))",
     "PendingAttention": "interface(kind, since)",
     "PendingState": "interface(attendance, awaiting?, call, elapsedMs, reason?)",
     "PlatformLink": "fn(1..1)",
@@ -632,6 +640,7 @@
     "RenderExportedComponentContext": "const(react.Context<RenderFileContextType | null>)",
     "RenderFileContextType": "object(evaluationContext)",
     "RenderMdastOptions": "interface(components?, resolveWikiLink?(1..1))",
+    "RepositoryCoordinates": "interface(namespace, provider, repository)",
     "RequestEditError": "interface(code)",
     "ResolvedLinkTarget": "union({path, state}|{state})",
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
@@ -640,7 +649,7 @@
     "RouteProps": "object(component?, element?, name?, path)",
     "Router": "fn(0..0)",
     "Routes": "fn(1..1)",
-    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
+    "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
     "SDK_VERSION": "const(\"0.64.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
@@ -790,6 +799,7 @@
     "isContextOverflow": "fn(1..1)",
     "isDebugEnabled": "fn(0..0)",
     "isIrMarkerName": "fn(1..1)",
+    "isRegionHidden": "fn(0..0)",
     "launch": "fn(2..2)",
     "listAllSpaces": "fn(0..0)",
     "listGrants": "fn(0..0)",
@@ -824,6 +834,7 @@
     "onMountsChange": "fn(1..1)",
     "onReady": "fn(1..1)",
     "onRegionMessage": "fn(1..1)",
+    "onRegionVisibilityChange": "fn(1..1)",
     "onSecretsChange": "fn(1..1)",
     "onSessionMountsChange": "fn(1..1)",
     "onThemeCatalogChange": "fn(1..1)",
@@ -833,6 +844,7 @@
     "openFs": "fn(1..1)",
     "openInEditor": "fn(1..3)",
     "openLocalStore": "fn(0..0)",
+    "openRepository": "fn(1..1)",
     "openSettings": "fn(0..0)",
     "openSettingsOf": "fn(1..1)",
     "parseSafeMdast": "fn(1..2)",
@@ -918,6 +930,7 @@
     "useObjectUrl": "fn(2..3)",
     "usePlatformHref": "fn(0..0)",
     "useRegion": "fn(0..0)",
+    "useRegionHidden": "fn(0..0)",
     "useRegionMessage": "fn(0..0)",
     "useRoute": "fn(0..0)",
     "useRouteParams": "fn(0..0)",
@@ -1108,6 +1121,12 @@
     "onFsChange": "fn(1..1)",
     "useFsChange": "fn(0..0)"
   },
+  "openRepository": {
+    "OpenRepositoryError": "interface(code)",
+    "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
+    "RepositoryCoordinates": "interface(namespace, provider, repository)",
+    "openRepository": "fn(1..1)"
+  },
   "pathUtils": {
     "absPath": "fn(1..1)",
     "joinPaths": "fn(0..1)"
@@ -1171,7 +1190,10 @@
   },
   "region": {
     "getRegion": "fn(0..0)",
-    "useRegion": "fn(0..0)"
+    "isRegionHidden": "fn(0..0)",
+    "onRegionVisibilityChange": "fn(1..1)",
+    "useRegion": "fn(0..0)",
+    "useRegionHidden": "fn(0..0)"
   },
   "routeMatch": {
     "compileTemplate": "fn(1..1)",
