@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.64.1)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.65.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -486,6 +486,13 @@ Import: `@immediately-run/sdk/components/SafeInclude`
 
 - `SafeInclude` (function) — Render another file's Markdown/MDX **as data** — no author JavaScript executes.
 
+## components/ScrollRestoration
+
+Import: `@immediately-run/sdk/components/ScrollRestoration`
+
+- `ScrollRestoration` (function) — Null-rendering.
+- `ScrollRestorationProps` (interface)
+
 ## components/WikiLink
 
 Import: `@immediately-run/sdk/components/WikiLink`
@@ -510,6 +517,21 @@ Import: `@immediately-run/sdk/editorContext`
 - `getEditorContext` (function) — Returns the current editor context (dirty set).
 - `onEditorContextChange` (function) — Subscribe to editor-context changes.
 - `useEditorContext` (function) — React hook returning the current editor context (dirty set), re-rendering when it changes.
+
+## entryState
+
+Import: `@immediately-run/sdk/entryState`
+
+- `ArrivedNavigation` (interface)
+- `ENTRY_STATE_MAX_BYTES` (const) — Serialized cap for the whole scratch.
+- `getArrivedNavigation` (function) — The current arrival, as one stable object so `useSyncExternalStore` can compare by identity.
+- `NavigationDirection` (type) — How the browser reached the current entry.
+- `receiveNavigation` (function) — Record what the host said about the entry just arrived at.
+- `registerEntryStateCollector` (function) — Register a callback asked for its value at navigation time.
+- `resetEntryState` (function) — Test seam: forget every collector, queued value and arrival.
+- `saveEntryState` (function) — Queue a value for the entry being left.
+- `subscribeNavigation` (function)
+- `takeQueuedEntryState` (function) — Gather the scratch for the entry being left and clear the queue.
 
 ## feed
 
@@ -774,6 +796,16 @@ Import: `@immediately-run/sdk/sandboxTypes`
 - `MetadataQueryResult` (type) — The result of running a metadata query: the matched entries (path + frontmatter), or the error a throwing query produced.
 - `ModuleExports` (type) — The exports object of an evaluated sandbox module (untyped — shape depends on the module).
 
+## scrollRestore
+
+Import: `@immediately-run/sdk/scrollRestore`
+
+- `nextRestoreAction` (function) — The one decision, given a sample.
+- `RESTORE_DEADLINE_MS` (const) — How long to keep waiting for the content to grow before giving up.
+- `RESTORE_EPSILON_PX` (const) — How close counts as arrived.
+- `RestoreAction` (type) — What the caller should do with this sample.
+- `RestoreSample` (interface) — A geometry sample of the scroller, plus how the attempt is going.
+
 ## sourceCache
 
 Import: `@immediately-run/sdk/sourceCache`
@@ -781,6 +813,13 @@ Import: `@immediately-run/sdk/sourceCache`
 - `createSourceCache` (function)
 - `SourceCache` (interface)
 - `SourceReader` (type)
+
+## useEntryState
+
+Import: `@immediately-run/sdk/useEntryState`
+
+- `useEntryState` (function) — Read the value this app left on the current history entry, and queue the value to leave on the entry the next navigation departs from.
+- `useNavigationDirection` (function) — How the browser reached the page being rendered: `push` for an ordinary navigation, `back`/`forward` for a history traversal.
 
 ## vcs
 
