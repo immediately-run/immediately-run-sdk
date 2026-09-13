@@ -197,6 +197,10 @@
     "ScrollAfterNavigation": "fn(0..0)",
     "useScrollAfterNavigation": "fn(0..0)"
   },
+  "components/ScrollRestoration": {
+    "ScrollRestoration": "fn(0..1)",
+    "ScrollRestorationProps": "interface(scroller?)"
+  },
   "components/WikiLink": {
     "WikiLink": "fn(1..1)"
   },
@@ -285,6 +289,18 @@
     "getEditorContext": "fn(0..0)",
     "onEditorContextChange": "fn(1..1)",
     "useEditorContext": "fn(0..0)"
+  },
+  "entryState": {
+    "ArrivedNavigation": "interface(direction, state)",
+    "ENTRY_STATE_MAX_BYTES": "const(4096)",
+    "NavigationDirection": "union('back'|'forward'|'push')",
+    "getArrivedNavigation": "fn(0..0)",
+    "receiveNavigation": "fn(1..1)",
+    "registerEntryStateCollector": "fn(2..2)",
+    "resetEntryState": "fn(0..0)",
+    "saveEntryState": "fn(2..2)",
+    "subscribeNavigation": "fn(1..1)",
+    "takeQueuedEntryState": "fn(0..0)"
   },
   "feed": {
     "FeedFetchResponse": "interface(body, headers, status, statusText, truncated)",
@@ -487,6 +503,7 @@
     "AnalyticsPropValue": "union(boolean|number|string)",
     "ApiMethod": "interface(capability, name, paramsSchema?, stream?)",
     "AppliedRoutingRule": "object(pathParameters?, routingRule)",
+    "ArrivedNavigation": "interface(direction, state)",
     "Attendance": "union('attended'|'unattended')",
     "AuthState": "interface(status, user)",
     "AuthStatus": "union('signed-in'|'signed-out'|'unknown')",
@@ -534,6 +551,7 @@
     "DirEntry": "interface(kind, name)",
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
     "DroppedItem": "interface(from, item, position)",
+    "ENTRY_STATE_MAX_BYTES": "const(4096)",
     "EditTarget": "interface(file?, path?)",
     "EditorContext": "interface(activeFile, dirtyPaths, openFiles, viewedFile)",
     "EditorOpenError": "interface(code)",
@@ -617,6 +635,7 @@
     "NETWORK_TIMEOUT_MS": "const(120000)",
     "NO_HOST_ATTENTION": "const(HostAttention)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
+    "NavigationDirection": "union('back'|'forward'|'push')",
     "ObjectUrlState": "interface(error, loading, url)",
     "OpenRepositoryError": "interface(code)",
     "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
@@ -631,6 +650,8 @@
     "PlatformLinkProps": "interface(children?, path)",
     "ProtocolCancelledError": "class(code)",
     "ProtocolTimeoutError": "class(attendance, bound, call, code, timeoutMs)",
+    "RESTORE_DEADLINE_MS": "const(900)",
+    "RESTORE_EPSILON_PX": "const(2)",
     "ReadyState": "interface(reported, reportedAt?)",
     "ReasoningBlock": "object(redactedData?, signature?, text, type)",
     "RecentProject": "interface(namespace, provider, ref, repository, ts)",
@@ -644,6 +665,8 @@
     "RequestEditError": "interface(code)",
     "ResolvedLinkTarget": "union({path, state}|{state})",
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
+    "RestoreAction": "union('abandon'|'apply'|'wait')",
+    "RestoreSample": "interface(clientHeight, current, elapsedMs, scrollHeight, target, userScrolled)",
     "Role": "union('owner'|'reader'|'writer')",
     "Route": "fn(1..1)",
     "RouteProps": "object(component?, element?, name?, path)",
@@ -651,7 +674,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.64.0\")",
+    "SDK_VERSION": "const(\"0.64.1\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -664,6 +687,8 @@
     "SandboxFsPort": "interface(promises?, readFile?)",
     "SandboxMount": "interface(id?, mode?, name?, path, rules?, type)",
     "SandboxUser": "interface(login)",
+    "ScrollRestoration": "fn(0..1)",
+    "ScrollRestorationProps": "interface(scroller?)",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "SecretError": "interface(code)",
     "SecretGrant": "interface(grantId, secret)",
@@ -763,6 +788,7 @@
     "fromCorpusPath": "fn(2..2)",
     "fsAvailable": "fn(0..0)",
     "getAppMountPath": "fn(0..0)",
+    "getArrivedNavigation": "fn(0..0)",
     "getAuthState": "fn(0..0)",
     "getCatalog": "fn(0..0)",
     "getChromeState": "fn(0..0)",
@@ -815,6 +841,7 @@
     "mount": "fn(1..1)",
     "mountSpace": "fn(1..1)",
     "navigate": "fn(1..2)",
+    "nextRestoreAction": "fn(1..1)",
     "normalizeAbsolute": "fn(1..1)",
     "normalizeProviderInfo": "fn(1..1)",
     "onAuthChange": "fn(1..1)",
@@ -852,9 +879,11 @@
     "parseWikiInner": "fn(1..1)",
     "postToRegion": "fn(2..2)",
     "protocolStream": "fn(3..5)",
+    "receiveNavigation": "fn(1..1)",
     "recordRoute": "fn(1..1)",
     "refreshDiff": "fn(0..0)",
     "refreshPRs": "fn(0..0)",
+    "registerEntryStateCollector": "fn(2..2)",
     "removeThemeSource": "fn(1..1)",
     "renameEntry": "fn(2..2)",
     "renderAgentContext": "fn(1..1)",
@@ -866,6 +895,7 @@
     "requestMount": "fn(0..0)",
     "requestSecret": "fn(0..1)",
     "requestSpace": "fn(0..0)",
+    "resetEntryState": "fn(0..0)",
     "resetWorkingTree": "fn(0..0)",
     "resolveContentRef": "fn(1..1)",
     "resolveContentRefs": "fn(1..1)",
@@ -880,6 +910,7 @@
     "runMetadataQuery": "fn(3..4)",
     "sandboxFs": "fn(0..0)",
     "sanitizeUrl": "fn(1..1)",
+    "saveEntryState": "fn(2..2)",
     "sdkHandshake": "fn(0..0)",
     "setActiveFile": "fn(1..1)",
     "setHostTheme": "fn(1..1)",
@@ -890,6 +921,8 @@
     "splitWikiLinks": "fn(1..1)",
     "startItemDrag": "fn(1..1)",
     "steerWireText": "fn(1..1)",
+    "subscribeNavigation": "fn(1..1)",
+    "takeQueuedEntryState": "fn(0..0)",
     "timeoutFor": "fn(2..2)",
     "toBundlePath": "fn(2..2)",
     "toCorpusPath": "fn(2..2)",
@@ -916,6 +949,7 @@
     "useDiagnostics": "fn(0..0)",
     "useDroppedItem": "fn(0..0)",
     "useEditorContext": "fn(0..0)",
+    "useEntryState": "fn(1..1)",
     "useFileMetadata": "fn(1..1)",
     "useFormFactor": "fn(0..0)",
     "useFsChange": "fn(0..0)",
@@ -927,6 +961,7 @@
     "useMetadataQuery": "fn(1..1)",
     "useMetadataStore": "fn(0..0)",
     "useMounts": "fn(0..0)",
+    "useNavigationDirection": "fn(0..0)",
     "useObjectUrl": "fn(2..3)",
     "usePlatformHref": "fn(0..0)",
     "useRegion": "fn(0..0)",
@@ -1214,7 +1249,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.64.0\")",
+    "SDK_VERSION": "const(\"0.64.1\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1276,6 +1311,13 @@
     "protocolRequest": "fn(3..4)",
     "sendMessage": "fn(1..2)",
     "withDeadline": "fn(3..4)"
+  },
+  "scrollRestore": {
+    "RESTORE_DEADLINE_MS": "const(900)",
+    "RESTORE_EPSILON_PX": "const(2)",
+    "RestoreAction": "union('abandon'|'apply'|'wait')",
+    "RestoreSample": "interface(clientHeight, current, elapsedMs, scrollHeight, target, userScrolled)",
+    "nextRestoreAction": "fn(1..1)"
   },
   "scrollToId": {
     "scrollToId": "fn(1..1)"
@@ -1364,6 +1406,10 @@
     "splitHash": "fn(1..1)",
     "underAppRoot": "fn(1..1)"
   },
+  "useEntryState": {
+    "useEntryState": "fn(1..1)",
+    "useNavigationDirection": "fn(0..0)"
+  },
   "vcs": {
     "VcsActionError": "interface(code)",
     "VcsBranch": "interface(name, parentCommitSha, parentRef, parentRepo, upstreamPushable)",
@@ -1378,7 +1424,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.64.0\")"
+    "SDK_VERSION": "const(\"0.64.1\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
