@@ -63,8 +63,12 @@ export interface PlatformLinkProps extends Omit<AnchorHTMLAttributes<HTMLAnchorE
  * The href is also the correct behaviour with no host at all (`vite dev`), where there is
  * nobody to ask.
  *
- * External URLs (`https://…`) are not platform routes and should stay plain
- * `<a target="_blank">` anchors.
+ * External URLs (`https://…`) are not platform routes. On a host they should be opened
+ * through {@link openExternal} — the app asks the host, which validates the URL, confirms
+ * the destination, and opens the tab (a plain `<a target="_blank">` from inside the
+ * sandboxed frame opens a tab with no origin of its own, so anything that signs in or
+ * posts fails). The plain `<a target="_blank">` anchor is kept only as the no-host
+ * fallback (`vite dev`), where there is nobody to ask.
  */
 export function PlatformLink({ path, children, onClick, target = '_top', ...rest }: PlatformLinkProps) {
   const { outerHref } = use(TinkerableContext);
