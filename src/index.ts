@@ -71,3 +71,9 @@ export * from './collectHeadings';
 export * from './agentContext';
 export * from './fence';
 export * from './platformLink';
+// R3-627: the per-history-entry scratch, and the scroll restoration built on it —
+// Back lands where the reader left, for however many entries deep they go.
+export * from './entryState';
+export * from './useEntryState';
+export * from './scrollRestore';
+export { ScrollRestoration, type ScrollRestorationProps } from './components/ScrollRestoration';

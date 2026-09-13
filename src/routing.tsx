@@ -7,6 +7,7 @@ import { RouteParams, RoutingRule, RoutingSpec } from './RoutingSpec';
 import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
+import { takeQueuedEntryState } from './entryState';
 import { URLCHANGE } from './generated/protocol';
 
 /** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
@@ -141,10 +142,16 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
       /* no declaration */
     }
   }
+  // The scratch for the entry we are LEAVING, gathered synchronously here because
+  // this call is the one moment the app knows a navigation is happening (R3-627).
+  // The host stamps it on the current entry before pushing the target, and hands it
+  // back if the reader ever returns; it never parses it.
+  const entryState = takeQueuedEntryState();
   sendMessage(URLCHANGE, {
     url: target,
     back: false,
     forward: false,
+    ...(entryState ? { entryState } : {}),
     ...declared,
   });
 };
