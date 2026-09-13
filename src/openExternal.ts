@@ -35,7 +35,7 @@ export interface OpenExternalError extends Error {
   code: OpenExternalErrorCode;
 }
 
-/** The host's reply: the envelope resolves INSIDE the promise, so a refusal is a resolved
+/** The host's reply: the envelope resolves inside the promise, so a refusal is a resolved
  *  `{ ok: false }` rather than a rejection at the transport layer. */
 type OpenExternalReply = { ok: true; url?: string } | { ok: false; code?: string; message?: string };
 

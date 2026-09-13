@@ -37,7 +37,7 @@ describe('openExternal', () => {
     expect(PROTOCOL_OPENLINK).toBe('protocol-openlink');
   });
 
-  it('sends ONLY the url — never a caller-supplied extra field', async () => {
+  it('sends only the url — never a caller-supplied extra field', async () => {
     await openExternal(URL);
     const [, , params] = mockRequest.mock.calls[0];
     expect(Object.keys((params as Record<string, unknown>[])[0]).sort()).toEqual(['url']);
@@ -49,7 +49,7 @@ describe('openExternal', () => {
   });
 
   // The whole class the host can refuse with, not one favourite member: a refusal resolves
-  // INSIDE the reply, so any code this wrapper failed to treat as a failure would read as a
+  // inside the reply, so any code this wrapper failed to treat as a failure would read as a
   // successful open that never happened. `declined` is the code this affordance adds over
   // `openRepository`; `unsupported` is what an older host without the handler answers.
   it.each(['invalid', 'no-activation', 'declined', 'forbidden', 'unsupported'])(
