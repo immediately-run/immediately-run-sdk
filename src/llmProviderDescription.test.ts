@@ -71,4 +71,51 @@ describe('the enriched provider description', () => {
     expect(out.models).toBeUndefined();
     expect(JSON.stringify(out)).not.toContain('models');
   });
+
+  it('carries a well-formed connectedProviders list through (R3-620)', () => {
+    const out = normalizeProviderInfo(
+      withWire({
+        connectedProviders: [
+          {
+            providerId: 'llm.chat.anthropic',
+            displayName: 'Anthropic',
+            models: ['claude-opus-4-8', 'claude-sonnet-4-5'],
+          },
+          { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
+        ],
+      }),
+    )!;
+    expect(out.connectedProviders).toEqual([
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['claude-opus-4-8', 'claude-sonnet-4-5'] },
+      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
+    ]);
+  });
+
+  it('leaves connectedProviders ABSENT for a host that predates the field', () => {
+    const out = normalizeProviderInfo(base)!;
+    expect('connectedProviders' in out).toBe(false);
+  });
+
+  it('drops a non-array or empty connectedProviders, and malformed entries', () => {
+    // Not a list at all → absent.
+    expect('connectedProviders' in normalizeProviderInfo(withWire({ connectedProviders: 'nope' }))!).toBe(false);
+    expect('connectedProviders' in normalizeProviderInfo(withWire({ connectedProviders: {} }))!).toBe(false);
+    // Every entry malformed → absent (not an empty list, which would read as "you chose nothing").
+    expect(
+      'connectedProviders' in
+        normalizeProviderInfo(withWire({ connectedProviders: [{ providerId: '', displayName: 'x', models: [] }] }))!,
+    ).toBe(false);
+    // A mixture keeps only the usable entries, and drops non-string model names.
+    const out = normalizeProviderInfo(
+      withWire({
+        connectedProviders: [
+          { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['m1', '', 7, 'm2'] },
+          { providerId: '', displayName: 'Bad', models: ['x'] },
+        ],
+      }),
+    )!;
+    expect(out.connectedProviders).toEqual([
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['m1', 'm2'] },
+    ]);
+  });
 });

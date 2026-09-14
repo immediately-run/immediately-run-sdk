@@ -72,6 +72,13 @@ export interface ChatRequest {
   /** An ABSTRACT tier hint, never a vendor model id — the host maps it to a concrete
    *  model on the resolved provider. Omit to take the provider's default. */
   modelHint?: 'fast' | 'smart';
+  /** A concrete provider-and-model choice, naming one of the user's CONNECTED providers
+   *  (R3-620, LLM_AND_AGENTS_SPEC §0 editing-session exception). When present it WINS over
+   *  `modelHint`; the host validates the pair against the user's connected set and refuses
+   *  with `provider-not-connected` otherwise. Only an editing-session principal may read the
+   *  chooseable set (via `describeChat()`'s `connectedProviders`, gated `llm:chooseModel`);
+   *  a stage app still passes at most the abstract hint. */
+  model?: { providerId: string; model: string };
   /** Abort the completion mid-stream. When it fires, the SDK sends the host a cancel
    *  frame so the host aborts the upstream provider request and STOPS BILLING the
    *  user's key — not merely stops the app-side iterator (LLM_AND_AGENTS_SPEC §3.3
@@ -165,6 +172,20 @@ export interface ChatTierModels {
   smart: string;
 }
 
+/** One CONNECTED provider the user may choose a model from, for a per-conversation model
+ *  choice in an editing-session workbench (R3-620, LLM_AND_AGENTS_SPEC §0). Names and ids
+ *  only — never keys, usage, balance or routing. */
+export interface ChatProviderChoice {
+  /** Opaque provider id, e.g. `llm.chat.anthropic` — matches {@link ChatRequest.model}.providerId. */
+  providerId: string;
+  /** The provider's human name, for a picker label. */
+  displayName: string;
+  /** The chooseable model names — the catalogue-recommended set plus the two the user has
+   *  chosen. A closed list here would re-introduce the ids-rot problem, so `model` is passed
+   *  through to the adapter exactly as the Settings field is; this list is suggestions. */
+  models: string[];
+}
+
 /** Info about the provider the host resolved for this app. `null` when no provider
  *  is bound (SP-7: prompt the user to add a key before calling {@link chat}). */
 export interface ChatProviderInfo {
@@ -197,6 +218,16 @@ export interface ChatProviderInfo {
    * preference, so read it through {@link onChatProviderChange} rather than caching it.
    */
   models?: ChatTierModels;
+  /**
+   * The user's CONNECTED providers and their chooseable models, for a per-conversation
+   * model choice (R3-620). Only present when this frame holds the ELEVATED `llm:chooseModel`
+   * capability (an editing-session workbench); the host strips it for everyone else, so a
+   * stage app sees `undefined` and can offer only the abstract `modelHint` path.
+   *
+   * Read-only: names and ids only. No keys, usage, balance or routing. Absent also on a host
+   * that predates the field.
+   */
+  connectedProviders?: ChatProviderChoice[];
 }
 
 /**
@@ -261,24 +292,50 @@ const usableModels = (raw: unknown): ChatTierModels | undefined => {
   return typeof fast === 'string' && fast && typeof smart === 'string' && smart ? { fast, smart } : undefined;
 };
 
+/** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
+ *  (whether the list arrives at all) is the host's — `normalizeProviderInfo` merely refuses
+ *  to pass through a malformed list, exactly as it refuses a half-answered `models` pair. */
+const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefined => {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ChatProviderChoice[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') continue;
+    const { providerId, displayName, models } = item as Partial<ChatProviderChoice>;
+    if (typeof providerId !== 'string' || !providerId) continue;
+    if (typeof displayName !== 'string' || !displayName) continue;
+    const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
+    out.push({ providerId, displayName, models: cleanModels });
+  }
+  return out.length > 0 ? out : undefined;
+};
+
 export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatProviderInfo | null {
   if (!provider) return null;
-  // The three later fields are taken OFF the value and put back only if usable — spreading
-  // and then overwriting would leave an unusable key present, and `key in provider` is
-  // exactly how an app is told to ask whether the host said anything.
-  const { displayName: rawName, executor: rawExecutor, models: rawModels, ...rest } = provider;
+  // The LATER fields (displayName/executor/models/connectedProviders) are taken OFF the value
+  // and put back only if usable — spreading and then overwriting would leave an unusable key
+  // present, and `key in provider` is exactly how an app is told to ask whether the host said
+  // anything.
+  const {
+    displayName: rawName,
+    executor: rawExecutor,
+    models: rawModels,
+    connectedProviders: rawConnected,
+    ...rest
+  } = provider;
   // The wire value is whatever the host sent, which may predate any of these fields — so
   // read it as partial rather than trusting the declared type, and decide each explicitly.
   const wire = provider.features as Partial<ChatFeatures>;
   const executor = EXECUTORS.includes(rawExecutor as ChatExecutor) ? (rawExecutor as ChatExecutor) : undefined;
   const displayName = typeof rawName === 'string' && rawName ? rawName : undefined;
   const models = usableModels(rawModels);
+  const connectedProviders = usableConnectedProviders(rawConnected);
   return {
     ...rest,
     features: { ...wire, reasoning: wire.reasoning === true } as ChatFeatures,
     ...(displayName ? { displayName } : {}),
     ...(executor ? { executor } : {}),
     ...(models ? { models } : {}),
+    ...(connectedProviders ? { connectedProviders } : {}),
   };
 }
 
