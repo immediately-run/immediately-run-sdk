@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.66.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.67.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -253,6 +253,7 @@ Import: `@immediately-run/sdk/llm`
 - `ChatExecutor` (type) — How the resolved provider's requests physically leave the browser.
 - `ChatFeatures` (interface) — The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read to branch/degrade (offer image upload only when `vision`).
 - `ChatMessage` (interface) — One message in a ChatRequest: a role plus its content parts.
+- `ChatProviderChoice` (interface) — One CONNECTED provider the user may choose a model from, for a per-conversation model choice in an editing-session workbench (R3-620, LLM_AND_AGENTS_SPEC §0).
 - `ChatProviderInfo` (interface) — Info about the provider the host resolved for this app.
 - `ChatProviderState` (type) — Whether the host has told us about a provider yet, and if so whether one is bound.
 - `ChatRequest` (interface) — A host-brokered chat completion request: the messages plus optional tools, response format, and model hint (each honored per the provider's features).
