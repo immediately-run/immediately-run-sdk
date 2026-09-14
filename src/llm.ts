@@ -311,9 +311,10 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
 
 export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatProviderInfo | null {
   if (!provider) return null;
-  // The three later fields are taken OFF the value and put back only if usable — spreading
-  // and then overwriting would leave an unusable key present, and `key in provider` is
-  // exactly how an app is told to ask whether the host said anything.
+  // The LATER fields (displayName/executor/models/connectedProviders) are taken OFF the value
+  // and put back only if usable — spreading and then overwriting would leave an unusable key
+  // present, and `key in provider` is exactly how an app is told to ask whether the host said
+  // anything.
   const {
     displayName: rawName,
     executor: rawExecutor,
