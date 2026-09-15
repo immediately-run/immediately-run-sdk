@@ -117,6 +117,15 @@ export interface SandboxMountBundle {
   kind?: string;
   /** The target's layout, pruned to this mount's view (`pruneLayoutToView`). */
   layout?: BundleLayout;
+  /**
+   * Why a refused or `forbidden` `bundle:` mount degraded the DECLARING bundle's
+   * render (PERSISTENCE §8.0 containment: the carrying filesystem stays mounted).
+   * Mount-resolution refusal codes (`escapes-filesystem`, `not-a-bundle`,
+   * `unsafe-subtree`, `subtree-in-nested-bundle`, …), surfaced so the callee can
+   * read them — the declaring bundle always renders, degraded wherever a
+   * declaration did not resolve.
+   */
+  diagnostics?: readonly string[];
 }
 
 /** One granted scope of a mount (plan 12 §F): a backend-natural path prefix and

@@ -680,7 +680,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.67.0\")",
+    "SDK_VERSION": "const(\"0.68.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -692,7 +692,7 @@
     "SafeMdxAttribute": "interface(name?, type, value?)",
     "SandboxFsPort": "interface(promises?, readFile?)",
     "SandboxMount": "interface(bundle?, id?, mode?, name?, path, rules?, type)",
-    "SandboxMountBundle": "interface(kind?, layout?)",
+    "SandboxMountBundle": "interface(diagnostics?, kind?, layout?)",
     "SandboxUser": "interface(login)",
     "ScrollRestoration": "fn(0..1)",
     "ScrollRestorationProps": "interface(scroller?)",
@@ -1106,7 +1106,7 @@
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
     "Role": "union('owner'|'reader'|'writer')",
     "SandboxMount": "interface(bundle?, id?, mode?, name?, path, rules?, type)",
-    "SandboxMountBundle": "interface(kind?, layout?)",
+    "SandboxMountBundle": "interface(diagnostics?, kind?, layout?)",
     "SessionMount": "interface(forwardedToApp)",
     "SpaceError": "interface(code)",
     "SpaceInfo": "interface(name?, owner?, role?, spaceId)",
@@ -1265,7 +1265,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.67.0\")",
+    "SDK_VERSION": "const(\"0.68.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1440,7 +1440,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.67.0\")"
+    "SDK_VERSION": "const(\"0.68.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
