@@ -340,9 +340,15 @@ jobs:
           # the job actually is. Widening the PAT to Contents: read would have
           # "fixed" it by handing a release job read access to a private repo's
           # source to save one flag — the wrong direction (value 1).
+          # Only the three repos the deploy BUILDS take a ref. `sdk_ref`/`sandpack_ref`
+          # were removed there (immediately-run/deploy `deploy.yml`) because neither is
+          # built from its checkout any more — this SDK reaches production as a
+          # published package + a git-at-tag integrity manifest, not as a sibling build,
+          # so the ref selected nothing. `workflow_dispatch` REJECTS unknown inputs
+          # ("Unexpected inputs provided"), so passing them now fails the dispatch
+          # outright — this list must not grow back.
           DISPATCH=(gh workflow run deploy.yml --repo immediately-run/deploy --ref main
-                    -f sdk_ref=main -f sandpack_ref=main -f sandbox_ref=main
-                    -f site_ref=main -f backend_ref=main)
+                    -f sandbox_ref=main -f site_ref=main -f backend_ref=main)
           MANUAL="${DISPATCH[*]}"
 
           # Does the DEPLOYED host already pin this version? A failed probe is a
