@@ -43,6 +43,11 @@ import {
   SESSION_MOUNTS,
 } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
+// Re-exported here so an app needs ONE import for a federated mount's bundle facts
+// (`SandboxMount.bundle` + the layout type it carries) — the same root-export
+// convention `linkSpace.ts` applies to the mdx-plugins link types.
+import type { BundleLayout } from '@immediately-run/mdx-plugins';
+export type { BundleLayout };
 
 /**
  * The absolute path where this app's own repository filesystem is mounted
@@ -93,6 +98,25 @@ export interface SandboxMount {
    * Absent on the primary repo mount and on an older host that doesn't report it.
    */
   rules?: MountRule[];
+  /**
+   * R3-546 (BUNDLE_EMBEDDING §4a.3, gate G-BE-19): bundle facts, when this mount is a
+   * federated `bundle:` view over another bundle. The host parses the target bundle's
+   * marker and hands the consumer its `kind` and its LAYOUT **pruned to this mount's
+   * subtree view** — a record set, `tree` entry or `unique` reference the view cannot
+   * reach is absent, so the description is never an existence map of what the chroot
+   * answers `ENOENT` for. Pure data: nothing in it is authority, and the consumer
+   * could have read it if it held the target's root. Absent on every non-bundle mount
+   * and on older hosts.
+   */
+  bundle?: SandboxMountBundle;
+}
+
+/** The bundle facts a federated mount descriptor carries (§4a.3). */
+export interface SandboxMountBundle {
+  /** The target bundle's declared `kind`, when it declares one. */
+  kind?: string;
+  /** The target's layout, pruned to this mount's view (`pruneLayoutToView`). */
+  layout?: BundleLayout;
 }
 
 /** One granted scope of a mount (plan 12 §F): a backend-natural path prefix and
