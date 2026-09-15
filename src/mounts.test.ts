@@ -71,6 +71,7 @@ describe('SandboxMount.bundle — federated bundle facts on the descriptor (R3-5
     type: 'task-delegation',
     bundle: {
       kind: 'wiki',
+      diagnostics: ['not-a-bundle'],
       layout: {
         version: 1,
         recordSets: { 'roadmap-items': { dir: '/roadmap', select: 'R3-*.mdx', record: 'mdx-frontmatter' } },
