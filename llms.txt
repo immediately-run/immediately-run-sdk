@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.67.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.68.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -123,6 +123,7 @@ Import: `@immediately-run/sdk/mounts`
 - `resolveContentRefs` (function) — Resolve a BATCH of content references in ONE consent round (FILE_SHARING §7 / UI_AS_APPS §8.7; "plan 12 §E").
 - `revokeInvite` (function) — Withdraw a pending invitation (distinct from unshareSpace, which removes an ACCEPTED member) — `spaces:admin`.
 - `SandboxMount` (interface) — A filesystem mount available to the sandbox, mirrored from the host window.
+- `SandboxMountBundle` (interface) — The bundle facts a federated mount descriptor carries (§4a.3).
 - `SessionMount` (interface) — A mount as seen through the first-party **Session** lens (PRINCIPALS_SPEC §9 B2): the session's mounts BEYOND this app's own (the editor/agent session's).
 - `SpaceError` (interface) — An error from a space operation, carrying a machine-readable `code`.
 - `unmountSpace` (function) — Release a mounted space (stops its listener on the host).
@@ -687,6 +688,7 @@ Import: `@immediately-run/sdk/metadataSource`
 
 Import: `@immediately-run/sdk/node_modules/@immediately-run/mdx-plugins/dist/index.d`
 
+- `BundleLayout` (interface)
 - `FS_PREFIX` (const)
 - `LinkSpace` (interface)
 - `normalizeAbsolute` (function) — Collapse `.`/`..`/empty segments into a clean absolute path.
