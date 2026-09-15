@@ -28,6 +28,20 @@
   ],
   "removals": [
     {
+      "module": "linkSpace",
+      "export": "LinkSpace",
+      "detail": "member `corpusRoot`",
+      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 → 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically — the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative — not bumping — would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
+      "date": "2026-09-15"
+    },
+    {
+      "module": "index",
+      "export": "LinkSpace",
+      "detail": "member `corpusRoot`",
+      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 → 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically — the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative — not bumping — would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
+      "date": "2026-09-15"
+    },
+    {
       "module": "corpus",
       "export": "CorpusContext",
       "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
