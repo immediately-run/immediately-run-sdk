@@ -30,15 +30,18 @@ export const DEFAULT_MDX_COMPONENTS = {
     ...properties
   }: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>) {
     // R3-273 link spaces, same shared resolver as WikiLink: an `$fs:` href is
-    // translated to its mount-absolute path; an ABSOLUTE href is corpus-rooted
-    // when an enclosing LinkSpaceContext declares a corpusRoot (a non-corpus app
+    // translated to its mount-absolute path; an ABSOLUTE href is bundle-rooted
+    // when an enclosing LinkSpaceContext declares a bundleRoot (a non-bundle app
     // declares none and is untouched). Relative and external hrefs pass through —
     // <Link> already routes same-app hrefs and renders the rest as plain anchors.
-    const { corpusRoot } = use(LinkSpaceContext);
+    // R3-482: new-then-old root read — twin of WikiLink's, same presence rule as
+    // mdx-plugins' statedBundleRoot (explicit `bundleRoot: null` is a VALUE).
+    const space = use(LinkSpaceContext);
+    const bundleRoot = space.bundleRoot !== undefined ? space.bundleRoot : space.corpusRoot ?? null;
     let mapped = href;
-    if (href && (href.startsWith(FS_PREFIX) || (corpusRoot !== null && href.startsWith('/')))) {
+    if (href && (href.startsWith(FS_PREFIX) || (bundleRoot !== null && href.startsWith('/')))) {
       const [pathPart, frag] = splitHash(href);
-      const resolution = resolveLinkTarget(pathPart, { corpusRoot });
+      const resolution = resolveLinkTarget(pathPart, { bundleRoot });
       if (resolution.state !== 'resolved') {
         // Malformed `$fs:` (incl. scheme smuggling) — broken text, never an anchor.
         return (
