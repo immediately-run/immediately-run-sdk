@@ -11,29 +11,23 @@
 // pattern is expanded against the files actually present in dist/. A module tsup
 // emits tomorrow is covered the day it lands.
 //
-// Same import mechanics as metadataHooks.e2e.mjs: tsup emits extensionless
-// relative specifiers node's ESM resolver rejects, so a resolve hook maps
-// `./x` → `./x.js` (and `./dir` → `./dir/index.js`).
+// Import mechanics: NONE. Until R3-495, tsup emitted extensionless relative
+// specifiers that node's ESM resolver rejects, and this suite carried a resolve
+// hook mapping `./x` → `./x.js` — a crutch that made the suite green while the
+// PUBLISHED package stayed broken for exactly the plain-node import it claimed
+// to prove (the fresh-repo smoke caught it, 2026-09-16). The build now rewrites
+// the dist to extensioned specifiers (`scripts/fix-dist-esm-specifiers.mjs`, run
+// as the last build step), so this suite imports the dist the way a real
+// consumer does — no hook, no translation. If these imports start failing with
+// ERR_MODULE_NOT_FOUND on a relative specifier, the fixer regressed: fix the
+// build, never this file.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-
-registerHooks({
-  resolve(spec, ctx, next) {
-    if (spec.startsWith('.') && !/\.[cm]?js$/.test(spec) && ctx.parentURL) {
-      const base = fileURLToPath(new URL(spec, ctx.parentURL));
-      for (const p of [`${base}.js`, join(base, 'index.js')]) {
-        if (existsSync(p)) return { url: pathToFileURL(p).href, shortCircuit: true };
-      }
-    }
-    return next(spec, ctx);
-  },
-});
 
 /** Every `.js` file under `dir`, as paths relative to `dir` (posix separators). */
 const walkJs = (dir) => {

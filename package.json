@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.68.1",
+  "version": "0.68.2",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -27,7 +27,7 @@
   "scripts": {
     "gen:version": "node scripts/gen-version.mjs",
     "prebuild": "node scripts/gen-version.mjs",
-    "build": "tsup && node scripts/build-safecontent-deps.mjs && node scripts/copy-ambient-types.mjs",
+    "build": "tsup && node scripts/build-safecontent-deps.mjs && node scripts/copy-ambient-types.mjs && node scripts/fix-dist-esm-specifiers.mjs",
     "test": "jest",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,mjs,json}\" \"test/**/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,mjs,json}\" \"test/**/*.{ts,mjs}\" \"scripts/**/*.mjs\"",
