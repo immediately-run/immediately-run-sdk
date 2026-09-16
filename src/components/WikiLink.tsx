@@ -63,7 +63,12 @@ export const WikiLink = ({
   children?: ReactNode;
 } & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, 'href'>): ReactNode => {
   const { filesMetadata } = use(TinkerableContext);
-  const { corpusRoot } = use(LinkSpaceContext);
+  // R3-482: the link-space root reads new-then-old — `bundleRoot` when the provider
+  // states it at all (an explicit `null` is a VALUE: "no bundle root", NOT a miss),
+  // the deprecated `corpusRoot` spelling only when `bundleRoot` is absent. The same
+  // presence rule as mdx-plugins' statedBundleRoot; twin read in MDXComponents.tsx.
+  const space = use(LinkSpaceContext);
+  const bundleRoot = space.bundleRoot !== undefined ? space.bundleRoot : space.corpusRoot ?? null;
   const renderContext = use(RenderExportedComponentContext);
   const currentFile = renderContext?.evaluationContext?.evaluation?.module?.filepath;
 
@@ -92,10 +97,10 @@ export const WikiLink = ({
   }
 
   // R3-273 link spaces: resolution is the SHARED resolver (`linkSpace.ts`) —
-  // default space (corpus-rooted absolute targets when an enclosing provider
-  // declares a corpusRoot; fs-rooted otherwise) or the explicit `$fs:` prefix.
+  // default space (bundle-rooted absolute targets when an enclosing provider
+  // declares a bundleRoot; fs-rooted otherwise) or the explicit `$fs:` prefix.
   // A malformed `$fs:` target renders BROKEN, never an anchor.
-  const resolution = resolveLinkTarget(pathPart, { currentFile, corpusRoot });
+  const resolution = resolveLinkTarget(pathPart, { currentFile, bundleRoot });
   if (resolution.state === 'invalid') {
     return (
       <span
@@ -142,11 +147,11 @@ export const WikiLink = ({
     }
   }
   // Resolved cross-file target: route through <Link>. A space-translated target
-  // (`$fs:` prefix, or a corpus-rooted absolute) navigates to the RESOLVED path —
+  // (`$fs:` prefix, or a bundle-rooted absolute) navigates to the RESOLVED path —
   // the raw text is not a routable path in those shapes; everything else carries
   // the raw target bit-for-bit so its `#fragment` rides through navigation to the
   // scroll-after-nav effect (§13.5). The fragment is re-attached either way.
-  const translated = pathPart.startsWith(FS_PREFIX) || (corpusRoot !== null && pathPart.startsWith('/'));
+  const translated = pathPart.startsWith(FS_PREFIX) || (bundleRoot !== null && pathPart.startsWith('/'));
   const href = translated && resolved !== undefined ? `${resolved}${frag ? `#${frag}` : ''}` : rawTarget;
   return (
     <Link href={href} className="ir-wikilink" data-state="resolved" {...rest}>

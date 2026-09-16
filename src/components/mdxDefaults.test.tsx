@@ -329,17 +329,27 @@ describe('link spaces (R3-273)', () => {
     {
       currentFile,
       corpusRoot = null,
+      bundleRoot,
       files = FILES,
-    }: { currentFile?: string; corpusRoot?: string | null; files?: TinkerableState['filesMetadata'] } = {},
+    }: {
+      currentFile?: string;
+      corpusRoot?: string | null;
+      bundleRoot?: string | null;
+      files?: TinkerableState['filesMetadata'];
+    } = {},
   ) => {
     const tctx: TinkerableState = { ...ctx, filesMetadata: files };
     const rctx = currentFile
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ({ evaluationContext: { evaluation: { module: { filepath: currentFile, source: '' } } } } as any)
       : null;
+    // `bundleRoot` is stated only when the caller states it: an absent key is what
+    // makes the deprecated-spelling fallback read `corpusRoot` at all (R3-482).
+    const space: { corpusRoot: string | null; bundleRoot?: string | null } = { corpusRoot };
+    if (bundleRoot !== undefined) space.bundleRoot = bundleRoot;
     return render(
       <TinkerableContext value={tctx}>
-        <LinkSpaceContext value={{ corpusRoot }}>
+        <LinkSpaceContext value={space}>
           <RenderExportedComponentContext value={rctx}>{ui}</RenderExportedComponentContext>
         </LinkSpaceContext>
       </TinkerableContext>,
@@ -396,6 +406,39 @@ describe('link spaces (R3-273)', () => {
     });
     expect(container.querySelector('.ir-wikilink-broken')).not.toBeNull();
     unmount();
+  });
+
+  it('an ABSOLUTE wikilink resolves from the canonical bundleRoot spelling (R3-482)', () => {
+    const { container, unmount } = renderSpaced(<WikiLink target="/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      bundleRoot: '/app/content',
+    });
+    expect(container.querySelector('a.ir-wikilink')!.getAttribute('data-state')).toBe('resolved');
+    unmount();
+  });
+
+  it('bundleRoot wins over a stated corpusRoot, and an explicit null is a VALUE (R3-482)', () => {
+    // Both spellings stated: the new one decides. `/stale` holds no entries, so any
+    // read of corpusRoot here would render broken rather than resolved.
+    const won = renderSpaced(<WikiLink target="/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      corpusRoot: '/stale',
+      bundleRoot: '/app/content',
+    });
+    expect(won.container.querySelector('a.ir-wikilink')!.getAttribute('data-state')).toBe('resolved');
+    won.unmount();
+
+    // `bundleRoot: null` means "no bundle root" — falling back to corpusRoot here
+    // (the `bundleRoot ?? corpusRoot` mistake) would anchor /intro.mdx at
+    // /app/content/intro.mdx, which EXISTS in FILES and would resolve. Broken proves
+    // the null was honored as a value.
+    const explicitNull = renderSpaced(<WikiLink target="/intro.mdx" />, {
+      currentFile: '/app/content/guide/setup.mdx',
+      corpusRoot: '/app/content',
+      bundleRoot: null,
+    });
+    expect(explicitNull.container.querySelector('.ir-wikilink-broken')).not.toBeNull();
+    explicitNull.unmount();
   });
 
   it('nested LinkSpaceContext providers: the INNERMOST corpus wins (bundle rule)', () => {
@@ -459,6 +502,33 @@ describe('link spaces (R3-273)', () => {
   it('the default `a` is untouched with no corpusRoot (non-corpus apps, bit-for-bit)', () => {
     const A = DEFAULT_MDX_COMPONENTS.a;
     const { container, unmount } = renderSpaced(<A href="/about">about</A>, { corpusRoot: null });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).not.toContain('/app/content');
+    unmount();
+  });
+
+  it('the default `a` bundle-roots an absolute href under the canonical bundleRoot spelling (R3-482)', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(<A href="/intro.mdx">intro</A>, {
+      bundleRoot: '/app/content',
+    });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).toContain('/app/content/intro.mdx');
+    unmount();
+  });
+
+  it('the default `a` honors an explicit bundleRoot: null over a stated corpusRoot (R3-482)', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    // `bundleRoot ?? corpusRoot` would resurrect /app/content here and translate the
+    // href — the exact mistake the presence rule exists to prevent. The twin WikiLink
+    // case proves the same read on its code path; per-reader, because the migration
+    // playbook keeps the window inline per reader (cross_repo_migration).
+    const { container, unmount } = renderSpaced(<A href="/intro.mdx">intro</A>, {
+      corpusRoot: '/app/content',
+      bundleRoot: null,
+    });
     const a = container.querySelector('a');
     expect(a).not.toBeNull();
     expect(a!.getAttribute('href')).not.toContain('/app/content');
