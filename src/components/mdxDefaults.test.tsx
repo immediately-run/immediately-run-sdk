@@ -507,4 +507,31 @@ describe('link spaces (R3-273)', () => {
     expect(a!.getAttribute('href')).not.toContain('/app/content');
     unmount();
   });
+
+  it('the default `a` bundle-roots an absolute href under the canonical bundleRoot spelling (R3-482)', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    const { container, unmount } = renderSpaced(<A href="/intro.mdx">intro</A>, {
+      bundleRoot: '/app/content',
+    });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).toContain('/app/content/intro.mdx');
+    unmount();
+  });
+
+  it('the default `a` honors an explicit bundleRoot: null over a stated corpusRoot (R3-482)', () => {
+    const A = DEFAULT_MDX_COMPONENTS.a;
+    // `bundleRoot ?? corpusRoot` would resurrect /app/content here and translate the
+    // href — the exact mistake the presence rule exists to prevent. The twin WikiLink
+    // case proves the same read on its code path; per-reader, because the migration
+    // playbook keeps the window inline per reader (cross_repo_migration).
+    const { container, unmount } = renderSpaced(<A href="/intro.mdx">intro</A>, {
+      corpusRoot: '/app/content',
+      bundleRoot: null,
+    });
+    const a = container.querySelector('a');
+    expect(a).not.toBeNull();
+    expect(a!.getAttribute('href')).not.toContain('/app/content');
+    unmount();
+  });
 });

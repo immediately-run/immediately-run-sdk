@@ -147,7 +147,7 @@ export const WikiLink = ({
     }
   }
   // Resolved cross-file target: route through <Link>. A space-translated target
-  // (`$fs:` prefix, or a corpus-rooted absolute) navigates to the RESOLVED path —
+  // (`$fs:` prefix, or a bundle-rooted absolute) navigates to the RESOLVED path —
   // the raw text is not a routable path in those shapes; everything else carries
   // the raw target bit-for-bit so its `#fragment` rides through navigation to the
   // scroll-after-nav effect (§13.5). The fragment is re-attached either way.

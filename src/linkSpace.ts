@@ -2,20 +2,20 @@
 // R3-279: the RESOLVER CORE (resolveLinkTarget / normalizeAbsolute / FS_PREFIX /
 // ResolvedLinkTarget) moved to `@immediately-run/mdx-plugins` — beside its parity
 // fixture — and is re-exported here unchanged (API-stable). This module keeps the
-// REACT surface (LinkSpaceContext): the provider a corpus-rendering app wraps its
+// REACT surface (LinkSpaceContext): the provider a bundle-rendering app wraps its
 // document tree in. Consumers importing from '@immediately-run/sdk/linkSpace' see
 // exactly the same names.
 //
 // A document link's target resolves in one of two spaces:
 //
-// - DEFAULT — the enclosing corpus's virtual filesystem. RELATIVE targets resolve
+// - DEFAULT — the enclosing bundle's virtual filesystem. RELATIVE targets resolve
 //   against the authoring file (identical in both spaces); ABSOLUTE targets
-//   (`/x/y.mdx`) resolve from the corpus root when an enclosing `LinkSpaceContext`
-//   declares one, else from the filesystem root. A non-corpus app declares nothing
+//   (`/x/y.mdx`) resolve from the bundle root when an enclosing `LinkSpaceContext`
+//   declares one, else from the filesystem root. A non-bundle app declares nothing
 //   and keeps today's behavior bit-for-bit (its fs root IS its only root).
 //
 // - `$fs:` — the explicit filesystem space: `$fs:/content/x.mdx` resolves from the
-//   root of the filesystem the app reads, escaping corpus-relative addressing.
+//   root of the filesystem the app reads, escaping bundle-relative addressing.
 //
 // `$fs:` changes ADDRESSING, never REACH: resolution is pure path arithmetic and
 // existence is checked against the same in-mount metadata the default space uses —
@@ -24,9 +24,9 @@
 // scheme smuggling like `$fs:javascript:…`) is INVALID and must render as a broken
 // link, never an anchor.
 //
-// Corpus nesting: `LinkSpaceContext` providers nest, and the NEAREST one wins —
-// which is exactly the innermost-enclosing-corpus rule (bundle encapsulation): a
-// document rendered inside a nested corpus resolves against the nested corpus.
+// Bundle nesting: `LinkSpaceContext` providers nest, and the NEAREST one wins —
+// which is exactly the innermost-enclosing-bundle rule (bundle encapsulation): a
+// document rendered inside a nested bundle resolves against the nested bundle.
 
 import { createContext } from 'react';
 
