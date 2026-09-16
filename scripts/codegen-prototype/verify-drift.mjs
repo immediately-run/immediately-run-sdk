@@ -37,7 +37,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, existsSync, cpSync, rmSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -50,18 +50,34 @@ if (!existsSync(shippedPath)) {
 
 // The artifact set: the shipped spaces module, plus every committed prototype
 // projection for every descriptor family (generated/<family>.{generated.ts,llms.txt,catalog.json}).
-const families = readdirSync(here)
-  .map((f) => /^descriptors\.(.+)\.mjs$/.exec(f)?.[1])
-  .filter(Boolean)
+// The family names come from each descriptor module's `family.scheme` — the same
+// field the generator names its outputs by — NOT from the descriptor FILE name,
+// so a file named differently from its scheme can never make this gate blame the
+// generator for a "missing" projection (round-3 nit on #174).
+const descriptorFiles = readdirSync(here)
+  .filter((f) => /^descriptors\..+\.mjs$/.test(f))
   .sort();
-if (!families.length) {
+if (!descriptorFiles.length) {
   console.error('error: no descriptor families found — the drift gate is vacuous, which is a failure.');
   process.exit(1);
 }
-const artifactPaths = (family) => [
-  ['generated', `${family}.generated.ts`],
-  ['generated', `${family}.llms.txt`],
-  ['generated', `${family}.catalog.json`],
+const families = [];
+for (const f of descriptorFiles) {
+  const { family } = await import(pathToFileURL(join(here, f)).href);
+  if (!family?.scheme) {
+    console.error(`error: ${f} exports no \`family.scheme\` — cannot derive its artifact names.`);
+    process.exit(1);
+  }
+  if (families.includes(family.scheme)) {
+    console.error(`error: two descriptor files declare scheme \`${family.scheme}\` — one projection set, two sources.`);
+    process.exit(1);
+  }
+  families.push({ file: f, scheme: family.scheme });
+}
+const artifactPaths = (scheme) => [
+  ['generated', `${scheme}.generated.ts`],
+  ['generated', `${scheme}.llms.txt`],
+  ['generated', `${scheme}.catalog.json`],
 ];
 
 /** The committed `generated/` dir must contain exactly the live families' three
@@ -70,7 +86,7 @@ const artifactPaths = (family) => [
  *  this gate exists for, so it fails loudly instead. Parameters default to the
  *  repo state so the self-test can drive the mismatch directly. */
 const orphanedArtifacts = (committedFiles = readdirSync(join(here, 'generated')), liveFamilies = families) => {
-  const expected = new Set(liveFamilies.flatMap((f) => artifactPaths(f).map(([, file]) => file)));
+  const expected = new Set(liveFamilies.flatMap((f) => artifactPaths(f.scheme).map(([, file]) => file)));
   return committedFiles.filter((file) => !expected.has(file));
 };
 
@@ -92,20 +108,20 @@ const regenerate = () => {
       stdio: 'pipe',
     });
     const texts = { src: readFileSync(join(tmp, 'src', 'generated', 'spaces.ts'), 'utf8') };
-    for (const family of families) {
-      execFileSync(process.execPath, ['generate.mjs', `./descriptors.${family}.mjs`], {
+    for (const { file, scheme } of families) {
+      execFileSync(process.execPath, ['generate.mjs', `./${file}`], {
         cwd: join(tmp, 'scripts', 'codegen-prototype'),
         stdio: 'pipe',
       });
-      for (const [dir, file] of artifactPaths(family)) {
-        const p = join(tmp, 'scripts', 'codegen-prototype', dir, file);
+      for (const [dir, file0] of artifactPaths(scheme)) {
+        const p = join(tmp, 'scripts', 'codegen-prototype', dir, file0);
         if (!existsSync(p)) {
           console.error(
-            `error: the generator wrote no ${file} for family ${family} — a projection stopped being emitted.`,
+            `error: the generator wrote no ${file0} for family ${scheme} — a projection stopped being emitted.`,
           );
           process.exit(1);
         }
-        texts[`${family}/${file}`] = readFileSync(p, 'utf8');
+        texts[`${scheme}/${file0}`] = readFileSync(p, 'utf8');
       }
     }
     return texts;
@@ -137,14 +153,14 @@ const check = (texts) => {
 /** The committed texts of every artifact this gate guards. */
 const committedTexts = () => {
   const texts = { src: readFileSync(shippedPath, 'utf8') };
-  for (const family of families) {
-    for (const [dir, file] of artifactPaths(family)) {
+  for (const { scheme } of families) {
+    for (const [dir, file] of artifactPaths(scheme)) {
       const p = join(here, dir, file);
       if (!existsSync(p)) {
         console.error(`error: ${p} missing — run the generator and commit its output.`);
         process.exit(1);
       }
-      texts[`${family}/${file}`] = readFileSync(p, 'utf8');
+      texts[`${scheme}/${file}`] = readFileSync(p, 'utf8');
     }
   }
   return texts;
@@ -188,8 +204,8 @@ const main = () => {
 const selfTest = () => {
   const real = committedTexts();
   const srcKey = 'src';
-  const otherFamily = families.find((f) => f !== 'spaces') ?? families[0];
-  const streamsKey = `${otherFamily}/${artifactPaths(otherFamily)[0][1]}`;
+  const other = families.find((f) => f.scheme !== 'spaces') ?? families[0];
+  const streamsKey = `${other.scheme}/${artifactPaths(other.scheme)[0][1]}`;
   const cases = [
     [
       'a hand-edited line in the shipped module',
@@ -218,7 +234,7 @@ const selfTest = () => {
   // by text poisoning — drive the mismatch directly through the same function.
   const orphanCaught =
     orphanedArtifacts([
-      ...families.flatMap((f) => artifactPaths(f).map(([, file]) => file)),
+      ...families.flatMap((f) => artifactPaths(f.scheme).map(([, file]) => file)),
       'invites.llms.txt',
     ]).join() === 'invites.llms.txt';
   console.log(`${orphanCaught ? 'PASS' : 'FAIL'}  detects: an orphaned committed artifact (no descriptor produces it)`);
