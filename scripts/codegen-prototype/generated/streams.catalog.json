@@ -1,7 +1,7 @@
 [
   {
     "name": "contribute:run",
-    "capability": "contribute:self",
+    "capability": "contribute:any",
     "stream": true
   },
   {

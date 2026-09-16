@@ -104,7 +104,13 @@ const STREAM_ERRORS = ['forbidden', 'auth-required', 'invalid', 'network', 'unkn
 export const methods = [
   {
     name: 'contribute:run',
-    capability: 'contribute:self',
+    // The gate's DECLARED MINIMUM (`contribute:any` — open a PR; site-main
+    // actionGate escalates `mode:'direct'` to `contribute:direct` via
+    // capabilityFor). Was transcribed `contribute:self`, a capability the host
+    // gate never declared — caught by the R3-166 host descriptor-set lockstep
+    // leg the day it was wired, which is the drift class it exists for. The
+    // doc string below already said `contribute:any`; only the field was stale.
+    capability: 'contribute:any',
     kind: 'stream',
     doc:
       'Save the current working tree, streaming each stage. Yields ContributionEvents ' +
