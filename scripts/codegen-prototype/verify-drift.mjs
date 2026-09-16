@@ -1,4 +1,5 @@
-// Is every SHIPPED/COMMITTED generated artifact still what the descriptors produce?
+// Is every shipped / committed generated artifact still what the descriptors
+// produce?
 //
 // WHY THIS REPLACED THE PARITY GATES FOR THE MIGRATED FAMILY. Before the migration,
 // `verify.mjs` (wire) and `verify.types.mjs` (types + docs) compared the generated
@@ -23,7 +24,7 @@
 //   3. the generator changes and the committed output goes stale.
 // All three are the same check: regenerate, compare bytes.
 //
-// EVERY committed artifact is compared, not just the shipped module. The
+// Every committed artifact is compared, not just the shipped module. The
 // prototype's `generated/` outputs (`<family>.generated.ts`, `<family>.llms.txt`,
 // `<family>.catalog.json`) are committed too, and before they joined this gate they
 // drifted silently for a whole prettier-config adoption (#114 regenerated spaces
@@ -63,6 +64,16 @@ const artifactPaths = (family) => [
   ['generated', `${family}.catalog.json`],
 ];
 
+/** The committed `generated/` dir must contain exactly the live families' three
+ *  projections each — an orphaned artifact (its descriptor deleted, or committed
+ *  without one) escapes the byte-comparison above, which is the silent-stale class
+ *  this gate exists for, so it fails loudly instead. Parameters default to the
+ *  repo state so the self-test can drive the mismatch directly. */
+const orphanedArtifacts = (committedFiles = readdirSync(join(here, 'generated')), liveFamilies = families) => {
+  const expected = new Set(liveFamilies.flatMap((f) => artifactPaths(f).map(([, file]) => file)));
+  return committedFiles.filter((file) => !expected.has(file));
+};
+
 /** Regenerate into a scratch copy of the tree and return the emitted texts. */
 const regenerate = () => {
   const tmp = mkdtempSync(join(tmpdir(), 'ir-codegen-'));
@@ -70,6 +81,12 @@ const regenerate = () => {
     // The generator writes relative to its own location, so it needs the script +
     // descriptors, and it creates `<tmp>/src/generated/` and `<tmp>generated/`.
     cpSync(here, join(tmp, 'scripts', 'codegen-prototype'), { recursive: true });
+    // The copy just seeded the scratch `generated/` dir with the COMMITTED
+    // artifacts — delete them, so the byte-comparison below reads only what this
+    // run's generator actually wrote. Otherwise a generator that stops emitting a
+    // projection false-passes against its own stale copy (round-2 review,
+    // fault-injected). `generate.mjs` recreates the dir via mkdirSync.
+    rmSync(join(tmp, 'scripts', 'codegen-prototype', 'generated'), { recursive: true, force: true });
     execFileSync(process.execPath, ['generate.mjs', './descriptors.spaces.mjs', '--emit-src'], {
       cwd: join(tmp, 'scripts', 'codegen-prototype'),
       stdio: 'pipe',
@@ -81,7 +98,14 @@ const regenerate = () => {
         stdio: 'pipe',
       });
       for (const [dir, file] of artifactPaths(family)) {
-        texts[`${family}/${file}`] = readFileSync(join(tmp, 'scripts', 'codegen-prototype', dir, file), 'utf8');
+        const p = join(tmp, 'scripts', 'codegen-prototype', dir, file);
+        if (!existsSync(p)) {
+          console.error(
+            `error: the generator wrote no ${file} for family ${family} — a projection stopped being emitted.`,
+          );
+          process.exit(1);
+        }
+        texts[`${family}/${file}`] = readFileSync(p, 'utf8');
       }
     }
     return texts;
@@ -127,6 +151,15 @@ const committedTexts = () => {
 };
 
 const main = () => {
+  const orphans = orphanedArtifacts();
+  if (orphans.length) {
+    console.error('FAIL  committed generated/ artifacts with no descriptor family:');
+    for (const o of orphans) console.error(`  · generated/${o} (no descriptors.*.mjs produces it)`);
+    console.error(
+      '  An orphaned projection is invisible to the byte-comparison — delete it or restore its descriptor.',
+    );
+    process.exit(1);
+  }
   const diff = check(committedTexts());
   if (!diff) {
     console.log(
@@ -142,7 +175,7 @@ const main = () => {
   console.log(`     committed: ${diff.committed}`);
   console.log(`     generated: ${diff.fresh}`);
   console.error(
-    '\nThe generated source is SHIPPED — `src/mounts.ts` re-exports it, so this is the\n' +
+    '\nThe generated source is shipped — `src/mounts.ts` re-exports it, so this is the\n' +
       'public API, and the `generated/` projections are committed artifacts. Either a\n' +
       'file was hand-edited (they are generated; edit `descriptors.<family>.mjs` instead)\n' +
       'or a descriptor change was not regenerated.\n' +
@@ -181,12 +214,21 @@ const selfTest = () => {
     console.log(`${caught ? 'PASS' : 'FAIL'}  detects: ${label}`);
     if (caught) ok++;
   }
-  const cleanOk = check(real) === null;
-  console.log(`${cleanOk ? 'PASS' : 'FAIL'}  the committed files are clean (no false positive)`);
-  const got = ok + (cleanOk ? 1 : 0);
-  const total = cases.length + 1;
-  console.log(`\n${got}/${total} self-test cases.`);
-  if (got !== total) {
+  // Orphans are checked structurally (the committed dir vs the live families), not
+  // by text poisoning — drive the mismatch directly through the same function.
+  const orphanCaught =
+    orphanedArtifacts([
+      ...families.flatMap((f) => artifactPaths(f).map(([, file]) => file)),
+      'invites.llms.txt',
+    ]).join() === 'invites.llms.txt';
+  console.log(`${orphanCaught ? 'PASS' : 'FAIL'}  detects: an orphaned committed artifact (no descriptor produces it)`);
+  if (orphanCaught) ok++;
+  const cleanOk = check(real) === null && orphanedArtifacts().length === 0;
+  console.log(`${cleanOk ? 'PASS' : 'FAIL'}  the committed files are clean (no false positive, no orphans)`);
+  if (cleanOk) ok++;
+  const total = cases.length + 2;
+  console.log(`\n${ok}/${total} self-test cases.`);
+  if (ok !== total) {
     console.error('\nself-test FAILED — the drift gate is not detecting drift it must detect.');
     process.exit(1);
   }
