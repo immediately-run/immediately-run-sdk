@@ -104,7 +104,7 @@ const STREAM_ERRORS = ['forbidden', 'auth-required', 'invalid', 'network', 'unkn
 export const methods = [
   {
     name: 'contribute:run',
-    // The gate's DECLARED MINIMUM (`contribute:any` — open a PR; site-main
+    // The gate's declared minimum (`contribute:any` — open a PR; site-main
     // actionGate escalates `mode:'direct'` to `contribute:direct` via
     // capabilityFor). Was transcribed `contribute:self`, a capability the host
     // gate never declared — caught by the R3-166 host descriptor-set lockstep
