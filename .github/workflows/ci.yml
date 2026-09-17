@@ -142,11 +142,13 @@ jobs:
         with:
           repository: immediately-run/immediately-run-site-main
           # The lockstep check reads src/generated/api-descriptors.json from this
-          # checkout; the path is the sibling layout verify-lockstep.mjs expects.
+          # checkout. Unlike site-main's ci.yml (which checks ITSELF out under a
+          # self-named path, making the sibling default resolve), this repo checks
+          # out at the workspace root, so the path is passed explicitly.
           token: ${{ steps.site-token.outputs.token }}
           path: immediately-run-site-main
 
-      - run: npm run verify:descriptor-lockstep
+      - run: npm run verify:descriptor-lockstep -- --site-main immediately-run-site-main
 
   # The public-release job: gh-pages self-host artifact + integrity trust root +
   # git tag + npm publish. Every step here is irreversible or consumer-facing.
