@@ -24,13 +24,24 @@
 // Known limit, accepted: the rewrite is textual, so a string literal CONTAINING a
 // `from './x'`-shaped snippet would be corrupted too. The SDK ships no such string
 // today (the jest suite + both e2e suites + the subpath-import suite — now WITHOUT
-// its resolve-hook crutch — all run the rewritten dist), and a future one fails
-// loudly at import time, not silently.
+// its resolve-hook crutch — all run the rewritten dist).
 //
-// The `.d.ts` surface keeps tsup's extensionless specifiers (TS resolves them under
-// every moduleResolution mode that resolves the package at all); the smoke's defect
-// was runtime-only. If a nodenext-typecheck consumer ever appears, extend the walk
-// to *.d.ts in the same pass — do not add a second rewriter.
+// Be precise about the failure mode, because the obvious reassurance is wrong: a
+// future such string fails loudly ONLY when its specifier resolves to nothing. If
+// the snippet names a real sibling module — `"import { boot } from './boot'"` with
+// boot.js present — it is rewritten SILENTLY inside the string literal, and neither
+// the build nor an import complains. The guard is that no such string ships, not
+// that the pass would catch one.
+//
+// The `.d.ts` surface needs nothing, and the reason is NOT the one this comment
+// used to give. It claimed the declarations "keep tsup's extensionless specifiers";
+// measured on a fresh build, 114 of the 115 relative specifiers in dist/**/*.d.ts
+// are ALREADY extensioned — tsup emits them that way. The lone exception is
+// `dist/ambient.d.ts`, which `copy-ambient-types.mjs` copies verbatim from src/
+// rather than tsup emitting it, and which is an ambient declaration file no
+// consumer resolves through the package's exports map. So there is no deferral to
+// file here: if a *.d.ts case ever does appear, extend this walk rather than
+// adding a second rewriter.
 
 import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';

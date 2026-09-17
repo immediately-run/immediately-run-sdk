@@ -40,7 +40,6 @@
 //
 // Run: node scripts/codegen-prototype/verify.mjs        (requires `npm run build`)
 
-import { registerHooks } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -54,24 +53,13 @@ if (!existsSync(resolve(dist, 'mounts.js'))) {
   process.exit(1);
 }
 
-// tsup emits EXTENSIONLESS relative specifiers (`./sandboxUtils`), which the
-// sandbox resolver understands and node's ESM resolver does not. This hook adds
-// the extension so the real build is importable here. It is the actual reason the
-// old harness re-implemented the modules — not, as its comment said, load-time
-// side effects: `transport()` resolves lazily and `tasks` is a type-only import.
-registerHooks({
-  resolve(spec, ctx, next) {
-    if (spec.startsWith('.') && !/\.[cm]?js$/.test(spec)) {
-      try {
-        const p = fileURLToPath(new URL(spec, ctx.parentURL)) + '.js';
-        if (existsSync(p)) return { url: pathToFileURL(p).href, shortCircuit: true };
-      } catch {
-        /* fall through to the default resolver */
-      }
-    }
-    return next(spec, ctx);
-  },
-});
+// NO RESOLVE HOOK HERE, deliberately. Until R3-495 the build left tsup's
+// extensionless relative specifiers in dist/, node's ESM resolver rejected them,
+// and this harness bridged them with `registerHooks` — which meant it verified a
+// dist no real consumer could import, and kept the defect green until the
+// fresh-repo smoke's plain-node probe hit it. `fix-dist-esm-specifiers.mjs` now
+// extensions them at build time, so this file imports the dist exactly as a
+// consumer does and a recurrence fails here first. Do not reintroduce the hook.
 
 // ── the single host primitive both paths bottom out at (spied, never real) ──────
 const calls = [];
