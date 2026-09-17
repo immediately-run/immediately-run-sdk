@@ -7,8 +7,8 @@ import type { StreamError } from '../../../src/protocolStream';
 
 /** The save strategy. `direct` requires the first-party `contribute:direct` capability. */
 export type ContributeMode =
-  | "pr"
-  | "direct";
+  | 'pr'
+  | 'direct';
 
 /** The settled outcome (the stream’s return value). */
 export interface ContributionResult {
@@ -17,43 +17,43 @@ export interface ContributionResult {
   commitSha: string;
   treeSha: string;
   branchName: string;
-  mode: "direct-commit" | "new-branch-pr" | "extend-existing";
+  mode: 'direct-commit' | 'new-branch-pr' | 'extend-existing';
 }
 
 /** A stage emitted as the contribution runs (progress only — never token or blobs). */
 export type ContributionEvent =
-  | { stage: "auth-check" }
-  | { stage: "diff-compute" }
-  | { stage: "permission-check" }
-  | { stage: "install-required"; targetOwner: string; targetRepo: string; installUrl: string }
-  | { stage: "conflict-check" }
-  | { stage: "fork-prepare"; forkOwner: string; alreadyExists: boolean }
-  | { stage: "upload-blob"; path: string; index: number; total: number }
-  | { stage: "create-tree" }
-  | { stage: "create-commit" }
-  | { stage: "create-branch"; branchName: string }
-  | { stage: "create-pr" }
-  | { stage: "pr-updated"; prNumber: number; prUrl: string; commitSha: string }
-  | { stage: "commit-pushed"; ref: string; commitSha: string }
-  | { stage: "done"; commitSha: string; prUrl?: string; prNumber?: number }
-  | { stage: "error"; message: string; recoverable: boolean };
+  | { stage: 'auth-check' }
+  | { stage: 'diff-compute' }
+  | { stage: 'permission-check' }
+  | { stage: 'install-required'; targetOwner: string; targetRepo: string; installUrl: string }
+  | { stage: 'conflict-check' }
+  | { stage: 'fork-prepare'; forkOwner: string; alreadyExists: boolean }
+  | { stage: 'upload-blob'; path: string; index: number; total: number }
+  | { stage: 'create-tree' }
+  | { stage: 'create-commit' }
+  | { stage: 'create-branch'; branchName: string }
+  | { stage: 'create-pr' }
+  | { stage: 'pr-updated'; prNumber: number; prUrl: string; commitSha: string }
+  | { stage: 'commit-pushed'; ref: string; commitSha: string }
+  | { stage: 'done'; commitSha: string; prUrl?: string; prNumber?: number }
+  | { stage: 'error'; message: string; recoverable: boolean };
 
 /** Who authored a message. */
 export type ChatRole =
-  | "system"
-  | "user"
-  | "assistant"
-  | "tool";
+  | 'system'
+  | 'user'
+  | 'assistant'
+  | 'tool';
 
 /** A part of a message. */
 export type ContentPart =
-  | { type: "text"; text: string }
-  | { type: "image"; mimeType: string; data: string };
+  | { type: 'text'; text: string }
+  | { type: 'image'; mimeType: string; data: string };
 
 /** One message in a ChatRequest. */
 export interface ChatMessage {
   role: ChatRole;
-  content: Array<ContentPart>;
+  content: ContentPart[];
 }
 
 /** A tool the model may call — honored only when `features.tools`. */
@@ -65,17 +65,17 @@ export interface ToolDef {
 
 /** One streamed chunk. */
 export type ChatDelta =
-  | { type: "text-delta"; text: string }
-  | { type: "tool-call"; id: string; name: string; input: unknown }
-  | { type: "usage"; inputTokens: number; outputTokens: number };
+  | { type: 'text-delta'; text: string }
+  | { type: 'tool-call'; id: string; name: string; input: unknown }
+  | { type: 'usage'; inputTokens: number; outputTokens: number };
 
 /** The terminal value of the chat stream. */
 export interface ChatResult {
-  stopReason: "end" | "length" | "tool" | "filtered";
+  stopReason: 'end' | 'length' | 'tool' | 'filtered';
 }
 
 export type ContributeError =
-  "forbidden" | "auth-required" | "invalid" | "network" | "unknown";
+  'forbidden' | 'auth-required' | 'invalid' | 'network' | 'unknown';
 
 /**
  * Save the current working tree, streaming each stage. Yields
@@ -83,7 +83,7 @@ export type ContributeError =
  * the `contribute:direct` capability (a `contribute:any` app asking for it
  * is rejected `forbidden`, T11).
  *
- * Capability: `contribute:self`. Catalog name: `contribute:run`.
+ * Capability: `contribute:any`. Catalog name: `contribute:run`.
  * @throws `StreamError & { code: ContributeError }` if the host rejects the stream.
  */
 export function contribute(req: { commitMessage: string; mode?: ContributeMode; branchName?: string }): AsyncGenerator<ContributionEvent, ContributionResult, void> {
@@ -91,7 +91,7 @@ export function contribute(req: { commitMessage: string; mode?: ContributeMode; 
 }
 
 export type ChatError =
-  "forbidden" | "auth-required" | "invalid" | "network" | "unknown";
+  'forbidden' | 'auth-required' | 'invalid' | 'network' | 'unknown';
 
 /**
  * Stream a chat completion from whichever provider the user has configured.
@@ -101,7 +101,7 @@ export type ChatError =
  * Capability: `llm:chat`. Catalog name: `llm:chat`.
  * @throws `StreamError & { code: ChatError }` if the host rejects the stream.
  */
-export function chat(req: { messages: Array<ChatMessage>; tools?: Array<ToolDef>; responseFormat?: "text" | "json"; maxTokens?: number; modelHint?: "fast" | "smart" }): AsyncGenerator<ChatDelta, ChatResult, void> {
+export function chat(req: { messages: ChatMessage[]; tools?: ToolDef[]; responseFormat?: 'text' | 'json'; maxTokens?: number; modelHint?: 'fast' | 'smart' }): AsyncGenerator<ChatDelta, ChatResult, void> {
   return invokeStream<ChatDelta, ChatResult>("llm:chat", req);
 }
 
