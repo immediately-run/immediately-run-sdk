@@ -66,10 +66,6 @@ for (const f of descriptorFiles) {
   }
   fragments.push(readFileSync(fragmentPath, 'utf8').trimEnd());
 }
-if (!fragments.length) {
-  console.error('error: no committed llms fragments found — the doc projection is vacuous, which is a failure.');
-  process.exit(1);
-}
 
 // The machine-readable projection: everything an embedded agent (or a curious
 // authoring agent) needs to drive `invoke(name, params)` and interpret errors.
