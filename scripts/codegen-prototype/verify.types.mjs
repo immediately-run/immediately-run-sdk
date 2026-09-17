@@ -149,11 +149,7 @@ const declarationsOf = (path) => {
       // here (the two files express types differently — explicit vs inferred).
       for (const decl of node.declarationList.declarations) {
         if (!ts.isIdentifier(decl.name)) continue;
-        const fnNode = decl.initializer ?? decl.type;
-        const params =
-          fnNode && (ts.isArrowFunction(fnNode) || ts.isFunctionTypeNode(fnNode))
-            ? fnNode.parameters.map((prm) => prm.name.getText(src))
-            : null;
+        const params = paramsOf(decl.initializer ?? decl.type, src);
         all.set(decl.name.text, { kind: 'function', doc: docOf(node), params });
       }
     }
@@ -161,7 +157,47 @@ const declarationsOf = (path) => {
   return new Map([...all].filter(([name]) => exportedNames.has(name)));
 };
 
-const shipped = declarationsOf(dtsPath);
+/** A wrapper's parameter names, across the shapes both sides emit:
+ *  an arrow function (generated source), a function type node (plain emitted
+ *  `.d.ts`), a parenthesised function type inside an intersection (the
+ *  `withTry` shape — `((a: A) => R) & { try: … }`), or a `withTry(arrow, …)`
+ *  call (the generated source's withTry emission, whose arrow is the first
+ *  argument). Null when nothing function-shaped is found — the caller treats
+ *  null as "arity not expressed here", matching on the other side only. */
+const paramsOf = (fnNode, src) => {
+  if (!fnNode) return null;
+  if (ts.isArrowFunction(fnNode) || ts.isFunctionTypeNode(fnNode)) {
+    return fnNode.parameters.map((prm) => prm.name.getText(src));
+  }
+  if (ts.isParenthesizedTypeNode(fnNode)) return paramsOf(fnNode.type, src);
+  if (ts.isIntersectionTypeNode(fnNode)) {
+    for (const t of fnNode.types) {
+      const p = paramsOf(t, src);
+      if (p) return p;
+    }
+    return null;
+  }
+  if (ts.isCallExpression(fnNode) && fnNode.arguments.length) {
+    return paramsOf(fnNode.arguments[0], src);
+  }
+  return null;
+};
+
+// The SHIPPED surface is the union of `dist/mounts.d.ts` and what it re-exports.
+// Since #173 the emitted `mounts.d.ts` re-exports the generated family from
+// `./generated/spaces.js` instead of declaring it inline, so reading one file
+// reports the whole family as "not exported". Both files are read and merged;
+// a name declared in both keeps its own file's declaration (they do not overlap
+// in practice — the re-export target owns the family, mounts owns the rest).
+const dtsPaths = [resolve(root, 'dist/mounts.d.ts'), resolve(root, 'dist/generated/spaces.d.ts')];
+const shipped = new Map();
+for (const p of dtsPaths) {
+  if (!existsSync(p)) {
+    console.error(`error: ${p} missing — run \`npm run build\` first.`);
+    process.exit(1);
+  }
+  for (const [name, decl] of declarationsOf(p)) if (!shipped.has(name)) shipped.set(name, decl);
+}
 const generated = declarationsOf(generatedPath);
 
 /** Compare one type. Returns a list of human-readable problems (empty = match). */

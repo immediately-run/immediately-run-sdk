@@ -121,6 +121,9 @@ lines.push(`- [README & guide](${SITE}/): narrative docs and the design rules.`)
 lines.push(
   `- [Full typed API (machine-readable JSON)](${SITE}/api.json): every symbol with exact signatures, parameters, and types — parse this when you need more than the one-liners below.`,
 );
+lines.push(
+  `- [Capability descriptors (machine-readable JSON)](${SITE}/api-descriptors.json): the descriptor set the generated surface is emitted from — methods, params/result schemas, error-code sets, catalog names.`,
+);
 lines.push(`- [API reference (HTML)](${SITE}/modules.html): the human-browsable TypeDoc.`);
 lines.push(
   `- npm: \`npm install ${pkg.name}\` — the installed package ships \`.d.ts\` with the same JSDoc, readable inline by your tools.`,
@@ -137,6 +140,19 @@ for (const m of modules) {
     const s = summary(c);
     lines.push(`- \`${c.name}\` (${KIND[c.kind]})${isDeprecated(c) ? ' **[DEPRECATED]**' : ''}${s ? ' — ' + s : ''}`);
   }
+  lines.push('');
+}
+
+// R3-166 (SDK_SIMPLIFICATION_SPEC §3.3): the capability-family tables, emitted from
+// the SAME descriptor set the generated wrappers come from — catalog names,
+// required capabilities, and the error-code unions that the typed surface carries
+// only as types. The fragment is the committed generated/<family>.llms.txt files
+// concatenated by gen-descriptor-docs.mjs (there is exactly one table emitter,
+// generate.mjs, whose output verify-drift byte-gates); each family carries its own
+// H2 heading, so they stand as top-level sections beside the module sections.
+const descriptorsFragmentPath = resolve(root, 'docs/llms-descriptors.txt');
+if (existsSync(descriptorsFragmentPath)) {
+  lines.push(readFileSync(descriptorsFragmentPath, 'utf8').trimEnd());
   lines.push('');
 }
 

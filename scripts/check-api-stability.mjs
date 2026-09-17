@@ -100,6 +100,11 @@ const splitTop = (body, sep) => {
 /** `interface(a, b?)` → `{ kind:'interface', items:['a','b?'] }`; free-text
  *  shapes (`alias(...)`, `const(...)`) carry `items:null` and are compared whole. */
 const parseShape = (shape) => {
+  // `fn(r..t)&{a, b}` — a callable carrying additive own-properties (the generated
+  // `.try()` shape). Parses into the fn arm with the properties as items, so the
+  // diff treats an added property as an addition and a dropped one as breaking.
+  const mFnProps = /^fn\((\d+\.\.\d+)\)&\{(.*)\}$/.exec(shape ?? '');
+  if (mFnProps) return { kind: 'fn', items: splitTop(mFnProps[2], ','), body: mFnProps[1] };
   const m = /^(\w+)\((.*)\)$/s.exec(shape ?? '');
   if (!m) return { kind: shape ?? 'unknown', items: null, body: '' };
   const [, kind, body] = m;
@@ -141,7 +146,21 @@ const diffShape = (was, now) => {
     const breaking = [];
     if (br > ar) breaking.push(`now requires ${br} parameters (was ${ar})`);
     if (bt < at) breaking.push(`now accepts ${bt} parameters (was ${at})`);
-    return breaking.length ? { breaking, additive: [] } : { breaking: [], additive: [`arity ${a.body} → ${b.body}`] };
+    // Own-properties on the callable (`fn(1..1)&{try}`): gained is additive (the
+    // `.try()` Result variant), lost is breaking — a pinned consumer calling the
+    // property breaks exactly like a removed export.
+    const wasProps = a.items ?? [];
+    const nowProps = b.items ?? [];
+    for (const p of wasProps) if (!nowProps.includes(p)) breaking.push(`lost callable property \`.${p}\``);
+    const gainedProps = nowProps.filter((p) => !wasProps.includes(p));
+    if (breaking.length) return { breaking, additive: [] };
+    return {
+      breaking: [],
+      additive: [
+        ...(a.body !== b.body ? [`arity ${a.body} → ${b.body}`] : []),
+        ...gainedProps.map((p) => `callable property \`.${p}\``),
+      ],
+    };
   }
 
   if (a.items === null || b.items === null) {
@@ -344,10 +363,13 @@ interface Member {
 type Role = 'owner' | 'writer' | 'reader';
 type Handler = (a: string, b?: number) => void;
 declare const listMembers: (spaceId: string, opts?: { limit: number }) => Promise<Member[]>;
+declare const listPending: ((spaceId: string) => Promise<void>) & {
+    try: (spaceId: string) => Promise<{ ok: true; value: void } | { ok: false; code: 'forbidden' | 'unknown' }>;
+};
 declare const VERSION: string;
 declare const WIRE: { A: string; B: string };
 declare const SDK_VERSION: '1.0.0';
-export { type Handler, type Member, type Role, SDK_VERSION, VERSION, WIRE, listMembers };
+export { type Handler, type Member, type Role, SDK_VERSION, VERSION, WIRE, listMembers, listPending };
 `;
 
 const withTempDts = (code, fn) => {
@@ -378,6 +400,17 @@ const selfTest = () => {
     [
       'a DROPPED function parameter',
       BASE_DTS.replace('(spaceId: string, opts?: { limit: number })', '(spaceId: string)'),
+    ],
+    [
+      'a callable own-property REMOVED (fn(1..1)&{try} → fn(1..1))',
+      BASE_DTS.replace(
+        "declare const listPending: ((spaceId: string) => Promise<void>) & {\n    try: (spaceId: string) => Promise<{ ok: true; value: void } | { ok: false; code: 'forbidden' | 'unknown' }>;\n};",
+        'declare const listPending: (spaceId: string) => Promise<void>;',
+      ),
+    ],
+    [
+      'a callable own-property SWAPPED (try → run)',
+      BASE_DTS.replace(/    try: \(spaceId: string\)/, '    run: (spaceId: string)'),
     ],
     ['an optional parameter made REQUIRED', BASE_DTS.replace('opts?: { limit: number }', 'opts: { limit: number }')],
     [
@@ -413,6 +446,13 @@ const selfTest = () => {
   const additiveCases = [
     ['a NEW export', BASE_DTS.replace('export {', 'declare const extra: () => void;\nexport { extra,')],
     ['a NEW optional field', BASE_DTS.replace('invitedAt?: number;', 'invitedAt?: number;\n    note?: string;')],
+    [
+      'a callable own-property ADDED (fn(1..1) → fn(1..1)&{try}, the .try() shape)',
+      BASE_DTS.replace(
+        'declare const listMembers: (spaceId: string, opts?: { limit: number }) => Promise<Member[]>;',
+        'declare const listMembers: ((spaceId: string, opts?: { limit: number }) => Promise<Member[]>) & {\n    try: (spaceId: string, opts?: { limit: number }) => Promise<Member[]>;\n};',
+      ),
+    ],
     [
       'a NEW union member',
       BASE_DTS.replace(

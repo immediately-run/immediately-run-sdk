@@ -75,7 +75,7 @@ export interface ChatResult {
 }
 
 export type ContributeError =
-  'forbidden' | 'auth-required' | 'invalid' | 'network' | 'unknown';
+  'forbidden' | 'auth-required' | 'invalid' | 'unknown';
 
 /**
  * Save the current working tree, streaming each stage. Yields
@@ -91,7 +91,7 @@ export function contribute(req: { commitMessage: string; mode?: ContributeMode; 
 }
 
 export type ChatError =
-  'forbidden' | 'auth-required' | 'invalid' | 'network' | 'unknown';
+  'forbidden' | 'auth-required' | 'invalid' | 'unknown';
 
 /**
  * Stream a chat completion from whichever provider the user has configured.

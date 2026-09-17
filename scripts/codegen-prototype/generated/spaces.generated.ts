@@ -4,6 +4,20 @@
 
 import { invoke } from '../../../src/catalog';
 
+const withTry = <Args extends unknown[], R, E extends string>(
+  fn: (...args: Args) => Promise<R>,
+  fallback: E,
+): ((...args: Args) => Promise<R>) & { try: (...args: Args) => Promise<{ ok: true; value: R } | { ok: false; code: E }> } =>
+  Object.assign(fn, {
+    try: async (...args: Args) => {
+      try {
+        return { ok: true as const, value: await fn(...args) };
+      } catch (e) {
+        return { ok: false as const, code: (e as { code?: E }).code ?? fallback };
+      }
+    },
+  });
+
 /** A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`. */
 export type Role =
   | 'owner'
@@ -48,6 +62,21 @@ export interface GrantRecord {
   name?: string;
 }
 
+/** A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4). It grants NO access until accepted — the recipient accepts it from their inbox ({@link listMyInvites} → {@link acceptInvite}), materializing membership. The display fields (`name`/`login`/`avatarUrl`) are untrusted for rendering. */
+export interface Invite {
+  spaceId: string;
+  /** The invitee's uid — carried so the owner's pending list can {@link revokeInvite}(spaceId, uid). */
+  uid: string;
+  role: Role;
+  owner: string;
+  name?: string;
+  invitedBy: string;
+  /** epoch ms (server-stamped); absent until the write settles. */
+  invitedAt?: number;
+  login?: string;
+  avatarUrl?: string;
+}
+
 export type ListSpacesError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
 
@@ -57,8 +86,11 @@ export type ListSpacesError =
  * Capability: `spaces:app`. Catalog name: `spaces:list`.
  * @throws `Error & { code: ListSpacesError }` on host refusal.
  */
-export const listSpaces = (opts: { app?: boolean } = {}): Promise<SpaceInfo[]> =>
-  invoke<SpaceInfo[]>("spaces:list", opts);
+export const listSpaces = withTry<[opts?: { app?: boolean }], SpaceInfo[], ListSpacesError>(
+  (opts: { app?: boolean } = {}): Promise<SpaceInfo[]> =>
+    invoke<SpaceInfo[]>("spaces:list", opts),
+  'unknown',
+);
 
 export type ListAllSpacesError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
@@ -69,8 +101,11 @@ export type ListAllSpacesError =
  * Capability: `spaces:user`. Catalog name: `spaces:listAll`.
  * @throws `Error & { code: ListAllSpacesError }` on host refusal.
  */
-export const listAllSpaces = (): Promise<SpaceInfo[]> =>
-  invoke<SpaceInfo[]>("spaces:listAll", {});
+export const listAllSpaces = withTry<[], SpaceInfo[], ListAllSpacesError>(
+  (): Promise<SpaceInfo[]> =>
+    invoke<SpaceInfo[]>("spaces:listAll", {}),
+  'unknown',
+);
 
 export type GetSpaceMembersError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
@@ -81,11 +116,14 @@ export type GetSpaceMembersError =
  * Capability: `spaces:admin`. Catalog name: `spaces:members`.
  * @throws `Error & { code: GetSpaceMembersError }` on host refusal.
  */
-export const getSpaceMembers = (spaceId: string): Promise<Member[]> =>
-  invoke<Member[]>("spaces:members", { spaceId });
+export const getSpaceMembers = withTry<[string], Member[], GetSpaceMembersError>(
+  (spaceId: string): Promise<Member[]> =>
+    invoke<Member[]>("spaces:members", { spaceId }),
+  'unknown',
+);
 
 export type InviteToSpaceError =
-  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown' | 'quota-exceeded';
 
 /**
  * Invite a user (by provider handle) to a space at a role. The host resolves
@@ -97,7 +135,10 @@ export type InviteToSpaceError =
  * Capability: `spaces:admin`. Catalog name: `spaces:invite`.
  * @throws `Error & { code: InviteToSpaceError }` on host refusal.
  */
-export const inviteToSpace = async (spaceId: string, login: string, role: Role): Promise<void> => { await invoke<void>("spaces:invite", { spaceId, login, role }); };
+export const inviteToSpace = withTry<[string, string, Role], void, InviteToSpaceError>(
+  async (spaceId: string, login: string, role: Role): Promise<void> => { await invoke<void>("spaces:invite", { spaceId, login, role }); },
+  'unknown',
+);
 
 export type UnshareSpaceError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown' | 'conflict';
@@ -109,7 +150,10 @@ export type UnshareSpaceError =
  * Capability: `spaces:admin`. Catalog name: `spaces:unshare`.
  * @throws `Error & { code: UnshareSpaceError }` on host refusal.
  */
-export const unshareSpace = async (spaceId: string, uid: string): Promise<void> => { await invoke<void>("spaces:unshare", { spaceId, uid }); };
+export const unshareSpace = withTry<[string, string], void, UnshareSpaceError>(
+  async (spaceId: string, uid: string): Promise<void> => { await invoke<void>("spaces:unshare", { spaceId, uid }); },
+  'unknown',
+);
 
 export type SetSpaceRoleError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown' | 'conflict';
@@ -121,7 +165,10 @@ export type SetSpaceRoleError =
  * Capability: `spaces:admin`. Catalog name: `spaces:setRole`.
  * @throws `Error & { code: SetSpaceRoleError }` on host refusal.
  */
-export const setSpaceRole = async (spaceId: string, uid: string, role: Role): Promise<void> => { await invoke<void>("spaces:setRole", { spaceId, uid, role }); };
+export const setSpaceRole = withTry<[string, string, Role], void, SetSpaceRoleError>(
+  async (spaceId: string, uid: string, role: Role): Promise<void> => { await invoke<void>("spaces:setRole", { spaceId, uid, role }); },
+  'unknown',
+);
 
 export type LookupUserError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
@@ -133,8 +180,11 @@ export type LookupUserError =
  * Capability: `spaces:admin`. Catalog name: `spaces:lookupUser`.
  * @throws `Error & { code: LookupUserError }` on host refusal.
  */
-export const lookupUser = (login: string): Promise<ResolvedUser> =>
-  invoke<ResolvedUser>("spaces:lookupUser", { login });
+export const lookupUser = withTry<[string], ResolvedUser, LookupUserError>(
+  (login: string): Promise<ResolvedUser> =>
+    invoke<ResolvedUser>("spaces:lookupUser", { login }),
+  'unknown',
+);
 
 export type ListGrantsError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
@@ -146,8 +196,11 @@ export type ListGrantsError =
  * Capability: `spaces:admin`. Catalog name: `spaces:grants`.
  * @throws `Error & { code: ListGrantsError }` on host refusal.
  */
-export const listGrants = (): Promise<GrantRecord[]> =>
-  invoke<GrantRecord[]>("spaces:grants", {});
+export const listGrants = withTry<[], GrantRecord[], ListGrantsError>(
+  (): Promise<GrantRecord[]> =>
+    invoke<GrantRecord[]>("spaces:grants", {}),
+  'unknown',
+);
 
 export type RevokeGrantError =
   'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
@@ -159,5 +212,84 @@ export type RevokeGrantError =
  * Capability: `spaces:admin`. Catalog name: `spaces:revokeGrant`.
  * @throws `Error & { code: RevokeGrantError }` on host refusal.
  */
-export const revokeGrant = async (appKey: string, spaceId: string): Promise<void> => { await invoke<void>("spaces:revokeGrant", { appKey, spaceId }); };
+export const revokeGrant = withTry<[string, string], void, RevokeGrantError>(
+  async (appKey: string, spaceId: string): Promise<void> => { await invoke<void>("spaces:revokeGrant", { appKey, spaceId }); },
+  'unknown',
+);
+
+export type ListPendingInvitesError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * The owner's outstanding invitations for a space.
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:pendingInvites`.
+ * @throws `Error & { code: ListPendingInvitesError }` on host refusal.
+ */
+export const listPendingInvites = withTry<[string], Invite[], ListPendingInvitesError>(
+  (spaceId: string): Promise<Invite[]> =>
+    invoke<Invite[]>("spaces:pendingInvites", { spaceId }),
+  'unknown',
+);
+
+export type RevokeInviteError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Withdraw a pending invitation (distinct from {@link unshareSpace}, which
+ * removes an ACCEPTED member).
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:revokeInvite`.
+ * @throws `Error & { code: RevokeInviteError }` on host refusal.
+ */
+export const revokeInvite = withTry<[string, string], void, RevokeInviteError>(
+  async (spaceId: string, uid: string): Promise<void> => { await invoke<void>("spaces:revokeInvite", { spaceId, uid }); },
+  'unknown',
+);
+
+export type ListMyInvitesError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * The caller's OWN invitation inbox.
+ *
+ * Capability: `spaces:user`. Catalog name: `spaces:listInvites`.
+ * @throws `Error & { code: ListMyInvitesError }` on host refusal.
+ */
+export const listMyInvites = withTry<[], Invite[], ListMyInvitesError>(
+  (): Promise<Invite[]> =>
+    invoke<Invite[]>("spaces:listInvites", {}),
+  'unknown',
+);
+
+export type AcceptInviteError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Accept an invitation: materialize your membership at the invited role and
+ * clear the invite. An invitation the caller doesn't hold rejects with
+ * `forbidden` (indistinguishable from a nonexistent space; no existence
+ * oracle).
+ *
+ * Capability: `spaces:user`. Catalog name: `spaces:acceptInvite`.
+ * @throws `Error & { code: AcceptInviteError }` on host refusal.
+ */
+export const acceptInvite = withTry<[string], void, AcceptInviteError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:acceptInvite", { spaceId }); },
+  'unknown',
+);
+
+export type DeclineInviteError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Decline (dismiss) an invitation from your inbox; writes no membership.
+ *
+ * Capability: `spaces:user`. Catalog name: `spaces:declineInvite`.
+ * @throws `Error & { code: DeclineInviteError }` on host refusal.
+ */
+export const declineInvite = withTry<[string], void, DeclineInviteError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:declineInvite", { spaceId }); },
+  'unknown',
+);
 
