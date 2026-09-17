@@ -1,0 +1,156 @@
+#!/usr/bin/env node
+// fix-dist-esm-specifiers.mjs — make the published ESM dist importable by node's
+// resolver (R3-495).
+//
+// tsup's 1:1 passthrough (`bundle: false`) preserves the SOURCE's extensionless
+// relative specifiers verbatim, and node's ESM resolver — like a native browser
+// module graph — requires extensions: `export * from './MDXProvider'` in
+// dist/index.js is unresolvable outside a bundler. The subpath-import suite worked
+// around this with a resolve hook (R3-421), which masked the defect from exactly
+// the consumers the package is published for: the fresh-repo smoke's plain-node
+// probe of the installed package failed on it (ERR_MODULE_NOT_FOUND, the red
+// 2026-09-16 nightly), and any SSR/CLI/tooling import hits the same wall.
+//
+// This pass rewrites relative specifiers in dist/**/*.js to the file that exists:
+// './x' → './x.js', './dir' → './dir/index.js'. CJS needs nothing (require is
+// extension-tolerant), and the exports map handles subpaths — only INTRA-dist
+// relative specifiers are touched.
+//
+// Fail-closed: a relative specifier resolving to NEITHER candidate is a build
+// error, never a silent pass-through. Idempotent: already-extensioned specifiers
+// are untouched, so a second run is a no-op (asserted by the build itself being
+// deterministic).
+//
+// Known limit, accepted: the rewrite is textual, so a string literal CONTAINING a
+// `from './x'`-shaped snippet would be corrupted too. The SDK ships no such string
+// today (the jest suite + both e2e suites + the subpath-import suite — now WITHOUT
+// its resolve-hook crutch — all run the rewritten dist).
+//
+// Be precise about the failure mode, because the obvious reassurance is wrong: a
+// future such string fails loudly ONLY when its specifier resolves to nothing. If
+// the snippet names a real sibling module — `"import { boot } from './boot'"` with
+// boot.js present — it is rewritten SILENTLY inside the string literal, and neither
+// the build nor an import complains. The guard is that no such string ships, not
+// that the pass would catch one.
+//
+// The `.d.ts` surface needs nothing, and the reason is NOT the one this comment
+// used to give. It claimed the declarations "keep tsup's extensionless specifiers";
+// measured on a fresh build, 114 of the 115 relative specifiers in dist/**/*.d.ts
+// are ALREADY extensioned — tsup emits them that way. The lone exception is
+// `dist/ambient.d.ts`, which `copy-ambient-types.mjs` copies verbatim from src/
+// rather than tsup emitting it, and which is an ambient declaration file no
+// consumer resolves through the package's exports map. So there is no deferral to
+// file here: if a *.d.ts case ever does appear, extend this walk rather than
+// adding a second rewriter.
+
+import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { join, dirname, relative } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const dist = join(root, 'dist');
+
+/** Every `.js` file under `dir`, recursively. */
+const walkJs = (dir) => {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    const p = join(dir, name);
+    if (statSync(p).isDirectory()) out.push(...walkJs(p));
+    else if (name.endsWith('.js')) out.push(p);
+  }
+  return out;
+};
+
+// A relative import/export specifier in any of the three syntactic positions:
+// `… from './x'`, `import('./x')`, `import './x'`. The specifier body is captured
+// without its quotes; anything not starting with '.' is left untouched (bare
+// imports resolve through node_modules and are the consumer's problem).
+const SPECIFIER = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.[^'"]*)\2/g;
+
+const HAS_EXTENSION = /\.[cm]?js$|\.json$|\.css$/;
+
+export function fixFile(file) {
+  const text = readFileSync(file, 'utf8');
+  const misses = [];
+  const out = text.replace(SPECIFIER, (all, head, quote, spec) => {
+    if (HAS_EXTENSION.test(spec)) return all;
+    const base = join(dirname(file), spec);
+    let fixed = null;
+    if (existsSync(`${base}.js`)) fixed = `${spec}.js`;
+    else if (existsSync(join(base, 'index.js'))) fixed = `${spec}/index.js`;
+    else misses.push(spec);
+    return fixed ? `${head}${quote}${fixed}${quote}` : all;
+  });
+  if (misses.length > 0) {
+    throw new Error(
+      `${relative(root, file)}: ${misses.length} relative specifier(s) resolve to neither ` +
+        `<spec>.js nor <spec>/index.js: ${misses.join(', ')} — the dist is incomplete; ` +
+        'do not paper over a missing emit.',
+    );
+  }
+  return { out, changed: out !== text };
+}
+
+const isSelfTest = process.argv.includes('--self-test');
+
+if (isSelfTest) {
+  // A gate that cannot be shown to fire is not a gate.
+  const tmp = join(root, 'node_modules', '.cache', 'fix-dist-esm-specifiers-selftest');
+  const { mkdirSync, rmSync, writeFileSync: wf } = await import('node:fs');
+  rmSync(tmp, { recursive: true, force: true });
+  mkdirSync(join(tmp, 'sub'), { recursive: true });
+  wf(join(tmp, 'sub', 'index.js'), 'export const leaf = 1;\n');
+  wf(join(tmp, 'leaf.js'), 'export const x = 1;\n');
+  const target = join(tmp, 'main.js');
+  wf(
+    target,
+    [
+      `export * from './leaf';`,
+      `import { leaf } from './sub';`,
+      `import './leaf.js';`,
+      `const later = await import('./leaf');`,
+      `import { mkdir } from 'node:fs';`,
+      `export * as ns from './sub';`,
+    ].join('\n') + '\n',
+  );
+  // `assert.ok`, NOT `console.assert`: console.assert prints and returns, leaving
+  // process.exitCode undefined, so every assertion below used to pass vacuously and
+  // the block ended `process.exit(0)` regardless. Fault-injected 2026-09-17 (fixFile
+  // returning its input unchanged): five 'Assertion failed' lines printed and the
+  // script still exited 0. This is the shape the other checks already use.
+  const first = fixFile(target);
+  assert.ok(first.out.includes(`from './leaf.js'`), 'static export-from gains .js');
+  assert.ok(first.out.includes(`from './sub/index.js'`), 'directory spec gains /index.js');
+  assert.ok(first.out.includes(`import './leaf.js'`), 'side-effect import already extensioned stays');
+  assert.ok(first.out.includes(`import('./leaf.js')`), 'dynamic import gains .js');
+  assert.ok(first.out.includes(`from 'node:fs'`), 'bare imports untouched');
+  assert.ok(first.out.includes(`from './sub/index.js'`), 'export-namespace form also fixed');
+  // idempotency: the SECOND run over the rewritten content changes nothing
+  wf(target, first.out);
+  assert.equal(fixFile(target).changed, false, 'a second run is a no-op');
+  // fail-closed: a specifier to nothing throws
+  wf(join(tmp, 'broken.js'), `import './nowhere';\n`);
+  assert.throws(() => fixFile(join(tmp, 'broken.js')), 'an unresolvable specifier is a build error');
+  rmSync(tmp, { recursive: true, force: true });
+  console.log('✓ fix-dist-esm-specifiers self-test: 8 assertions');
+  process.exit(0);
+}
+
+// Only rewrite dist/ when this file is the process entry point. Without the guard
+// the module body ran on IMPORT, so merely importing `fixFile` to test it rewrote
+// the real dist/ as a side effect — which is why there was no unit test for it.
+const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isDirectRun) {
+  const files = walkJs(dist);
+  let changed = 0;
+  for (const file of files) {
+    const { out, changed: did } = fixFile(file);
+    if (did) {
+      writeFileSync(file, out);
+      changed += 1;
+    }
+  }
+  console.log(`fix-dist-esm-specifiers: ${changed}/${files.length} dist .js files rewritten to extensioned specifiers`);
+}

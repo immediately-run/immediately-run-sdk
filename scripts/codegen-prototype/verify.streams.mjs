@@ -19,7 +19,6 @@
 // Run: node scripts/codegen-prototype/verify.streams.mjs [--self-test]
 //      (requires `npm run build`)
 
-import { registerHooks } from 'node:module';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -33,22 +32,9 @@ if (!existsSync(resolve(dist, 'contribute.js'))) {
   process.exit(1);
 }
 
-// tsup emits extensionless relative specifiers; node's ESM resolver rejects them.
-// See the note in verify.mjs — this is the actual reason the old harnesses
-// re-implemented the modules, not load-time side effects.
-registerHooks({
-  resolve(spec, ctx, next) {
-    if (spec.startsWith('.') && !/\.[cm]?js$/.test(spec)) {
-      try {
-        const p = fileURLToPath(new URL(spec, ctx.parentURL)) + '.js';
-        if (existsSync(p)) return { url: pathToFileURL(p).href, shortCircuit: true };
-      } catch {
-        /* fall through */
-      }
-    }
-    return next(spec, ctx);
-  },
-});
+// NO RESOLVE HOOK HERE, deliberately — see the note in verify.mjs. R3-495 makes
+// the built dist importable by node's own resolver, so this harness reads it the
+// way a consumer does. Do not reintroduce the hook.
 
 // ── the scripted host, installed where the SDK really looks for it ─────────────
 //

@@ -6,29 +6,20 @@
 // `useAllMetadata` — must keep getting exactly what it got, from the same built
 // files a real app loads, while the new record and provider forms work alongside it.
 //
-// Two mechanics make importing the dist possible (see the drive-the-built-SDK memory):
-// tsup emits extensionless relative specifiers that Node's ESM resolver rejects, and
-// the transport resolves lazily so importing is safe without a host. Only the first
-// applies here — these hooks touch no transport.
+// Importing the dist needs NO mechanics: the build's last step rewrites tsup's
+// extensionless relative specifiers to the files that exist
+// (`scripts/fix-dist-esm-specifiers.mjs`, R3-495), and the transport resolves
+// lazily so importing is safe without a host. The resolve hook this file used to
+// carry proved the suite while the published package failed the same import —
+// the crutch is deleted, not extended; a recurrence fails here first.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
-import { registerHooks } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
-
-registerHooks({
-  resolve(spec, ctx, next) {
-    if (spec.startsWith('.') && !/\.[cm]?js$/.test(spec) && ctx.parentURL) {
-      const p = fileURLToPath(new URL(spec, ctx.parentURL)) + '.js';
-      if (existsSync(p)) return { url: pathToFileURL(p).href, shortCircuit: true };
-    }
-    return next(spec, ctx);
-  },
-});
 
 const load = (rel) => import(pathToFileURL(join(dist, rel)).href);
 
