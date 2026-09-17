@@ -51,7 +51,7 @@ if (!existsSync(shippedPath)) {
 // The artifact set: the shipped spaces module, plus every committed prototype
 // projection for every descriptor family (generated/<family>.{generated.ts,llms.txt,catalog.json}).
 // The family names come from each descriptor module's `family.scheme` — the same
-// field the generator names its outputs by — NOT from the descriptor FILE name,
+// field the generator names its outputs by — not from the descriptor file name,
 // so a file named differently from its scheme can never make this gate blame the
 // generator for a "missing" projection (round-3 nit on #174).
 const descriptorFiles = readdirSync(here)
@@ -61,19 +61,38 @@ if (!descriptorFiles.length) {
   console.error('error: no descriptor families found — the drift gate is vacuous, which is a failure.');
   process.exit(1);
 }
-const families = [];
+
+/** Map descriptor modules to their `{file, scheme}` families, naming the two
+ *  failure classes: a module exporting no `family.scheme`, and two modules
+ *  declaring the same scheme (one projection set, two sources). Pure — the
+ *  self-test drives it directly with synthetic entries. */
+const familyViolations = (entries) => {
+  const out = [];
+  const schemeOwner = new Map();
+  for (const { file, family } of entries) {
+    const scheme = family?.scheme;
+    if (!scheme) {
+      out.push(`${file} exports no \`family.scheme\` — cannot derive its artifact names.`);
+      continue;
+    }
+    const prior = schemeOwner.get(scheme);
+    if (prior) out.push(`${file} and ${prior} both declare scheme \`${scheme}\` — one projection set, two sources.`);
+    else schemeOwner.set(scheme, file);
+  }
+  return out;
+};
+
+const descriptorEntries = [];
 for (const f of descriptorFiles) {
   const { family } = await import(pathToFileURL(join(here, f)).href);
-  if (!family?.scheme) {
-    console.error(`error: ${f} exports no \`family.scheme\` — cannot derive its artifact names.`);
-    process.exit(1);
-  }
-  if (families.includes(family.scheme)) {
-    console.error(`error: two descriptor files declare scheme \`${family.scheme}\` — one projection set, two sources.`);
-    process.exit(1);
-  }
-  families.push({ file: f, scheme: family.scheme });
+  descriptorEntries.push({ file: f, family });
 }
+const familyProblems = familyViolations(descriptorEntries);
+if (familyProblems.length) {
+  for (const p of familyProblems) console.error(`error: ${p}`);
+  process.exit(1);
+}
+const families = descriptorEntries.map(({ file, family }) => ({ file, scheme: family.scheme }));
 const artifactPaths = (scheme) => [
   ['generated', `${scheme}.generated.ts`],
   ['generated', `${scheme}.llms.txt`],
@@ -239,10 +258,24 @@ const selfTest = () => {
     ]).join() === 'invites.llms.txt';
   console.log(`${orphanCaught ? 'PASS' : 'FAIL'}  detects: an orphaned committed artifact (no descriptor produces it)`);
   if (orphanCaught) ok++;
+  // The family-collection guards, driven directly with synthetic entries.
+  const missingSchemeCaught = familyViolations([{ file: 'descriptors.broken.mjs', family: {} }]).length === 1;
+  console.log(`${missingSchemeCaught ? 'PASS' : 'FAIL'}  detects: a descriptor module exporting no family.scheme`);
+  if (missingSchemeCaught) ok++;
+  const duplicateSchemeCaught =
+    familyViolations([
+      { file: 'descriptors.spaces.mjs', family: { scheme: 'spaces' } },
+      { file: 'descriptors.zdupe.mjs', family: { scheme: 'spaces' } },
+    ]).length === 1;
+  console.log(`${duplicateSchemeCaught ? 'PASS' : 'FAIL'}  detects: two descriptor files declaring one scheme`);
+  if (duplicateSchemeCaught) ok++;
+  const familiesClean = familyViolations(descriptorEntries).length === 0;
+  console.log(`${familiesClean ? 'PASS' : 'FAIL'}  the live descriptor modules collect cleanly`);
+  if (familiesClean) ok++;
   const cleanOk = check(real) === null && orphanedArtifacts().length === 0;
   console.log(`${cleanOk ? 'PASS' : 'FAIL'}  the committed files are clean (no false positive, no orphans)`);
   if (cleanOk) ok++;
-  const total = cases.length + 2;
+  const total = cases.length + 5;
   console.log(`\n${ok}/${total} self-test cases.`);
   if (ok !== total) {
     console.error('\nself-test FAILED — the drift gate is not detecting drift it must detect.');
