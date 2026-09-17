@@ -98,6 +98,32 @@ export const types = {
       },
     },
   },
+  Invite: {
+    description:
+      'A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4). It grants NO ' +
+      'access until accepted — the recipient accepts it from their inbox ({@link listMyInvites} → ' +
+      '{@link acceptInvite}), materializing membership. The display fields (`name`/`login`/`avatarUrl`) ' +
+      'are untrusted for rendering.',
+    schema: {
+      type: 'object',
+      required: ['spaceId', 'uid', 'role', 'owner', 'invitedBy'],
+      properties: {
+        spaceId: { type: 'string' },
+        uid: {
+          type: 'string',
+          description:
+            "The invitee's uid — carried so the owner's pending list can {@link revokeInvite}(spaceId, uid).",
+        },
+        role: { $ref: 'Role' },
+        owner: { type: 'string' },
+        name: { type: 'string' },
+        invitedBy: { type: 'string' },
+        invitedAt: { type: 'number', description: 'epoch ms (server-stamped); absent until the write settles.' },
+        login: { type: 'string' },
+        avatarUrl: { type: 'string' },
+      },
+    },
+  },
 };
 
 /** The error-code registry slice the `spaces:*` family can reply
@@ -172,7 +198,12 @@ export const methods = [
       },
     },
     result: { type: 'void' },
-    errors: SPACE_ERRORS,
+    // quota-exceeded is the R3-89 invite anti-abuse bound (per-space outstanding
+    // invitations, per-recipient rate) — the host throws it (spaceHandler) and apps
+    // receive it (site-main adversarial/invites asserts it), so the union must carry
+    // it. Adding a code to an exported union is R-SDKS-2's gated minor: api:check
+    // re-baselines deliberately, with a changelog note.
+    errors: [...SPACE_ERRORS, 'quota-exceeded'],
     alias: { fn: 'inviteToSpace', positional: ['spaceId', 'login', 'role'] },
   },
   {
@@ -246,6 +277,80 @@ export const methods = [
     result: { type: 'void' },
     errors: SPACE_ERRORS,
     alias: { fn: 'revokeGrant', positional: ['appKey', 'spaceId'] },
+  },
+  {
+    // The §6.4 invite inbox — the five verbs that were the declared "next
+    // migration increment" after #85. Wire names and semantics transcribed from
+    // the hand-written wrappers in src/mounts.ts and the host gate table
+    // (site-main actionGate: pendingInvites/revokeInvite are spaces:admin,
+    // listInvites/acceptInvite/declineInvite are spaces:user).
+    name: 'spaces:pendingInvites',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc: "The owner's outstanding invitations for a space.",
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    result: { type: 'array', items: { $ref: 'Invite' } },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'listPendingInvites', positional: ['spaceId'] },
+  },
+  {
+    name: 'spaces:revokeInvite',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc: 'Withdraw a pending invitation (distinct from {@link unshareSpace}, which removes an ACCEPTED member).',
+    params: {
+      type: 'object',
+      required: ['spaceId', 'uid'],
+      properties: { spaceId: { type: 'string' }, uid: { type: 'string' } },
+    },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'revokeInvite', positional: ['spaceId', 'uid'] },
+  },
+  {
+    name: 'spaces:listInvites',
+    capability: 'spaces:user',
+    kind: 'request',
+    doc: "The caller's OWN invitation inbox.",
+    params: { type: 'object', properties: {} },
+    result: { type: 'array', items: { $ref: 'Invite' } },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'listMyInvites', positional: [] },
+  },
+  {
+    name: 'spaces:acceptInvite',
+    capability: 'spaces:user',
+    kind: 'request',
+    doc:
+      'Accept an invitation: materialize your membership at the invited role and clear the invite. An ' +
+      "invitation the caller doesn't hold rejects with `forbidden` (indistinguishable from a " +
+      'nonexistent space; no existence oracle).',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'acceptInvite', positional: ['spaceId'] },
+  },
+  {
+    name: 'spaces:declineInvite',
+    capability: 'spaces:user',
+    kind: 'request',
+    doc: 'Decline (dismiss) an invitation from your inbox; writes no membership.',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'declineInvite', positional: ['spaceId'] },
   },
 ];
 

@@ -34,5 +34,25 @@
   {
     "name": "spaces:revokeGrant",
     "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:pendingInvites",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:revokeInvite",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:listInvites",
+    "capability": "spaces:user"
+  },
+  {
+    "name": "spaces:acceptInvite",
+    "capability": "spaces:user"
+  },
+  {
+    "name": "spaces:declineInvite",
+    "capability": "spaces:user"
   }
 ]

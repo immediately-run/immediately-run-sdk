@@ -99,7 +99,12 @@ export const types = {
   },
 };
 
-const STREAM_ERRORS = ['forbidden', 'auth-required', 'invalid', 'network', 'unknown'];
+// 'network' was listed here but is a phantom: the host registry has no such code,
+// the llm:chat handler remaps network faults at the boundary, and nothing in the
+// SDK client throws it — grep proves zero producers. Removed when the R3-166
+// host descriptor-set lockstep leg measured the SDK error unions against the
+// host's closed ERROR_CODES registry.
+const STREAM_ERRORS = ['forbidden', 'auth-required', 'invalid', 'unknown'];
 
 export const methods = [
   {

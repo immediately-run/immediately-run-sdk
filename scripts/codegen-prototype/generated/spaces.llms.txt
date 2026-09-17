@@ -11,3 +11,10 @@
 | `lookupUser` | `spaces:lookupUser` | `spaces:admin` | request | login | `ResolvedUser` |
 | `listGrants` | `spaces:grants` | `spaces:admin` | request | — | `GrantRecord[]` |
 | `revokeGrant` | `spaces:revokeGrant` | `spaces:admin` | request | appKey, spaceId | `void` |
+| `listPendingInvites` | `spaces:pendingInvites` | `spaces:admin` | request | spaceId | `Invite[]` |
+| `revokeInvite` | `spaces:revokeInvite` | `spaces:admin` | request | spaceId, uid | `void` |
+| `listMyInvites` | `spaces:listInvites` | `spaces:user` | request | — | `Invite[]` |
+| `acceptInvite` | `spaces:acceptInvite` | `spaces:user` | request | spaceId | `void` |
+| `declineInvite` | `spaces:declineInvite` | `spaces:user` | request | spaceId | `void` |
+
+Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: true; value } | { ok: false; code }>` — the same call without the throw.

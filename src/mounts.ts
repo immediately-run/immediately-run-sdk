@@ -9,13 +9,15 @@ import { mountMatches } from './mountMatch';
 // (`scripts/codegen-prototype/descriptors.spaces.mjs`) rather than hand-written here.
 // Re-exported from this module so every existing import path keeps working: the
 // swap is a no-op to consumers (SDK_SIMPLIFICATION_SPEC §7 step 3), which is
-// asserted by the emitted-`.d.ts` before/after comparison, not assumed.
+// asserted by the emitted-`.d.ts` before/after comparison, not assumed. The five
+// invite-inbox verbs joined the generated family with their `Invite` type (the
+// declared "next migration increment" after #85); the mount verbs and the live
+// inbox channel trio below stay hand-written — they are not request wrappers.
 //
-// `Role` is imported (not only re-exported) because `Invite` below still uses it —
-// the invite methods are the same `spaces:` scheme but are NOT yet described, so
-// they remain hand-written. That split is the next migration increment.
-import type { Role } from './generated/spaces';
-export type { Role, SpaceInfo, Member, ResolvedUser, GrantRecord } from './generated/spaces';
+// The invite channel's parse below uses `Invite`, so it is imported (not only
+// re-exported).
+import type { Invite } from './generated/spaces';
+export type { Role, SpaceInfo, Member, ResolvedUser, GrantRecord, Invite } from './generated/spaces';
 export {
   listSpaces,
   listAllSpaces,
@@ -26,6 +28,11 @@ export {
   lookupUser,
   listGrants,
   revokeGrant,
+  listPendingInvites,
+  revokeInvite,
+  listMyInvites,
+  acceptInvite,
+  declineInvite,
 } from './generated/spaces';
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
 // FileCap SHAPE without pulling that side effect into every `mounts` importer.
@@ -720,57 +727,14 @@ export const unmountSpace = async (query: { spaceId: string }): Promise<void> =>
 // The host enforces the owner-lockout invariant (a space always keeps an owner,
 // T41) and rate-limits handle lookups (L1); the OAuth/identity token never
 // crosses to the app.
-// ---------------------------------------------------------------------------
-
-/** A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
- *  It grants NO access until accepted — the recipient accepts it from their inbox
- *  ({@link listMyInvites} → {@link acceptInvite}), materializing membership. The
- *  display fields (`name`/`login`/`avatarUrl`) are untrusted for rendering. */
-export interface Invite {
-  spaceId: string;
-  /** The invitee's uid — carried so the owner's pending list can
-   *  {@link revokeInvite}(spaceId, uid). */
-  uid: string;
-  role: Role;
-  owner: string;
-  name?: string;
-  invitedBy: string;
-  /** epoch ms (server-stamped); absent until the write settles. */
-  invitedAt?: number;
-  login?: string;
-  avatarUrl?: string;
-}
-
-/** The owner's outstanding invitations for a space — `spaces:admin`. */
-export const listPendingInvites = (spaceId: string): Promise<Invite[]> =>
-  request<Invite[]>('pendingInvites', { spaceId });
-
-/** Withdraw a pending invitation (distinct from {@link unshareSpace}, which removes
- *  an ACCEPTED member) — `spaces:admin`. */
-export const revokeInvite = async (spaceId: string, uid: string): Promise<void> => {
-  await request('revokeInvite', { spaceId, uid });
-};
-
-/** The caller's OWN invitation inbox — `spaces:user`. */
-export const listMyInvites = (): Promise<Invite[]> => request<Invite[]>('listInvites', {});
-
-/** Accept an invitation: materialize your membership at the invited role and clear
- *  the invite — `spaces:user`. An invitation the caller doesn't hold rejects with
- *  `forbidden` (indistinguishable from a nonexistent space; no existence oracle). */
-export const acceptInvite = async (spaceId: string): Promise<void> => {
-  await request('acceptInvite', { spaceId });
-};
-
-/** Decline (dismiss) an invitation from your inbox; writes no membership —
- *  `spaces:user`. */
-export const declineInvite = async (spaceId: string): Promise<void> => {
-  await request('declineInvite', { spaceId });
-};
-
-// The live invitations inbox (FILE_SHARING §6.4/§9.8): the host pushes the caller's
-// current invitations on change and replays on register-frame; gated `spaces:user`.
-// So an invite that arrives (or an accepted/declined one leaving) reflects within one
-// snapshot — no poll. Mirrors the host's `invitations`/`request-invitations` wiring.
+//
+// The request verbs above (invite inbox included) are generated from the
+// descriptor set; what remains hand-written here is the live invitations
+// channel (FILE_SHARING §6.4/§9.8): the host pushes the caller's current
+// invitations on change and replays on register-frame; gated `spaces:user`.
+// So an invite that arrives (or an accepted/declined one leaving) reflects
+// within one snapshot — no poll. Mirrors the host's
+// `invitations`/`request-invitations` wiring.
 const invitesChannel = createPushChannel<Invite[]>({
   pushType: INVITATIONS,
   requestType: REQUEST_INVITATIONS,

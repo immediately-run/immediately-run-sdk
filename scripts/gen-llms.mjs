@@ -121,6 +121,9 @@ lines.push(`- [README & guide](${SITE}/): narrative docs and the design rules.`)
 lines.push(
   `- [Full typed API (machine-readable JSON)](${SITE}/api.json): every symbol with exact signatures, parameters, and types — parse this when you need more than the one-liners below.`,
 );
+lines.push(
+  `- [Capability descriptors (machine-readable JSON)](${SITE}/api-descriptors.json): the descriptor set the generated surface is emitted from — methods, params/result schemas, error-code sets, catalog names.`,
+);
 lines.push(`- [API reference (HTML)](${SITE}/modules.html): the human-browsable TypeDoc.`);
 lines.push(
   `- npm: \`npm install ${pkg.name}\` — the installed package ships \`.d.ts\` with the same JSDoc, readable inline by your tools.`,
@@ -137,6 +140,25 @@ for (const m of modules) {
     const s = summary(c);
     lines.push(`- \`${c.name}\` (${KIND[c.kind]})${isDeprecated(c) ? ' **[DEPRECATED]**' : ''}${s ? ' — ' + s : ''}`);
   }
+  lines.push('');
+}
+
+// R3-166 (SDK_SIMPLIFICATION_SPEC §3.3): the capability-family tables, emitted from
+// the SAME descriptor set the generated wrappers come from — catalog names,
+// required capabilities, and the error-code unions that the typed surface carries
+// only as types. Appended, not spliced: the per-module sections above stay the
+// complete export list; these tables add what TypeDoc cannot know.
+const descriptorsFragmentPath = resolve(root, 'docs/llms-descriptors.txt');
+if (existsSync(descriptorsFragmentPath)) {
+  lines.push('## Capability families — the descriptor set');
+  lines.push('');
+  lines.push(
+    'Generated from the SDK capability descriptor set (the same single source the ' +
+      'generated typed wrappers are emitted from). Catalog names are what `invoke()` ' +
+      'takes; capabilities are what the host gate requires.',
+  );
+  lines.push('');
+  lines.push(readFileSync(descriptorsFragmentPath, 'utf8').trimEnd());
   lines.push('');
 }
 

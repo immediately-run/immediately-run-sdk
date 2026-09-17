@@ -117,4 +117,30 @@ describe('invites — SDK surface (§6.4/§7)', () => {
     expect(getInvites()).toEqual([invite]);
     expect(seen[seen.length - 1]).toEqual([invite]);
   });
+
+  describe('.try() — the O3 Result variant (generated from the same descriptor)', () => {
+    it('a successful call resolves { ok: true, value } without throwing', async () => {
+      protocolRequest.mockResolvedValue(ok([invite]));
+      const res = await listMyInvites.try();
+      expect(res).toEqual({ ok: true, value: [invite] });
+    });
+
+    it('a host refusal resolves { ok: false, code } with the typed code', async () => {
+      protocolRequest.mockResolvedValue(fail('forbidden', 'no invitation for this space'));
+      const res = await acceptInvite.try('never-invited');
+      expect(res).toEqual({ ok: false, code: 'forbidden' });
+    });
+
+    it('a non-typed error maps to the union fallback code `unknown`', async () => {
+      protocolRequest.mockRejectedValue(new Error('transport gone'));
+      const res = await declineInvite.try('space-1');
+      expect(res).toEqual({ ok: false, code: 'unknown' });
+    });
+
+    it('the throwing form is unchanged — .try is additive, not a replacement', async () => {
+      protocolRequest.mockResolvedValue(fail('forbidden'));
+      await expect(acceptInvite('never-invited')).rejects.toMatchObject({ code: 'forbidden' });
+      expect(typeof acceptInvite).toBe('function');
+    });
+  });
 });
