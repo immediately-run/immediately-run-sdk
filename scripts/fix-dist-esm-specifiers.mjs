@@ -35,6 +35,7 @@
 import { readdirSync, readFileSync, statSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
@@ -102,38 +103,43 @@ if (isSelfTest) {
       `export * as ns from './sub';`,
     ].join('\n') + '\n',
   );
-  const { fixFile: fix } = { fixFile };
-  const first = fix(target);
-  console.assert(first.out.includes(`from './leaf.js'`), 'static export-from gains .js');
-  console.assert(first.out.includes(`from './sub/index.js'`), 'directory spec gains /index.js');
-  console.assert(first.out.includes(`import './leaf.js'`), 'side-effect import already extensioned stays');
-  console.assert(first.out.includes(`import('./leaf.js')`), 'dynamic import gains .js');
-  console.assert(first.out.includes(`from 'node:fs'`), 'bare imports untouched');
-  console.assert(first.out.includes(`from './sub/index.js'`), 'export-namespace form also fixed');
+  // `assert.ok`, NOT `console.assert`: console.assert prints and returns, leaving
+  // process.exitCode undefined, so every assertion below used to pass vacuously and
+  // the block ended `process.exit(0)` regardless. Fault-injected 2026-09-17 (fixFile
+  // returning its input unchanged): five 'Assertion failed' lines printed and the
+  // script still exited 0. This is the shape the other checks already use.
+  const first = fixFile(target);
+  assert.ok(first.out.includes(`from './leaf.js'`), 'static export-from gains .js');
+  assert.ok(first.out.includes(`from './sub/index.js'`), 'directory spec gains /index.js');
+  assert.ok(first.out.includes(`import './leaf.js'`), 'side-effect import already extensioned stays');
+  assert.ok(first.out.includes(`import('./leaf.js')`), 'dynamic import gains .js');
+  assert.ok(first.out.includes(`from 'node:fs'`), 'bare imports untouched');
+  assert.ok(first.out.includes(`from './sub/index.js'`), 'export-namespace form also fixed');
   // idempotency: the SECOND run over the rewritten content changes nothing
   wf(target, first.out);
-  console.assert(fix(target).changed === false, 'a second run is a no-op');
+  assert.equal(fixFile(target).changed, false, 'a second run is a no-op');
   // fail-closed: a specifier to nothing throws
   wf(join(tmp, 'broken.js'), `import './nowhere';\n`);
-  let threw = false;
-  try {
-    fix(join(tmp, 'broken.js'));
-  } catch {
-    threw = true;
-  }
-  console.assert(threw, 'an unresolvable specifier is a build error');
+  assert.throws(() => fixFile(join(tmp, 'broken.js')), 'an unresolvable specifier is a build error');
   rmSync(tmp, { recursive: true, force: true });
   console.log('✓ fix-dist-esm-specifiers self-test: 8 assertions');
   process.exit(0);
 }
 
-const files = walkJs(dist);
-let changed = 0;
-for (const file of files) {
-  const { out, changed: did } = fixFile(file);
-  if (did) {
-    writeFileSync(file, out);
-    changed += 1;
+// Only rewrite dist/ when this file is the process entry point. Without the guard
+// the module body ran on IMPORT, so merely importing `fixFile` to test it rewrote
+// the real dist/ as a side effect — which is why there was no unit test for it.
+const isDirectRun = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isDirectRun) {
+  const files = walkJs(dist);
+  let changed = 0;
+  for (const file of files) {
+    const { out, changed: did } = fixFile(file);
+    if (did) {
+      writeFileSync(file, out);
+      changed += 1;
+    }
   }
+  console.log(`fix-dist-esm-specifiers: ${changed}/${files.length} dist .js files rewritten to extensioned specifiers`);
 }
-console.log(`fix-dist-esm-specifiers: ${changed}/${files.length} dist .js files rewritten to extensioned specifiers`);
