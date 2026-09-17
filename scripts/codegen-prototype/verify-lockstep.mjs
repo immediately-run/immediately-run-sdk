@@ -16,10 +16,17 @@
 //   - where the host declares a paramsSchema (few rows do), the SDK's params are
 //     not NARROWER (one-directional; SDK-wider is unflagged — host validators
 //     tolerate unknown keys);
-//   - every per-method ERROR code is a member of the host's closed registry. The
-//     error axis is enforced here rather than symmetrically because the host's own
-//     additive-only gate already forbids registry REMOVALS (the only host-side
-//     change that could create an error disagreement) — additions cannot.
+//   - every per-method ERROR code is a member of the host's closed registry.
+//     Honest limitation, not a full guarantee: this leg checks the codes the SDK
+//     claims against the GLOBAL registry only — the mirror carries no per-method
+//     error lists — so the residual unguarded class is "the host throws a code
+//     the SDK's per-method union lacks" (an addition-created disagreement;
+//     `quota-exceeded` on spaces:invite was exactly that, invisible to both
+//     repos' gates until this item fixed it by hand). Closing it needs
+//     per-method error declarations in the host mirror, which rides the host
+//     side of a future increment. What IS guaranteed here: the SDK never claims
+//     a code the registry does not know, and the host's own additive-only gate
+//     forbids registry REMOVALS.
 //
 // The site-main checkout is the sibling `../immediately-run-site-main` (the
 // workspace layout) by default; CI passes the path of its checkout. A missing

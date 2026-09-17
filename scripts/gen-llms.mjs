@@ -146,18 +146,12 @@ for (const m of modules) {
 // R3-166 (SDK_SIMPLIFICATION_SPEC §3.3): the capability-family tables, emitted from
 // the SAME descriptor set the generated wrappers come from — catalog names,
 // required capabilities, and the error-code unions that the typed surface carries
-// only as types. Appended, not spliced: the per-module sections above stay the
-// complete export list; these tables add what TypeDoc cannot know.
+// only as types. The fragment is the committed generated/<family>.llms.txt files
+// concatenated by gen-descriptor-docs.mjs (there is exactly one table emitter,
+// generate.mjs, whose output verify-drift byte-gates); each family carries its own
+// H2 heading, so they stand as top-level sections beside the module sections.
 const descriptorsFragmentPath = resolve(root, 'docs/llms-descriptors.txt');
 if (existsSync(descriptorsFragmentPath)) {
-  lines.push('## Capability families — the descriptor set');
-  lines.push('');
-  lines.push(
-    'Generated from the SDK capability descriptor set (the same single source the ' +
-      'generated typed wrappers are emitted from). Catalog names are what `invoke()` ' +
-      'takes; capabilities are what the host gate requires.',
-  );
-  lines.push('');
   lines.push(readFileSync(descriptorsFragmentPath, 'utf8').trimEnd());
   lines.push('');
 }

@@ -162,7 +162,7 @@ export const methods = [
 
 export const family = {
   scheme: 'streams',
-  doc: 'Streaming host methods — contribute (UI_AS_APPS §5.1) and llm:chat (SERVICE_PROVIDERS).',
+  doc: 'Streaming host methods — contribute (UI_AS_APPS §5.1) and llm:chat (LLM_AND_AGENTS_SPEC §8 D5; the SERVICE_PROVIDERS spec is retired, R3-166 §not-in-scope).',
   types,
   methods,
 };

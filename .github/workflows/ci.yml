@@ -138,7 +138,7 @@ jobs:
           repositories: immediately-run-site-main
 
       - name: Checkout immediately-run-site-main (descriptor lockstep leg)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: immediately-run/immediately-run-site-main
           # The lockstep check reads src/generated/api-descriptors.json from this
