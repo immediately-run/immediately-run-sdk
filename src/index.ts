@@ -55,6 +55,8 @@ export * from './runtime';
 export * from './irMarkers';
 export * from './ready';
 export * from './loading';
+export * from './dialog';
+export * from './status';
 export * from './protocolStream';
 export * from './protocolDeadline';
 export * from './sandboxTypes';

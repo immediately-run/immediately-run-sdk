@@ -257,6 +257,12 @@
     "onDiagnosticsChange": "fn(1..1)",
     "useDiagnostics": "fn(0..0)"
   },
+  "dialog": {
+    "Dialog": "fn(1..1)",
+    "DialogProps": "interface('aria-label'?, children, className?, onDismiss(0..0), style?)",
+    "useDialogDismiss": "fn(1..2)",
+    "useDialogFocus": "fn(1..2)"
+  },
   "dnd": {
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
     "DroppedItem": "interface(from, item, position)",
@@ -531,6 +537,8 @@
     "BundleEntry": "interface(href, meta, path)",
     "BundleLayout": "interface(layoutFrom?, recordSets, tree?, version)",
     "BundleScope": "interface(entry, root, toHref(1..1))",
+    "Busy": "fn(1..1)",
+    "BusyProps": "interface(className?, floorMs?, label, style?)",
     "CATCH_ALL_ROUTING_SPEC": "const(RoutingSpec)",
     "COMPACTION_MARKER": "const(\"\\u241F[compacted-context]\\n\")",
     "CallBounds": "interface(ceilingMs, idleMs)",
@@ -566,6 +574,8 @@
     "DebugLevel": "union('debug'|'error'|'info'|'warn')",
     "Diagnostics": "interface(buildErrors, consoleEntries, provenance)",
     "DiagnosticsProvenance": "interface(appKey?, compileId?)",
+    "Dialog": "fn(1..1)",
+    "DialogProps": "interface('aria-label'?, children, className?, onDismiss(0..0), style?)",
     "DirCap": "interface($cap, mode, mountId, relPath)",
     "DirEntry": "interface(kind, name)",
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
@@ -729,6 +739,8 @@
     "SpaceInfo": "interface(name?, owner?, role?, spaceId)",
     "Spinner": "fn(1..1)",
     "StallReason": "union('announced-no-call'|'empty')",
+    "Status": "fn(1..1)",
+    "StatusProps": "interface(assertive?, children, className?, style?)",
     "SteerController": "class(cancel(1..1), controller, drain(0..0), emit, enqueue(1..2), hasPending(0..0), interrupt, listeners, onChange(1..1), pending(0..0), queue, rearm(0..0))",
     "SteerMessage": "interface(id, mode, text)",
     "SteerMode": "union('interrupt'|'queue')",
@@ -970,6 +982,8 @@
     "useCurrentEntry": "fn(0..0)",
     "useDebugEnabled": "fn(0..0)",
     "useDiagnostics": "fn(0..0)",
+    "useDialogDismiss": "fn(1..2)",
+    "useDialogFocus": "fn(1..2)",
     "useDroppedItem": "fn(0..0)",
     "useEditorContext": "fn(0..0)",
     "useEntryState": "fn(1..1)",
@@ -1371,6 +1385,12 @@
     "SourceCache": "interface(invalidate(0..1), read(1..1), size(0..0))",
     "SourceReader": "fn(1..1)",
     "createSourceCache": "fn(1..1)"
+  },
+  "status": {
+    "Busy": "fn(1..1)",
+    "BusyProps": "interface(className?, floorMs?, label, style?)",
+    "Status": "fn(1..1)",
+    "StatusProps": "interface(assertive?, children, className?, style?)"
   },
   "tasks": {
     "CaptureOptions": "interface(facing?)",
