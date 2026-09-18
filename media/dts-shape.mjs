@@ -148,6 +148,25 @@ const shapeOfVariable = (decl, src) => {
   const node = decl.type ?? decl.initializer;
   const arity = arityOf(node);
   if (arity) return `fn(${arity})`;
+  // A callable-first intersection — `((…)=>R) & { try: (…) … }`, the generated
+  // `.try()` shape (SDK_SIMPLIFICATION_SPEC §5, O3): the callable surface IS the
+  // function; the object members are additive properties on it. Shaped as
+  // `fn(r..t)&{members}` so the stability diff reads an added property as an
+  // addition rather than a fn→const kind change whose only route past would be
+  // an api-removals.json entry recording a removal that never happened.
+  const t = ts.isParenthesizedTypeNode(node) ? node.type : node;
+  if (t && ts.isIntersectionTypeNode(t)) {
+    // Members may be parenthesised (`((…)=>R) & {…}`), so unwrap before matching.
+    const unwrap = (x) => (ts.isParenthesizedTypeNode(x) ? x.type : x);
+    const fnMember = t.types.map(unwrap).find((x) => ts.isFunctionTypeNode(x));
+    if (fnMember) {
+      const propNames = t.types
+        .map(unwrap)
+        .filter((x) => ts.isTypeLiteralNode(x))
+        .flatMap((x) => x.members.map((m) => m.name?.getText(src)).filter(Boolean));
+      return `fn(${paramArity(fnMember.parameters)})&{${propNames.join(', ')}}`;
+    }
+  }
   return `const(${typeShape(node, src)})`;
 };
 
