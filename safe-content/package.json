@@ -29,9 +29,10 @@
     "build": "tsup",
     "test": "vitest run",
     "test:e2e": "node scripts/build-safecontent-e2e.mjs && node --test test/safeContent.e2e.mjs",
-    "verify": "npm run docs && npm run build && npm run test && npm run test:e2e && npm run check:llms",
+    "verify": "npm run docs && npm run build && npm run test && npm run test:e2e && npm run check:llms && npm run check:published",
     "docs": "typedoc --json docs/api.json && node scripts/gen-llms.mjs",
-    "check:llms": "node scripts/gen-llms.mjs --check"
+    "check:llms": "node scripts/gen-llms.mjs --check",
+    "check:published": "node scripts/check-published-parity.mjs --self-test && node scripts/check-published-parity.mjs --offline-ok"
   },
   "peerDependencies": {
     "react": "^19.0.0"
