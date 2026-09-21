@@ -66,7 +66,7 @@ jobs:
       # tree, or the release job's skip silently no-ops the change (the ^0.52.0-vs-^0.65.0
       # drift that blocked R3-556). Enumerated here like every other gate — a gate that
       # lives only in `verify` is a gate CI does not have (see the comment on
-      # `compat:previous` above). `--offline-ok` comes from the `check:published` script,
+      # `compat:previous` below). `--offline-ok` comes from the `check:published` script,
       # not passed here: a network blip must not redden every PR.
       - run: npm run check:published
       - run: npm ci
