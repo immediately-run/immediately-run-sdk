@@ -31,6 +31,7 @@
     "AgentTool": "interface(description, input_schema, name)",
     "COMPACTION_MARKER": "const(\"\\u241F[compacted-context]\\n\")",
     "ContentBlock": "union(ImageBlock|ReasoningBlock|TextBlock|ToolResultBlock|ToolUseBlock)",
+    "HOST_CONTEXT_OVERFLOW_CODE": "const(\"context-too-large\")",
     "ImageBlock": "object(data, mimeType, type)",
     "ModelClient": "interface(createMessage(1..1))",
     "ModelResponse": "interface(content, stopReason, usage?)",
@@ -602,6 +603,7 @@
     "FsChange": "interface(epoch, mount?, paths)",
     "FsError": "interface(code)",
     "GrantRecord": "interface(appKey, mode, mountId, name?, spaceId, subtree?)",
+    "HOST_CONTEXT_OVERFLOW_CODE": "const(\"context-too-large\")",
     "HeadingAnchor": "fn(1..1)",
     "HeadingSummary": "interface(depth, id, text)",
     "HostAttention": "interface(awaiting, kind, since)",
@@ -705,7 +707,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.68.3\")",
+    "SDK_VERSION": "const(\"0.69.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1294,7 +1296,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.68.3\")",
+    "SDK_VERSION": "const(\"0.69.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1475,7 +1477,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.68.3\")"
+    "SDK_VERSION": "const(\"0.69.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
