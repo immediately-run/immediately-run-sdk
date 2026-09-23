@@ -71,16 +71,7 @@
  *        payload comparison could not run — no built dist)
  *          …unless --offline-ok, which downgrades ONLY that case to 0.
  */
-import {
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  existsSync,
-  mkdtempSync,
-  rmSync,
-  readdirSync,
-  statSync,
-} from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
