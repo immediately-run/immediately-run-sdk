@@ -116,3 +116,39 @@ describe('the compatibility collapse', () => {
     expect(asOld()).toEqual({ providerId: 'p' });
   });
 });
+
+// ── R3-688 — the FOURTH state, `ungranted` ───────────────────────────────────
+// The real derivation from `llm.ts` (not the generic harness above): the host marks the
+// grantless answer on the SAME message, and the state read must separate "no key"
+// (`not-configured`) from "may not ask" (`ungranted`) — the distinct cause G-GA-10
+// promises the reach card.
+import { deriveChatProviderState } from './llm';
+
+const provider = { providerId: 'llm.chat.openrouter' } as never;
+
+describe('the ungranted state (R3-688, G-GA-10)', () => {
+  it('a frame WITHOUT llm:chat resolves UNGRANTED — distinct from not-configured', () => {
+    // The host answered, marked the answer grantless, provider nulled by the view.
+    expect(deriveChatProviderState(true, true, null)).toEqual({ status: 'ungranted' });
+  });
+
+  it('a frame WITH the grant and no key resolves NOT-CONFIGURED — the two stay distinguishable', () => {
+    // Same null provider, but no grantless mark: the user simply has no key.
+    expect(deriveChatProviderState(true, false, null)).toEqual({ status: 'not-configured' });
+  });
+
+  it('UNKNOWN wins until the host answers — a mark cannot precede its message', () => {
+    expect(deriveChatProviderState(false, false, null)).toEqual({ status: 'unknown' });
+    // Defensive: even a mark with no answer is not actionable — the mark arrives ON the
+    // answer, so this shape has no producer; the derivation refuses to act on it.
+    expect(deriveChatProviderState(false, true, null)).toEqual({ status: 'unknown' });
+  });
+
+  it('the host mark outranks the provider value — grant is the host call, not the payload', () => {
+    expect(deriveChatProviderState(true, false, provider)).toEqual({ status: 'configured', provider });
+    // No host sends the mark beside a resolved provider (the view marks only the
+    // grantless projection), so this shape has no producer — but if one ever did, the
+    // grant statement is the authoritative half and the derivation follows it.
+    expect(deriveChatProviderState(true, true, provider)).toEqual({ status: 'ungranted' });
+  });
+});
