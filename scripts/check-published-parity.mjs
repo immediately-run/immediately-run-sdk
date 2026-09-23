@@ -30,12 +30,14 @@
  * `--offline-ok` downgrades it like an unreadable registry — a line says the
  * comparison never ran), never a pass that looks like parity.
  *
- * STILL OPEN, named so it cannot read as org-wide closure: TWO more manifest-only
- * copies over built `dist` carry the same live hole — `immediately-run-cli`
+ * CLOSED EVERYWHERE, named so it cannot read as org-wide closure by silence:
+ * the two further manifest-only copies this header used to carry as STILL OPEN
+ * were closed by R3-756 — `immediately-run-cli`
  * (`scripts/check-published-parity.mjs`, since R3-640) and this repo's own
  * `safe-content/` package (whose release branch invokes its copy strictly,
- * ci.yml's safe-content job). Both ports are R3-756, each with the same
- * determinism proof first.
+ * ci.yml's safe-content job), each with its own determinism proof first
+ * (`check-build-reproducible.mjs` in each package). Four copies, four closures:
+ * grove (R3-751), sdk root (R3-755), cli (R3-756), safe-content (R3-756).
  *
  * ## What is compared, and what cannot be
  *
@@ -69,22 +71,13 @@
  *        payload comparison could not run — no built dist)
  *          …unless --offline-ok, which downgrades ONLY that case to 0.
  */
-import {
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  existsSync,
-  mkdtempSync,
-  rmSync,
-  readdirSync,
-  statSync,
-} from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, mkdtempSync, rmSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { digestDrift, treeDigests } from './lib/treeCompare.mjs';
+import { digestDrift, shortDigest, treeDigests } from './lib/treeCompare.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -563,8 +556,7 @@ try {
         `in ${payloadRows.length} file(s). Publishing would be skipped, so the change would never reach npm — bump the version.`,
     );
     for (const r of payloadRows.slice(0, 20)) {
-      const short = (d) => (d === '(absent)' ? d : `${d.slice(0, 12)}…`);
-      console.error(`  ${r.path}: published ${short(r.published)} · here ${short(r.local)}`);
+      console.error(`  ${r.path}: published ${shortDigest(r.published)} · here ${shortDigest(r.local)}`);
     }
     if (payloadRows.length > 20) console.error(`  …and ${payloadRows.length - 20} more.`);
     exitCode = 1;

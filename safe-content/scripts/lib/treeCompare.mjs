@@ -5,6 +5,16 @@
 // tarball vs rebuilt dist). One home (R6); each gate keeps only its own subject
 // and its own exit-code policy.
 //
+// Vendored from this repo's own `scripts/lib/treeCompare.mjs` (R3-755): the SDK
+// root and safe-content are separate packages with separate installs, so the
+// sibling file is not importable from here. If the core ever changes, change
+// every copy in the same wave — the copies are this file, the SDK root's
+// `scripts/lib/treeCompare.mjs`, and the CLI's vendored
+// `immediately-run-cli/scripts/lib/treeCompare.mjs` (grove's parity script
+// predates the extraction and keeps its own inline digest walk, so it is not a
+// copy); verify a copy's code by diffing below the header, not by whole-file
+// hash.
+//
 // Row fields are named first/second: the reproducible check compares two builds
 // of the same tree and neither side is "published"; the parity check maps them
 // onto its published/local vocabulary in its own wrapper.

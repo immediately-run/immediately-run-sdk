@@ -2,36 +2,43 @@
 /*
  * Build this tree twice; the two `dist/` outputs must be byte-identical.
  *
- * This is the proof the published-payload parity gate (R3-755) rests on. The SDK
- * publishes BUILT `dist` — the tarball's `files` is `["dist"]` — so comparing the
- * packed payload against the published package is only sound if the build is a pure
- * function of the source tree: same input, same bytes. If the build embedded
- * timestamps, absolute paths, or unordered iteration, every pair of builds would
- * differ, a payload gate would be red forever, and the honest gate would decay into
- * a downgraded one nobody reads. Measured here, not assumed: the check runs the real
- * `npm run build` twice and byte-compares the whole output, naming any file whose
- * digest moved.
+ * This is the proof the published-payload parity gate (R3-756) rests on.
+ * safe-content publishes BUILT `dist` — the tarball's `files` is
+ * `["dist", "README.md", "llms.txt"]` — so comparing the packed payload against
+ * the published package is only sound if the build is a pure function of the
+ * source tree: same input, same bytes. If the build embedded timestamps,
+ * absolute paths, or unordered iteration, every pair of builds would differ, a
+ * payload gate would be red forever, and the honest gate would decay into a
+ * downgraded one nobody reads. Measured here, not assumed: the check runs the
+ * real `npm run build` twice and byte-compares the whole output, naming any file
+ * whose digest moved.
+ *
+ * Ported from this repo's own `scripts/check-build-reproducible.mjs` (R3-755's
+ * proof for the SDK root package), adapted to safe-content's own `tsup` build.
+ * The SDK root's check does NOT cover this package: its `dist/` is a separate
+ * output of a separate build, which is why R3-756 gives it its own proof.
  *
  * ## What counts as a difference
  *
- * Any file present on one side and not the other, or present on both with different
- * SHA-256 digests. Nothing is ignored: no mtime window, no normalized line endings,
- * no allowlist. A file that genuinely varies per build (a generated timestamp
- * header) is a BUILD bug to fix, not noise to filter — that is the invariant the
- * payload gate needs.
+ * Any file present on one side and not the other, or present on both with
+ * different SHA-256 digests. Nothing is ignored: no mtime window, no normalized
+ * line endings, no allowlist. A file that genuinely varies per build (a
+ * generated timestamp header) is a BUILD bug to fix, not noise to filter — that
+ * is the invariant the payload gate needs.
  *
  * ## Where it runs
  *
- * `verify` (through `check:reproducible`, after `npm run build` — it needs
- * `node_modules`) and the CI build's enumerated steps, after the build step. Two
- * full builds per run is the price of the proof; the SDK build is tens of seconds.
+ * safe-content's `verify` (through `check:reproducible`, after `npm run build` —
+ * it needs `node_modules`), which the CI safe-content job runs on every push to
+ * main, strictly, before publishing. Two full builds per run is the price of the
+ * proof; this package's build is seconds.
  *
  * Usage: node scripts/check-build-reproducible.mjs [--self-test]
  * Exit:  0 the two builds are byte-identical (or --self-test passed)
  *        1 the two builds differ — the differing paths are named; fix the build
  *        2 a build itself failed
  */
-import { existsSync, mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
@@ -42,13 +49,13 @@ import { digestDrift, shortDigest, treeDigests } from './lib/treeCompare.mjs';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * The impure half, one function: run the real build, move the fresh `dist/` into a
- * temp directory this script creates and removes, and return the directory. Two calls
- * yield two independently built trees to compare.
+ * The impure half, one function: run the real build, move the fresh `dist/` into
+ * a temp directory this script creates and removes, and return the directory. Two
+ * calls yield two independently built trees to compare.
  */
 function buildInto() {
-  // INSIDE the repo: `renameSync` cannot cross filesystems, and /tmp is often another
-  // mount. Created, used, and removed by this script alone.
+  // INSIDE the package: `renameSync` cannot cross filesystems, and /tmp is often
+  // another mount. Created, used, and removed by this script alone.
   const dest = mkdtempSync(join(ROOT, '.build-reproducible-'));
   try {
     execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'], timeout: 600_000 });
@@ -142,8 +149,9 @@ try {
   );
   exitCode = 2;
 } finally {
-  // Later steps in the chain (npm test, api:check) read a built `dist` — leave the
-  // second build's (fresh, and byte-identical to the first when this check is green).
+  // Later steps in the chain (test, test:e2e, check:llms, check:published) read a
+  // built `dist` — leave the second build's (fresh, and byte-identical to the
+  // first when this check is green).
   if (second && existsSync(join(second, 'dist')) && !existsSync(join(ROOT, 'dist'))) {
     renameSync(join(second, 'dist'), join(ROOT, 'dist'));
   }
