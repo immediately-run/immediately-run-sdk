@@ -22,7 +22,7 @@
  * (R3-751, carried by immediately-run/grove#74 — under review as this pointer lands),
  * closing the second half of the hole: a change under an already-published version with
  * an unchanged manifest still passed this comparison and let the publish step skip
- * silently. The port is NOT copied here blind: the SDK publishes built `dist`, so a
+ * silently. The port is not copied here blind: the SDK publishes built `dist`, so a
  * payload compare is only sound once this repo's build is shown to be reproducible.
  * Roadmap item R3-755 owns the port, with build determinism as its first deliverable —
  * do not add a payload compare to this script before that proof exists. Merge order:
