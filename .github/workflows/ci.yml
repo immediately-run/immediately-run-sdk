@@ -80,6 +80,13 @@ jobs:
       - run: npm run check:circular
       - run: npm test
       - run: npm run build
+      # R3-755: the payload half of the published-parity gate needs a BUILT dist, so it
+      # runs here (the early `check:published` above can only compare the manifest —
+      # no dist exists before `npm ci`; its payload half says so and `--offline-ok`
+      # downgrades it, never passes silently). Beside it, the determinism proof the
+      # payload gate rests on: two builds of this tree, byte-identical.
+      - run: npm run check:published
+      - run: npm run check:reproducible
       # Fail if the public surface SHRANK vs api-snapshot.json — pinned forks depend
       # on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after build because
       # it reads the emitted dist/*.d.ts. Since R3-261 it compares each export's

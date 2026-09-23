@@ -15,46 +15,67 @@
  * The invariant this restores: a skip is benign only when it is a NO-OP. Same version,
  * different declarations, means the version number is a lie and the fix is to bump it.
  *
- * ## The payload half is open here, and being closed in grove
+ * ## The payload half — closed here by R3-755, after the determinism proof
  *
  * grove's copy of this script (`immediately-run/grove`,
- * `scripts/check-published-parity.mjs`) gains a per-entry packed-payload compare
- * (R3-751, carried by immediately-run/grove#74 — under review as this pointer lands),
- * closing the second half of the hole: a change under an already-published version with
- * an unchanged manifest still passed this comparison and let the publish step skip
- * silently. The port is not copied here blind: the SDK publishes built `dist`, so a
- * payload compare is only sound once this repo's build is shown to be reproducible.
- * Roadmap item R3-755 owns the port, with build determinism as its first deliverable —
- * do not add a payload compare to this script before that proof exists. Merge order:
- * grove#74 first, so main nowhere describes a gate its code does not have.
+ * `scripts/check-published-parity.mjs`) compares the per-entry packed payload
+ * (R3-751), closing the second half of the hole: a change under an already-published
+ * version with an unchanged manifest still passed this comparison and let the publish
+ * step skip silently. This script now does the same — the port R3-755 owns. It could
+ * not be copied blind: the SDK publishes built `dist`, so a payload compare is only
+ * sound if the build is reproducible (same input tree, same output bytes), and that
+ * is PROVEN first by `scripts/check-build-reproducible.mjs` (two builds of one tree,
+ * byte-identical), which runs beside this check in `verify` and CI. The payload
+ * compare needs a built `dist/`: without one it is the cannot-answer case (exit 2;
+ * `--offline-ok` downgrades it like an unreadable registry — a line says the
+ * comparison never ran), never a pass that looks like parity.
  *
  * ## What is compared, and what cannot be
  *
  * The dependency blocks, plus `main` and `exports`: the parts of the manifest a
  * consumer's install and resolution actually read, so a difference there changes what is
  * on a consumer's disk or which file they get when they import. `devDependencies` is
- * excluded because it is never on a consumer's disk. `files` is excluded because it
- * CANNOT be compared — npm does not keep it in the packument, so the registry has no
- * answer to compare against. Comparing whole tarballs would fail on every timestamp and
- * prove nothing.
+ * excluded because it is never on a consumer's disk. `files` is excluded from the
+ * MANIFEST comparison because npm does not keep it in the packument — but the payload
+ * itself is compared since R3-755: per-entry content digests of `npm pack` on both
+ * sides, `package.json` included, when the version is already published and the
+ * manifest is at parity. Tarball bytes are never compared — gzip framing, mtimes,
+ * uid/gid and mode differ on every pack of identical content; the file contents are
+ * exact.
  *
- * ## Where it runs, and why in two places
+ * ## Where it runs, and why in more than one place
  *
- * `verify` (through `check:published`), where it catches a pin that moves without a
- * version bump ON THE PULL REQUEST that does it — which is the only moment the fix is one
- * line. A version not yet published is the ordinary state there, so that is exit 0, not a
- * failure. And again in the publish job, where a drift means the release about to be
- * skipped would silently no-op.
+ * `verify` (through `check:published`) and the PR build's enumerated steps — the early
+ * call before `npm ci` can only compare the manifest (no build exists yet; the payload
+ * half says so rather than passing silently), and the call after `npm run build`
+ * compares both. The release job's already-published branch runs it strictly (no
+ * `--offline-ok`): a drift there means the release about to be skipped would silently
+ * no-op. A version not yet published is the ordinary state everywhere — exit 0, nothing
+ * to compare.
  *
  * Usage: node scripts/check-published-parity.mjs [--self-test] [--offline-ok]
- * Exit:  0 parity, or this version is not published yet (nothing to compare)
- *        1 drift — same version, different declarations
- *        2 cannot answer (registry unreadable, offline, malformed reply)
+ * Exit:  0 parity (manifest and, when a built dist exists, payload), or this version
+ *        is not published yet (nothing to compare)
+ *        1 drift — same version, different manifest declarations or a different
+ *        packed payload
+ *        2 cannot answer (registry unreadable, offline, malformed reply; or the
+ *        payload comparison could not run — no built dist)
  *          …unless --offline-ok, which downgrades ONLY that case to 0.
  */
-import { readFileSync } from 'node:fs';
+import {
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -134,6 +155,113 @@ export function classifyRegistryReply({ stdout, failed }) {
     return { kind: 'unreadable', reason: 'reply was not an object' };
   }
   return { kind: 'published', manifest: parsed };
+}
+
+/**
+ * Compare two packed payloads, per entry — the port of grove's R3-751 gate (R3-755).
+ * Takes two `Map<string, string>` of package-relative path → content digest, as
+ * `entryDigests` returns. Returns the differences as `{ path, published, local }` rows —
+ * empty means parity. A path on one side only is a row reading `(absent)` on the other,
+ * in both directions: an added-only change must not be silent.
+ */
+export function payloadDrift(published, local) {
+  const rows = [];
+  for (const path of [...new Set([...published.keys(), ...local.keys()])].sort()) {
+    const p = published.get(path);
+    const l = local.get(path);
+    if (p !== l) rows.push({ path, published: p ?? '(absent)', local: l ?? '(absent)' });
+  }
+  return rows;
+}
+
+/** sha256 of one extracted entry, hex — the per-entry content digest. */
+function fileDigest(absPath) {
+  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
+}
+
+/** Walk an extracted package root, returning `Map<relativePath, digest>` (regular files). */
+function treeDigests(root) {
+  const map = new Map();
+  const walk = (rel) => {
+    const abs = rel === '' ? root : join(root, rel);
+    if (statSync(abs).isDirectory()) {
+      for (const entry of readdirSync(abs)) walk(rel === '' ? entry : `${rel}/${entry}`);
+    } else if (statSync(abs).isFile()) {
+      map.set(rel, fileDigest(abs));
+    }
+  };
+  walk('');
+  return map;
+}
+
+/**
+ * The impure half, one function: extract one packed tarball into a temp directory this
+ * script creates and removes, and return `Map<package-relative path, content digest>`.
+ * `tar` extracts with `--strip-components 1` so the archive's `package/` prefix is gone
+ * and keys are package-root-relative (`package.json`, `dist/index.js`, …). Bounded like
+ * every other process this script spawns. Shells out to `tar -xzf` as the script shells
+ * out to `npm` — no new dependency.
+ */
+export function entryDigests(tarballPath) {
+  const dir = mkdtempSync(join(tmpdir(), 'published-parity-payload-'));
+  try {
+    execFileSync('tar', ['-xzf', tarballPath, '-C', dir, '--strip-components', '1'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      timeout: 120_000,
+    });
+    return treeDigests(dir);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * The one tarball in a directory `npm pack` was pointed at. Thrown as its own error so
+ * the "packed nothing" failure has a name the self-test can pin.
+ */
+export function onlyTarball(dir) {
+  const tarball = readdirSync(dir).find((f) => f.endsWith('.tgz'));
+  if (!tarball) throw new Error('npm pack wrote no tarball');
+  return tarball;
+}
+
+/**
+ * Pack one side into a fresh temp directory and return the tarball's path. Both payload
+ * sides come from `npm pack` so they are by construction the `files:` payload, and the
+ * published side uses the same code path as the local side (npm downloads the registry
+ * tarball for a `<name>@<version>` spec). A fresh directory per side, because the
+ * published tarball and the local pack have the SAME filename and would collide.
+ */
+function packTarball(spec, cwd) {
+  const dest = mkdtempSync(join(tmpdir(), 'published-parity-pack-'));
+  try {
+    execFileSync('npm', ['pack', ...spec, '--pack-destination', dest], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      timeout: 180_000,
+    });
+    return { dir: dest, tarball: join(dest, onlyTarball(dest)) };
+  } catch (e) {
+    rmSync(dest, { recursive: true, force: true });
+    throw e;
+  }
+}
+
+/**
+ * The one cannot-answer shape, shared by every site that cannot run a comparison: a
+ * registry read that would not answer, and a payload comparison that could not run.
+ * Both mean "parity was NOT checked", both are exit 2, and `--offline-ok` downgrades
+ * ONLY this case — never a drift — with a line that says the comparison never ran.
+ */
+function cannotAnswerExit(subject, reason, offlineOk) {
+  console.error(
+    offlineOk
+      ? `⚠ could not ${subject} (${reason}) — parity was NOT checked. ` +
+          `Not failing the build (--offline-ok); the publish job checks this strictly.`
+      : `✗ cannot ${subject} (${reason}) — not answering is not a pass.`,
+  );
+  return offlineOk ? 0 : 2;
 }
 
 function selfTest() {
@@ -259,6 +387,120 @@ function selfTest() {
     classifyRegistryReply({ stdout: '["0.1.1","0.1.2"]', failed: false }).kind === 'unreadable',
   );
 
+  // ── the payload comparison (R3-755) ────────────────────────────────────────
+  const map = (o) => new Map(Object.entries(o));
+  check(
+    'identical payload Maps have no drift',
+    payloadDrift(map({ a: 'h1', b: 'h2' }), map({ b: 'h2', a: 'h1' })).length === 0,
+  );
+  const changed = payloadDrift(map({ a: 'h1', b: 'h2' }), map({ a: 'h9', b: 'h2' }));
+  check(
+    'a changed digest is one row naming the path and both digests',
+    changed.length === 1 && changed[0].path === 'a' && changed[0].published === 'h1' && changed[0].local === 'h9',
+  );
+  const added = payloadDrift(map({ a: 'h1' }), map({ a: 'h1', 'dist/new.js': 'h2' }));
+  check(
+    'an ADDED file is a row, (absent) on the published side',
+    added.length === 1 &&
+      added[0].path === 'dist/new.js' &&
+      added[0].published === '(absent)' &&
+      added[0].local === 'h2',
+  );
+  const removed = payloadDrift(map({ 'dist/old.js': 'h1' }), map({}));
+  check(
+    'a REMOVED file is a row, (absent) on the local side',
+    removed.length === 1 &&
+      removed[0].path === 'dist/old.js' &&
+      removed[0].published === 'h1' &&
+      removed[0].local === '(absent)',
+  );
+
+  // The digest walk, pinned against DIRECT hashes of a synthetic tree (a file, and a
+  // file one level down): a `fileDigest` that returned a constant, or a `treeDigests`
+  // that skipped subdirectories, would leave every real-pack case green — the gate
+  // could silently never fire, the exact failure R3-751 closes.
+  const synthDir = mkdtempSync(join(tmpdir(), 'published-parity-synth-'));
+  const emptyDir = mkdtempSync(join(tmpdir(), 'published-parity-empty-'));
+  let packed;
+  try {
+    let threw = null;
+    try {
+      onlyTarball(emptyDir);
+    } catch (e) {
+      threw = e;
+    }
+    check(
+      'onlyTarball refuses a directory with no tarball, by name',
+      threw instanceof Error && threw.message === 'npm pack wrote no tarball',
+    );
+
+    mkdirSync(join(synthDir, 'package', 'dist', 'sub'), { recursive: true });
+    writeFileSync(join(synthDir, 'package', 'package.json'), '{"name":"s"}');
+    writeFileSync(join(synthDir, 'package', 'dist', 'a.js'), 'alpha');
+    writeFileSync(join(synthDir, 'package', 'dist', 'sub', 'b.js'), 'beta');
+    execFileSync('tar', ['-czf', join(synthDir, 'synth.tgz'), '-C', synthDir, 'package'], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+      timeout: 30_000,
+    });
+    const synth = entryDigests(join(synthDir, 'synth.tgz'));
+    const direct = (p) =>
+      createHash('sha256')
+        .update(readFileSync(join(synthDir, 'package', p)))
+        .digest('hex');
+    check(
+      'entryDigests returns the exact content digests, nested keys included',
+      synth.size === 3 &&
+        synth.get('package.json') === direct('package.json') &&
+        synth.get('dist/a.js') === direct('dist/a.js') &&
+        synth.get('dist/sub/b.js') === direct('dist/sub/b.js'),
+    );
+
+    // Real producer: pack THIS tree through the production `packTarball` path and pin
+    // the digests of the shipped payload against direct hashes — a hand-typed Map
+    // would stay green with the digest function deleted, and an inline duplicate of
+    // the pack call would stay green with `packTarball` deleted. This repo's payload
+    // is the BUILT `dist`, so the case runs only where a build exists (verify's chain
+    // reaches it after `npm run build`; the pre-`npm ci` CI leg prints an honest SKIP).
+    if (existsSync(join(ROOT, 'dist'))) {
+      packed = packTarball([], ROOT);
+      const real = entryDigests(packed.tarball);
+      const directReal = (p) =>
+        createHash('sha256')
+          .update(readFileSync(join(ROOT, p)))
+          .digest('hex');
+      check(
+        'entryDigests reads a real pack of this BUILD (package.json + built dist, exact digests)',
+        real.get('package.json') === directReal('package.json') &&
+          real.get('dist/index.js') === directReal('dist/index.js'),
+      );
+      check('…and the identical-tree case has no drift', payloadDrift(real, real).length === 0);
+    } else {
+      console.log('SKIP  real-payload case — no built dist/ (runs after `npm run build`)');
+    }
+
+    // The one downgrade policy, called directly: strict is exit 2 with the honest
+    // line, `--offline-ok` is exit 0 and says the comparison never ran. A flipped
+    // ternary or a re-pasted message turns these red.
+    const seen = [];
+    const realError = console.error;
+    console.error = (m) => seen.push(m);
+    const strictCode = cannotAnswerExit('read X from the registry', 'boom', false);
+    const offlineCode = cannotAnswerExit('read X from the registry', 'boom', true);
+    console.error = realError;
+    check(
+      'cannotAnswerExit: strict is 2 and names what did not answer; --offline-ok is 0 and says parity was NOT checked',
+      strictCode === 2 &&
+        seen[0].includes('read X from the registry') &&
+        seen[0].includes('not answering is not a pass') &&
+        offlineCode === 0 &&
+        seen[1].includes('parity was NOT checked'),
+    );
+  } finally {
+    for (const dir of [synthDir, emptyDir, packed?.dir]) {
+      if (dir) rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
   console.log(`\n${ok}/${total} self-test cases.`);
   return ok === total ? 0 : 1;
 }
@@ -292,31 +534,64 @@ if (reply.kind === 'absent') {
 }
 
 if (reply.kind === 'unreadable') {
-  // The two forms mean different things and must not print the same line. Under
-  // `--offline-ok` this IS a pass — the build is deliberately not failed for a registry
-  // that would not answer — and a log that says "not answering is not a pass" beside a
-  // zero exit tells a reader the opposite of what happened, and hides that the
-  // comparison never ran at all.
-  console.error(
-    offlineOk
-      ? `⚠ could not read ${spec} from the registry (${reply.reason}) — parity was NOT checked. ` +
-          `Not failing the build (--offline-ok); the publish job checks this strictly.`
-      : `✗ cannot read ${spec} from the registry (${reply.reason}) — not answering is not a pass.`,
-  );
-  process.exit(offlineOk ? 0 : 2);
+  // Under `--offline-ok` this IS a pass — the build is deliberately not failed for a
+  // registry that would not answer — and a log that says "not answering is not a pass"
+  // beside a zero exit tells a reader the opposite of what happened, and hides that
+  // the comparison never ran at all. The one cannot-answer shape lives in
+  // `cannotAnswerExit`.
+  process.exit(cannotAnswerExit(`read ${spec} from the registry`, reply.reason, offlineOk));
 }
 
 const rows = dependencyDrift(reply.manifest, local);
-if (rows.length === 0) {
-  console.log(`✓ ${spec} on npm declares the same install surface as this tree.`);
-  process.exit(0);
+if (rows.length > 0) {
+  console.error(
+    `::error::${spec} is already published, and this tree declares a DIFFERENT install surface. ` +
+      `Publishing would be skipped, so the change would never reach npm — bump the version.`,
+  );
+  for (const r of rows) {
+    console.error(`  ${r.block}.${r.name}: published ${r.published} · here ${r.local}`);
+  }
+  process.exit(1);
 }
 
-console.error(
-  `::error::${spec} is already published, and this tree declares a DIFFERENT install surface. ` +
-    `Publishing would be skipped, so the change would never reach npm — bump the version.`,
-);
-for (const r of rows) {
-  console.error(`  ${r.block}.${r.name}: published ${r.published} · here ${r.local}`);
+// Manifest at parity — the exact hole R3-751 closed in grove and R3-755 closes here: a
+// change to the BUILT payload under an already-published version passes everything
+// above while every consumer keeps the old bytes. Compare the packed payloads,
+// `package.json` included. The payload is the built `dist`, so a missing build is the
+// cannot-answer case — never a pass that looks like parity.
+//
+// No `process.exit` inside the try: it terminates without unwinding, so the `finally`
+// that removes the pack directories would never run and every strict comparison would
+// leak both. Every path sets `exitCode` and falls through to the one exit at the end.
+if (!existsSync(join(ROOT, 'dist'))) {
+  process.exit(cannotAnswerExit('compare the packed payload', 'no built dist/ — run npm run build first', offlineOk));
 }
-process.exit(1);
+let publishedPack;
+let localPack;
+let exitCode = 0;
+try {
+  publishedPack = packTarball([spec], ROOT);
+  localPack = packTarball([], ROOT);
+  const payloadRows = payloadDrift(entryDigests(publishedPack.tarball), entryDigests(localPack.tarball));
+  if (payloadRows.length === 0) {
+    console.log(`✓ ${spec} on npm declares the same install surface and ships the same payload as this tree.`);
+  } else {
+    console.error(
+      `::error::${spec} is already published, and this tree's packed PAYLOAD differs from the published package ` +
+        `in ${payloadRows.length} file(s). Publishing would be skipped, so the change would never reach npm — bump the version.`,
+    );
+    for (const r of payloadRows.slice(0, 20)) {
+      const short = (d) => (d === '(absent)' ? d : `${d.slice(0, 12)}…`);
+      console.error(`  ${r.path}: published ${short(r.published)} · here ${short(r.local)}`);
+    }
+    if (payloadRows.length > 20) console.error(`  …and ${payloadRows.length - 20} more.`);
+    exitCode = 1;
+  }
+} catch (e) {
+  exitCode = cannotAnswerExit('compare the packed payload', e instanceof Error ? e.message : String(e), offlineOk);
+} finally {
+  for (const pack of [publishedPack, localPack]) {
+    if (pack) rmSync(pack.dir, { recursive: true, force: true });
+  }
+}
+process.exit(exitCode);
