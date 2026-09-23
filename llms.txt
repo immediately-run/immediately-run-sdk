@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.69.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.70.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -362,6 +362,7 @@ Import: `@immediately-run/sdk/agentLoop`
 - `ContentBlock` (type)
 - `detectStall` (function) — Classify a NO-tool-call turn as a stall (nudge-worthy) vs a genuine finish.
 - `estimateTokens` (function) — Rough token estimate (~4 chars/token) over a message array, used only when the provider reports no `usage` delta.
+- `HOST_CONTEXT_OVERFLOW_CODE` (const) — The host's typed code for "the conversation no longer fits" — produced by site-main's `PROVIDER_ERROR_CODES` vocabulary (`src/editor/llm/providerErrors.ts`): the host maps BOTH a provider's own context overflow AND the relay's bound refusal to this one code.
 - `ImageBlock` (type) — An image the model can look at (R3-339).
 - `isContextOverflow` (function) — Does this thrown error look like a hard context-window overflow?
 - `ModelClient` (interface) — The provider seam — one model turn.
