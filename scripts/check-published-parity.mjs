@@ -30,6 +30,11 @@
  * `--offline-ok` downgrades it like an unreadable registry — a line says the
  * comparison never ran), never a pass that looks like parity.
  *
+ * STILL OPEN, named so it cannot read as org-wide closure: a THIRD copy lives in
+ * `immediately-run-cli` (`scripts/check-published-parity.mjs`, since R3-640), is
+ * manifest-only, and ships built `dist` — the same hole, still live there. The CLI
+ * port is its own item (R3-756) and needs the same determinism proof first.
+ *
  * ## What is compared, and what cannot be
  *
  * The dependency blocks, plus `main` and `exports`: the parts of the manifest a
@@ -77,6 +82,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { digestDrift, treeDigests } from './lib/treeCompare.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -165,33 +171,7 @@ export function classifyRegistryReply({ stdout, failed }) {
  * in both directions: an added-only change must not be silent.
  */
 export function payloadDrift(published, local) {
-  const rows = [];
-  for (const path of [...new Set([...published.keys(), ...local.keys()])].sort()) {
-    const p = published.get(path);
-    const l = local.get(path);
-    if (p !== l) rows.push({ path, published: p ?? '(absent)', local: l ?? '(absent)' });
-  }
-  return rows;
-}
-
-/** sha256 of one extracted entry, hex — the per-entry content digest. */
-function fileDigest(absPath) {
-  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
-}
-
-/** Walk an extracted package root, returning `Map<relativePath, digest>` (regular files). */
-function treeDigests(root) {
-  const map = new Map();
-  const walk = (rel) => {
-    const abs = rel === '' ? root : join(root, rel);
-    if (statSync(abs).isDirectory()) {
-      for (const entry of readdirSync(abs)) walk(rel === '' ? entry : `${rel}/${entry}`);
-    } else if (statSync(abs).isFile()) {
-      map.set(rel, fileDigest(abs));
-    }
-  };
-  walk('');
-  return map;
+  return digestDrift(published, local).map(({ path, first, second }) => ({ path, published: first, local: second }));
 }
 
 /**

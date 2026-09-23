@@ -31,60 +31,15 @@
  *        1 the two builds differ — the differing paths are named; fix the build
  *        2 a build itself failed
  */
-import {
-  mkdtempSync,
-  rmSync,
-  readdirSync,
-  statSync,
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  existsSync,
-  renameSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, readFileSync, writeFileSync, mkdirSync, renameSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 
 import { fileURLToPath } from 'node:url';
-import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
+import { digestDrift, treeDigests } from './lib/treeCompare.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-/** sha256 of one file, hex. */
-function fileDigest(absPath) {
-  return createHash('sha256').update(readFileSync(absPath)).digest('hex');
-}
-
-/** Walk a directory, returning `Map<relativePath, digest>` (regular files). */
-export function treeDigests(root) {
-  const map = new Map();
-  const walk = (rel) => {
-    const abs = rel === '' ? root : join(root, rel);
-    if (statSync(abs).isDirectory()) {
-      for (const entry of readdirSync(abs)) walk(rel === '' ? entry : `${rel}/${entry}`);
-    } else if (statSync(abs).isFile()) {
-      map.set(rel, fileDigest(abs));
-    }
-  };
-  walk('');
-  return map;
-}
-
-/**
- * The pure half: compare two digest Maps into `{ path, published, local }`-shaped
- * rows (the payload gate's row shape, so both gates report alike). Empty means the
- * two trees are byte-identical.
- */
-export function buildDrift(first, second) {
-  const rows = [];
-  for (const path of [...new Set([...first.keys(), ...second.keys()])].sort()) {
-    const a = first.get(path);
-    const b = second.get(path);
-    if (a !== b) rows.push({ path, published: a ?? '(absent)', local: b ?? '(absent)' });
-  }
-  return rows;
-}
 
 /**
  * The impure half, one function: run the real build, move the fresh `dist/` into a
@@ -119,20 +74,20 @@ function selfTest() {
     writeFileSync(join(dir, 'b', 'sub', 'x.js'), 'CHANGED');
     const a = treeDigests(join(dir, 'a'));
     const b = treeDigests(join(dir, 'b'));
-    check('identical trees have no drift', buildDrift(a, treeDigests(join(dir, 'a'))).length === 0);
-    const rows = buildDrift(a, b);
+    check('identical trees have no drift', digestDrift(a, treeDigests(join(dir, 'a'))).length === 0);
+    const rows = digestDrift(a, b);
     check(
       'a changed byte is one row naming the path and both digests',
-      rows.length === 1 && rows[0].path === 'sub/x.js' && rows[0].published !== rows[0].local,
+      rows.length === 1 && rows[0].path === 'sub/x.js' && rows[0].first !== rows[0].second,
     );
     mkdirSync(join(dir, 'c', 'sub'), { recursive: true });
     writeFileSync(join(dir, 'c', 'index.js'), 'same');
     writeFileSync(join(dir, 'c', 'sub', 'x.js'), 'same');
     writeFileSync(join(dir, 'c', 'extra.js'), 'x');
-    const added = buildDrift(a, treeDigests(join(dir, 'c')));
+    const added = digestDrift(a, treeDigests(join(dir, 'c')));
     check(
       'an ADDED file is a row, (absent) on the first side',
-      added.length === 1 && added[0].path === 'extra.js' && added[0].published === '(absent)',
+      added.length === 1 && added[0].path === 'extra.js' && added[0].first === '(absent)',
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
@@ -149,8 +104,17 @@ let second;
 let exitCode = 0;
 try {
   first = buildInto();
-  second = buildInto();
-  const rows = buildDrift(treeDigests(join(first, 'dist')), treeDigests(join(second, 'dist')));
+  try {
+    second = buildInto();
+  } catch (e) {
+    // The second build died: the first build's dist is still moved aside, and the
+    // tree must not be left without a build for the chain steps that read one.
+    if (first && existsSync(join(first, 'dist')) && !existsSync(join(ROOT, 'dist'))) {
+      renameSync(join(first, 'dist'), join(ROOT, 'dist'));
+    }
+    throw e;
+  }
+  const rows = digestDrift(treeDigests(join(first, 'dist')), treeDigests(join(second, 'dist')));
   if (rows.length === 0) {
     console.log('✓ two builds of this tree are byte-identical — the payload gate can trust the bytes.');
   } else {
@@ -160,7 +124,7 @@ try {
     );
     for (const r of rows.slice(0, 20)) {
       const short = (d) => (d === '(absent)' ? d : `${d.slice(0, 12)}…`);
-      console.error(`  ${r.path}: first ${short(r.published)} · second ${short(r.local)}`);
+      console.error(`  ${r.path}: first ${short(r.first)} · second ${short(r.second)}`);
     }
     if (rows.length > 20) console.error(`  …and ${rows.length - 20} more.`);
     exitCode = 1;
