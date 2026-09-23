@@ -30,10 +30,12 @@
  * `--offline-ok` downgrades it like an unreadable registry — a line says the
  * comparison never ran), never a pass that looks like parity.
  *
- * STILL OPEN, named so it cannot read as org-wide closure: a THIRD copy lives in
- * `immediately-run-cli` (`scripts/check-published-parity.mjs`, since R3-640), is
- * manifest-only, and ships built `dist` — the same hole, still live there. The CLI
- * port is its own item (R3-756) and needs the same determinism proof first.
+ * STILL OPEN, named so it cannot read as org-wide closure: TWO more manifest-only
+ * copies over built `dist` carry the same live hole — `immediately-run-cli`
+ * (`scripts/check-published-parity.mjs`, since R3-640) and this repo's own
+ * `safe-content/` package (whose release branch invokes its copy strictly,
+ * ci.yml's safe-content job). Both ports are R3-756, each with the same
+ * determinism proof first.
  *
  * ## What is compared, and what cannot be
  *
