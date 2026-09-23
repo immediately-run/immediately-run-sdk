@@ -15,6 +15,19 @@
  * The invariant this restores: a skip is benign only when it is a NO-OP. Same version,
  * different declarations, means the version number is a lie and the fix is to bump it.
  *
+ * ## The payload half is open here, and being closed in grove
+ *
+ * grove's copy of this script (`immediately-run/grove`,
+ * `scripts/check-published-parity.mjs`) gains a per-entry packed-payload compare
+ * (R3-751, carried by immediately-run/grove#74 — under review as this pointer lands),
+ * closing the second half of the hole: a change under an already-published version with
+ * an unchanged manifest still passed this comparison and let the publish step skip
+ * silently. The port is not copied here blind: the SDK publishes built `dist`, so a
+ * payload compare is only sound once this repo's build is shown to be reproducible.
+ * Roadmap item R3-755 owns the port, with build determinism as its first deliverable —
+ * do not add a payload compare to this script before that proof exists. Merge order:
+ * grove#74 first, so main nowhere describes a gate its code does not have.
+ *
  * ## What is compared, and what cannot be
  *
  * The dependency blocks, plus `main` and `exports`: the parts of the manifest a
