@@ -18,7 +18,7 @@
  * ## The payload half is open here, and closed in grove
  *
  * Grove's copy of this script (`immediately-run/grove`, `scripts/check-published-parity.mjs`)
- * also compares the PACKED PAYLOAD per-entry (R3-753), closing the second half of the hole:
+ * also compares the PACKED PAYLOAD per-entry (R3-751), closing the second half of the hole:
  * a change under an already-published version with an unchanged manifest still passed this
  * comparison and let the publish step skip silently. That port is NOT copied here blind:
  * the SDK publishes built `dist`, so a payload compare is only sound once this repo's build
