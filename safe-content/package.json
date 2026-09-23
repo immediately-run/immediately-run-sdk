@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/safe-content",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "The immediately.run safe renderer: non-executable MDX/Markdown as data, with no evaluator anywhere in the pipeline (TRUST_MODES_SPEC §5.1). Extracted from @immediately-run/sdk's safeContent tier (PLATFORM_LAYERING_SPEC §4, R3-279); the SDK re-exports it, so no import path changes.",
   "license": "MIT",
   "repository": {
