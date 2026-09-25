@@ -1,6 +1,8 @@
 [
   "safe-content/scripts/build-safecontent-e2e.mjs:(file)",
+  "safe-content/scripts/check-build-reproducible.mjs:(file)",
   "safe-content/scripts/gen-llms.mjs:(file)",
+  "safe-content/scripts/lib/treeCompare.mjs:fileDigest",
   "safe-content/src/SafeContent.tsx:(file)",
   "safe-content/src/index.ts:(file)",
   "safe-content/src/parseSafeMdast.ts:ParseSafeMdastOptions",
@@ -22,5 +24,6 @@
   "scripts/codegen-prototype/verify.types.mjs:(file)",
   "scripts/lib/dts-shape.mjs:parseDts",
   "scripts/lib/dts-shape.mjs:resolveDts",
+  "scripts/lib/treeCompare.mjs:fileDigest",
   "src/safeContent/mdastDeps.ts:(file)"
 ]

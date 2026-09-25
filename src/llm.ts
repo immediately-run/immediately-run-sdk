@@ -231,7 +231,8 @@ export interface ChatProviderInfo {
 }
 
 /**
- * Whether the host has told us about a provider yet, and if so whether one is bound.
+ * Whether the host has told us about a provider yet, and if so whether one is bound —
+ * and, since R3-688, whether this frame may ask at all.
  *
  * THREE states, because two is the bug (R3-300). `describeChat()` returns `null` both
  * when no provider is configured AND when the channel has not answered — so an app
@@ -241,17 +242,29 @@ export interface ChatProviderInfo {
  *
  * **`unknown` is TRANSIENT — the host answers every frame** (R3-419;
  * `LLM_AND_AGENTS_SPEC §4.1` R-LLM-1..3). An app that does not hold `llm:chat` is not
- * met with silence: it is answered `not-configured`, the same terminal state as a user
- * with no key, because from the app's side those are the same fact — do not render a
- * provider, do offer the connect path. So it is correct to treat a `unknown` that
- * persists as a host bug rather than as a state to design around, and WRONG to render a
- * spinner with no timeout on it. (Before R3-419 the host withheld the channel entirely
- * from an ungranted frame, and `unknown` stood forever — that is the failure this note
- * exists to keep from being re-created on the app side.)
+ * met with silence. So it is correct to treat a `unknown` that persists as a host bug
+ * rather than as a state to design around, and WRONG to render a spinner with no
+ * timeout on it. (Before R3-419 the host withheld the channel entirely from an
+ * ungranted frame, and `unknown` stood forever — that is the failure this note exists
+ * to keep from being re-created on the app side.)
+ *
+ * The FOURTH state, `ungranted` (R3-688; `LLM_AND_AGENTS_SPEC §4.1` R-LLM-2 as
+ * annotated, `GROVE_AGENT_SPEC` G-GA-10): the host answered, and the reason this frame
+ * cannot reach a model is that **it does not hold `llm:chat`** — not that the user has
+ * no key. R3-419 deliberately answered an ungranted frame with the same payload as a
+ * keyless one, because the SDK could not carry the difference; that made the distinct
+ * "not granted" cause the reach-card contract promises (G-GA-10) uncomputable — an
+ * ungranted fork of an app rendered "connect a key" at a user who had one. The host now
+ * marks the grantless answer with an optional `ungranted: true` on the SAME message
+ * (additive — an older SDK never reads the field and degrades to `not-configured`;
+ * an older host never sends the field and the app degrades the same way). The mark is
+ * HOST-derived from the frame's resolved grant set at push time (the channel view in
+ * `channelAcl.ts`), never from anything this frame asserts.
  */
 export type ChatProviderState =
   | { status: 'unknown' }
   | { status: 'not-configured' }
+  | { status: 'ungranted' }
   | { status: 'configured'; provider: ChatProviderInfo };
 
 // The `llm-provider` describe channel (Recipe A): the host pushes the resolved
@@ -259,11 +272,14 @@ export type ChatProviderState =
 // A message with no `provider` key is ignored; an explicit `null` means "no provider
 // bound", which is now REPRESENTABLE as distinct from "not yet answered".
 // The channel's VALUE stays exactly what the wire carries — `ChatProviderInfo | null` —
-// because the wire did not change here and the protocol snapshot gate reads this type as
-// the channel's shape. The three-state lives BESIDE it: `answered` records whether the host
-// has ever spoken on this channel, which is the one bit `null` cannot carry. Deriving the
-// state rather than widening the channel keeps the wire contract byte-identical, which it
-// is (SDK_PACKAGING_SPEC §9: the wire is additive-only, and this is not a wire change).
+// because the protocol snapshot gate reads this type as the channel's shape. The state
+// read lives BESIDE it: `answered` records whether the host has ever spoken on this
+// channel, which is the one bit `null` cannot carry, and `ungrantedMark` (R3-688) reads
+// the host's optional grantless marker off the same message — also beside the value, not
+// inside it. Deriving the state rather than widening the channel keeps the declared wire
+// VALUE unchanged (SDK_PACKAGING_SPEC §9: additive-only; the optional message field
+// follows the `theme`/`form-factor` insets precedent — old readers ignore it, and the
+// sandbox-protocol descriptor's "read off" line catches up at its next release).
 /**
  * Reconcile what the host actually sent with what this SDK declares.
  *
@@ -340,6 +356,11 @@ export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatPr
 }
 
 let answered = false;
+// R3-688 — the host's grantless marker, read off the SAME message (`ungranted: true`
+// beside `provider`). It is message-arrival state beside `answered`, not part of the
+// wire VALUE: the channel's value stays `ChatProviderInfo | null`, so the protocol
+// snapshot gate keeps reading the unchanged shape.
+let ungrantedMark = false;
 const channel = createPushChannel<ChatProviderInfo | null>({
   pushType: LLM_PROVIDER,
   requestType: REQUEST_LLM_PROVIDER,
@@ -347,13 +368,37 @@ const channel = createPushChannel<ChatProviderInfo | null>({
   parse: (msg) => {
     if (!('provider' in msg)) return undefined;
     answered = true;
+    ungrantedMark = msg.ungranted === true;
     return normalizeProviderInfo((msg.provider as ChatProviderInfo | null) ?? null);
   },
 });
 
-/** Derive the three-state from the wire value plus whether the host has answered. */
+/**
+ * Derive the four-state read from what the host has said. Pure, and exported for its
+ * own test (`llmProviderState.test.ts`) like `normalizeProviderInfo` — not part of the
+ * public surface beyond `index.ts`'s wholesale re-export.
+ *
+ * Order is load-bearing: `unknown` wins until the host answers (an `ungranted` mark
+ * cannot exist before an answer — it arrives ON the answer); then the host's grantless
+ * mark; then the provider. A host that predates the mark never sets it, so its
+ * grantless answer derives `not-configured` — the exact pre-R3-688 contract, which is
+ * the additive degradation the fourth state promises.
+ *
+ * @internal
+ */
+export function deriveChatProviderState(
+  answered: boolean,
+  ungranted: boolean,
+  provider: ChatProviderInfo | null,
+): ChatProviderState {
+  if (!answered) return { status: 'unknown' };
+  if (ungranted) return { status: 'ungranted' };
+  return provider ? { status: 'configured', provider } : { status: 'not-configured' };
+}
+
+/** Derive the state from the wire value plus what the host has said beside it. */
 const stateOf = (provider: ChatProviderInfo | null): ChatProviderState =>
-  !answered ? { status: 'unknown' } : provider ? { status: 'configured', provider } : { status: 'not-configured' };
+  deriveChatProviderState(answered, ungrantedMark, provider);
 
 /**
  * The provider the host resolved for this app, or `null`.
@@ -365,7 +410,8 @@ const stateOf = (provider: ChatProviderInfo | null): ChatProviderState =>
  */
 export const describeChat = (): ChatProviderInfo | null => channel.get();
 
-/** The three-state read: `unknown` before the host answers, then configured or not. */
+/** The four-state read: `unknown` before the host answers; then the host's `ungranted`
+ *  mark, or the provider (configured / not-configured). */
 export const describeChatState = (): ChatProviderState => stateOf(channel.get());
 
 /** Subscribe to provider changes (key added/revoked, preference changed). Invoked
@@ -373,7 +419,7 @@ export const describeChatState = (): ChatProviderState => stateOf(channel.get())
 export const onChatProviderChange = (listener: (provider: ChatProviderInfo | null) => void): (() => void) =>
   channel.onChange(listener);
 
-/** Subscribe to the three-state provider description. */
+/** Subscribe to the provider-state description. */
 export const onChatProviderStateChange = (listener: (state: ChatProviderState) => void): (() => void) =>
   channel.onChange((p) => listener(stateOf(p)));
 
@@ -382,10 +428,11 @@ export const onChatProviderStateChange = (listener: (state: ChatProviderState) =
 export const useChatProvider = (): ChatProviderInfo | null => channel.use();
 
 /**
- * React hook returning the three-state description.
+ * React hook returning the four-state description.
  *
  * Use this to render provider state honestly: show nothing (or a neutral placeholder)
- * while `unknown`, the connect affordance only on `not-configured`, and the provider's
- * name on `configured`.
+ * while `unknown`, the connect affordance only on `not-configured`, the NOT-GRANTED
+ * cause — never the connect copy — on `ungranted`, and the provider's name on
+ * `configured`.
  */
 export const useChatProviderState = (): ChatProviderState => stateOf(channel.use());
