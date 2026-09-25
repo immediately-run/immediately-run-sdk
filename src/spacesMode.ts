@@ -108,7 +108,7 @@ export type SpacesTarget = SpacesRoute | { destination: 'notifications' };
  *
  *  - `invalid` — the target is not a route this host can build. This is also the code for
  *    a space the reader has no membership-granted view of, **deliberately**: P7 forbids an
- *    existence oracle, and `SPACES_BRIEF` §9 says a doclink into a space the reader is not
+ *    existence oracle, and `SPACES_BRIEF` §7 says a doclink into a space the reader is not
  *    a member of "renders the same not-found as a link to nothing". A distinct code here
  *    would be exactly the oracle — an app could enumerate spaceIds and read membership off
  *    the difference. Non-member and never-existed are one answer.

@@ -1,25 +1,28 @@
 // The one place the SDK turns a host reply envelope into a typed, coded rejection (R6).
 //
 // ---------------------------------------------------------------------------
-// THE CENSUS, corrected in round 2
+// THE CENSUS — got wrong twice, so here is how to re-derive it
 // ---------------------------------------------------------------------------
 //
-// Round 1 found three copies and this file said "three". It was five. The TYPED family —
-// same six lines, differing only in the error type the `code` is cast to — is
-// `openExternal.ts`, `openRepository.ts`, `spacesMode.ts` (this PR's), and the private
-// `request` helpers in `secrets.ts` and `mounts.ts`. The last two also return
-// `res.data as T`, which is why they read as a different thing and are not; `secrets.ts`'s
-// own comment says it "mirrors mounts.ts `request`". All five now call this.
+// Round 1 found three copies. Round 2 said five. Round 3 counted the grep and found the
+// TYPED family was ten, across eight files — `mounts.ts` alone had three separate helpers
+// (`request`, `settingsRequest`, `localStoreRequest`), each with its own copy, which round
+// 2 read as one helper reached from three call sites. All ten now call this:
 //
-// There is a further UNTYPED family that this does NOT fold in, deliberately:
-// `catalog.ts`, `netFetch.ts`, `feed.ts`, `recents.ts`, `tasks.ts`, `launch.ts` and
-// `theme.ts` (three sites). They differ in what they do with a refusal — some return a
-// value rather than throwing — so folding them is a behaviour change, not an extraction,
-// and it does not belong in an R3-708 PR.
+//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts
+//   mounts.ts (×3) · editor.ts · vcs.ts · dnd.ts · ipc.ts (×2)
 //
-// `check:clones` cannot see any of this: minLines 6, minTokens 50, and no identifier
-// normalisation, so blocks differing only in type names read as distinct. The census above
-// is hand-derived and will rot; re-grep for `res.ok !== true` before trusting it.
+// What is deliberately NOT folded is the UNTYPED family — `catalog.ts`, `feed.ts`,
+// `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (×3) and `launch.ts`. They are not
+// all alike: `launch.ts` folds an extra `!res.data?.launchId` condition into the same test,
+// and the rest build their errors differently. Folding them is a behaviour change, not an
+// extraction, and does not belong in an R3-708 PR.
+//
+// **Do not trust the list above; re-derive it.** `grep -n 'ok !== true' src/ | grep -v
+// '\.test\.'` is the whole population, and the two miscounts above both came from reading
+// a file rather than counting the grep. `check:clones` cannot help: minLines 6, minTokens
+// 50, and no identifier normalisation, so blocks differing only in type names read as
+// distinct.
 //
 // ---------------------------------------------------------------------------
 // WHICH `ok` THIS READS, AND WHY IT MATTERS

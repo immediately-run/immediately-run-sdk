@@ -1,21 +1,8 @@
-import { createPushChannel, type ChannelTransport } from '../src/pushChannel';
-
-// A controllable mock transport: capture sent messages, and let tests fire pushes.
-function mockTransport() {
-  const sent: string[] = [];
-  const handlers = new Map<string, (msg: Record<string, unknown>) => void>();
-  const transport: ChannelTransport = {
-    sendMessage: (type) => {
-      sent.push(type);
-    },
-    addListener: (type, handler) => {
-      handlers.set(type, handler);
-      return () => handlers.delete(type);
-    },
-  };
-  const push = (type: string, msg: Record<string, unknown>) => handlers.get(type)?.(msg);
-  return { transport, sent, handlers, push };
-}
+import { createPushChannel } from '../src/pushChannel';
+// The mock transport moved to its own module in R3-708 round 3 — `src/pushChannel.test.tsx`
+// (the React `use()` layer) needs the same one, and a spec file cannot be imported without
+// running its suite.
+import { mockChannelTransport as mockTransport } from './mockChannelTransport';
 
 interface FF {
   width: number;
