@@ -11,3 +11,6 @@ test/.artifacts/
 # Previously-published SDK tarballs unpacked by scripts/check-previous-sdk-compat.mjs
 .compat-sdk/
 .selfhost-check/
+
+# check-build-reproducible.mjs build dirs (renamed dist + scratch); cleaned by the script
+.build-reproducible-*
