@@ -15,6 +15,7 @@
 // click, which the host samples rather than believes), and one gesture opens exactly one
 // tab. Both surface here as ordinary coded refusals.
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { PROTOCOL_OPENREPO } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -63,13 +64,5 @@ export async function openRepository(coordinates: RepositoryCoordinates): Promis
   const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENREPO], 'open', [
     { provider, namespace, repository },
   ])) as OpenRepositoryReply;
-  // The refusal resolves inside the reply, so `res.ok !== true` is the only failure test
-  // there is — a bare-promise shape here would swallow every coded refusal as a success.
-  if (!res || res.ok !== true) {
-    const err = new Error(
-      (res && 'message' in res ? res.message : undefined) ?? 'repository open refused',
-    ) as OpenRepositoryError;
-    err.code = ((res && 'code' in res ? res.code : undefined) as OpenRepositoryErrorCode) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'repository open refused');
 }

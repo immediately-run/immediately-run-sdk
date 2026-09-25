@@ -17,6 +17,7 @@
 // (`SPACES_BRIEF` §7, "the host spells the URL"). That is also why an app reads
 // `space.root` for its files rather than assuming a mount path.
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { createPushChannel } from './pushChannel';
 import { SPACES_MODE, REQUEST_SPACES_MODE, PROTOCOL_SPACES_MODE } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -27,9 +28,18 @@ export type SpacesActivity = 'spaces' | 'inbox' | 'people' | 'settings';
 /**
  * Where the user is inside the spaces mode, as the host parsed it.
  *
- * `spaceId` is `null` on a route that names no space (the launcher itself). The optional
- * fields are the per-activity tail: `path` a bundle-relative file, `roomId` a conversation,
- * `member` the uid of `/spaces/<id>/people/<uid>`, `section` a settings pane.
+ * `spaceId` is `null` on a route that names no space, which is TWO routes, not one: the
+ * launcher (`activity: 'spaces'`) and the **cross-space inbox** (`activity: 'inbox'` —
+ * `/spaces/-/inbox`, every room across every space). Branch on the pair, not on `spaceId`
+ * alone.
+ *
+ * The `-` in that URL is the host's reserved segment and never reaches here: it is not an
+ * id, and an app must not send `spaceId: '-'` hoping to mean "all spaces" — say
+ * `{ spaceId: null, activity: 'inbox' }`. The host spells the URL (`SPACES_BRIEF` §7); the
+ * SDK never sees that grammar.
+ *
+ * The optional fields are the per-activity tail: `path` a bundle-relative file, `roomId` a
+ * conversation, `member` the uid of `/spaces/<id>/people/<uid>`, `section` a settings pane.
  */
 export interface SpacesRoute {
   spaceId: string | null;
@@ -56,10 +66,19 @@ export interface SpacesRoute {
  * **None of this is a grant.** The object describes what the host chose to tell this
  * frame; it confers nothing. `role` is a label for deciding which affordances to *show* —
  * it is not permission to act, and an app that branches on `role === 'owner'` to skip
- * asking has only skipped its own UI, not the check. Enforcement lives entirely on the
- * host side: the mount at `root` is what a reader's frame can actually read, and every
- * mutation still goes through a host request that refuses on its own authority. A frame
- * the host does not push to reads `null` — which is an absence of information, not a
+ * asking has only skipped its own UI, not the check. What IS enforced host-side is the
+ * mount: `root` is mounted at the reader's role, so a reader's frame cannot write through
+ * it (`site-main` `filesystem/liveRevocation.ts` derives the mount mode from the role, and
+ * `editor/spaceHandler.ts` re-checks `role` on the owner-only paths).
+ *
+ * What is NOT enforced, and must not be read into the above: per-APP authority.
+ * `UI_AS_APPS_SPEC` §8's audited gap is explicit that `mount` "accepts an arbitrary
+ * `spaceId` and enforces only user membership … every app currently inherits the user's
+ * full authority". So the host answers "may the USER do this", not "may this app", and a
+ * frame holding this object is no more constrained than the reader is. Treat it as a
+ * description of the reader's position, never as a sandbox around the app.
+ *
+ * A frame the host does not push to reads `null` — an absence of information, not a
  * denial, and equally not a reason to assume access.
  */
 export interface SpacesModeSpace {
@@ -80,16 +99,21 @@ export interface SpacesModeState {
  * Where to move to.
  *
  * Either a route inside the mode, or the one host destination outside it —
- * `{ destination: 'notifications' }`, which the launcher's "invitations waiting in
- * notifications →" line uses so the app never spells a mode path itself.
+ * `{ destination: 'notifications' }`, which the inventory panel's line pointing at pending
+ * invitations uses so the app never spells a mode path itself.
  */
 export type SpacesTarget = SpacesRoute | { destination: 'notifications' };
 
 /** Why the host refused to navigate.
  *
- *  - `invalid` — the target is not a route this host can build (an unknown activity, a
- *    tail field the activity does not take).
- *  - `forbidden` — the app may not reach that space, or lacks the capability to navigate.
+ *  - `invalid` — the target is not a route this host can build. This is also the code for
+ *    a space the reader has no membership-granted view of, **deliberately**: P7 forbids an
+ *    existence oracle, and `SPACES_BRIEF` §9 says a doclink into a space the reader is not
+ *    a member of "renders the same not-found as a link to nothing". A distinct code here
+ *    would be exactly the oracle — an app could enumerate spaceIds and read membership off
+ *    the difference. Non-member and never-existed are one answer.
+ *  - `forbidden` — this frame lacks the CAPABILITY to navigate at all. It is a statement
+ *    about the caller, never about the target, so it discloses nothing about what exists.
  *  - `unsupported` — this host has no spaces mode wired.
  *  - `unknown` — the host refused without naming a code. */
 export type NavigateSpacesErrorCode = 'invalid' | 'forbidden' | 'unsupported' | 'unknown';
@@ -147,6 +171,13 @@ const parseSpace = (v: unknown): SpacesModeSpace | null | undefined => {
 // to a route nobody sent. Nothing in here throws: a throw in the listener would take down
 // the push loop for every channel sharing it.
 const parseState = (state: unknown): SpacesModeState | null | undefined => {
+  // A pushed `null` is a RETRACTION, not a malformed message, and the wire says so: the
+  // channel's declared value is `SpacesModeState | null` (sandbox-protocol 0.11.0,
+  // `snapshots/sdk.json`, `spaces-mode.value`). Folding it into the `isRecord` guard below
+  // made it mean "ignore", which left the host with no way to say "this frame has left the
+  // mode" — the last route would stand forever, and an app would keep rendering a space it
+  // is no longer in. `null` here is distinct from `undefined`: it SETS the value.
+  if (state === null) return null;
   if (!isRecord(state)) return undefined;
   const route = parseRoute(state.route);
   if (!route) return undefined;
@@ -193,16 +224,24 @@ export const onSpacesModeChange = (listener: (state: SpacesModeState | null) => 
  *
  * ```tsx
  * const mode = useSpacesMode();
- * if (!mode) return <MyStandaloneUI />;          // not in the spaces mode
- * if (!mode.space) return <Launcher />;          // no space selected
- * return <Files root={mode.space.root} />;       // never assume a mount path
+ * if (!mode) return <MyStandaloneUI />;            // not in the spaces mode
+ * if (!mode.space) return <Launcher />;            // no space selected
+ * if (!mode.space.root) return <NotMountedHere />; // selected, but not mounted into THIS
+ * return <Files root={mode.space.root} />;         // never assume a mount path
  * ```
+ *
+ * The third guard is not defensive padding: `root` is `null` in every frame the host did
+ * not mount the space into, which is every frame but the launcher's. Passing it through
+ * unchecked is the mistake this example exists to prevent.
  */
 export const useSpacesMode = (): SpacesModeState | null => channel.use();
 
-/** The host's reply. The refusal resolves INSIDE the promise, so a refusal is a resolved
- *  `{ ok: false }` rather than a transport-level rejection. */
-type NavigateReply = { ok: true } | { ok: false; code?: string; message?: string };
+/** The host's reply ENVELOPE (site-main's `SpaceResult`). A refusal is a RESOLVED
+ *  `{ ok: false, code, message }` frame, not a transport-level rejection — see
+ *  `protocolRefusal.ts` for which `ok` this is and why a handler must THROW
+ *  `spaceError` rather than return `{ ok: false }`. R3-707's `navigate` handler must
+ *  throw. */
+type NavigateReply = { ok: true; data?: unknown } | { ok: false; code?: string; message?: string };
 
 /**
  * Ask the host to move the spaces mode to `target`.
@@ -221,13 +260,5 @@ type NavigateReply = { ok: true } | { ok: false; code?: string; message?: string
  */
 export async function navigateSpaces(target: SpacesTarget): Promise<void> {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES_MODE], 'navigate', [target])) as NavigateReply;
-  // `res.ok !== true` is the only failure test there is — a bare-promise shape here would
-  // swallow every coded refusal as a success.
-  if (!res || res.ok !== true) {
-    const err = new Error(
-      (res && 'message' in res ? res.message : undefined) ?? 'spaces navigation refused',
-    ) as NavigateSpacesError;
-    err.code = ((res && 'code' in res ? res.code : undefined) as NavigateSpacesErrorCode) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'spaces navigation refused');
 }

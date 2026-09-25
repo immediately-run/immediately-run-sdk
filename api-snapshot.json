@@ -1258,6 +1258,10 @@
     "firstFrameTimeoutFor": "fn(2..2)",
     "timeoutFor": "fn(2..2)"
   },
+  "protocolRefusal": {
+    "CodedRefusalError": "interface(code)",
+    "throwOnRefusal": "fn(2..2)"
+  },
   "protocolSchemes": {
     "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-localstore\", \"protocol-openlink\", \"protocol-openrepo\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-spaces-mode\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
   },

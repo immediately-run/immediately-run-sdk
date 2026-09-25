@@ -16,6 +16,7 @@
 // confirmation must not consume that activation before the open. Both surface here as
 // ordinary coded refusals.
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { PROTOCOL_OPENLINK } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -53,13 +54,5 @@ type OpenExternalReply = { ok: true; url?: string } | { ok: false; code?: string
  */
 export async function openExternal(url: string): Promise<void> {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENLINK], 'open', [{ url }])) as OpenExternalReply;
-  // The refusal resolves inside the reply, so `res.ok !== true` is the only failure test
-  // there is — a bare-promise shape here would swallow every coded refusal as a success.
-  if (!res || res.ok !== true) {
-    const err = new Error(
-      (res && 'message' in res ? res.message : undefined) ?? 'external link open refused',
-    ) as OpenExternalError;
-    err.code = ((res && 'code' in res ? res.code : undefined) as OpenExternalErrorCode) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'external link open refused');
 }
