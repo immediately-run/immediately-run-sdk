@@ -132,7 +132,16 @@ it('a retracting null push re-renders back to null', () => {
   unmount();
 });
 
-it('unmounting unsubscribes — a later push does not render into a dead tree', () => {
+it('a push after unmount is inert — it does not throw and renders nothing', () => {
+  // NOT named "unsubscribes", which is what it said in round 1 and could not observe.
+  // Measured: deleting the cleanup (`useEffect(() => onChange(setValue), [])` ->
+  // `useEffect(() => { onChange(setValue); }, [])` in pushChannel.ts) leaves all 5 of
+  // these green. React 19 no-ops a setState on an unmounted root with no warning, and
+  // `seen` only grows during render, so a LEAKED listener is invisible from out here.
+  //
+  // The property this file CAN hold is the one it is now named for — a push after unmount
+  // is harmless — and the unsubscribe mechanism `use()` delegates to is pinned directly in
+  // `src/pushChannel.test.tsx`.
   const { seen, unmount } = renderProbe();
   push({ state: STATE });
   const atUnmount = seen.length;

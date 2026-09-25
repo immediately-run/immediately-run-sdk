@@ -109,6 +109,16 @@ it('carries every optional tail field the activities use', () => {
   });
 });
 
+it('spaceId null + activity inbox is the CROSS-SPACE inbox — the second null-space route', () => {
+  // `/spaces/-/inbox`. Round 1 ruled that `spaceId: null` is two routes, not one, and the
+  // ruling landed in the JSDoc while this combination stayed the one neither suite sent —
+  // every `inbox` case paired with a string id, every null id with `activity: 'spaces'`.
+  // The host's reserved `-` is URL grammar and must never appear as an id here.
+  mod.getSpacesMode();
+  push(payload({ state: { route: { spaceId: null, activity: 'inbox' }, space: null } }));
+  expect(mod.getSpacesMode()).toEqual({ route: { spaceId: null, activity: 'inbox' }, space: null });
+});
+
 it('a null space is a VALUE — the launcher with no space selected', () => {
   mod.getSpacesMode();
   push(payload({ state: { route: { spaceId: null, activity: 'spaces' }, space: null } }));

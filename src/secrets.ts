@@ -12,6 +12,7 @@
 // (SECRETS_SPEC §3/§6 host work, roadmap P1.E); the contract is shipped here so
 // apps (e.g. the in-browser coding agent, P3-73) can be written against it.
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { createPushChannel } from './pushChannel';
 import { PROTOCOL_SECRETS, REQUEST_SECRETS_METADATA, SECRETS_METADATA } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -75,11 +76,7 @@ type SecretResult = { ok: true; data: unknown } | { ok: false; code: string; mes
 // and throwing a typed SecretError on failure (mirrors mounts.ts `request`).
 const request = async <T = unknown>(method: string, query: object = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SECRETS], method, [query])) as SecretResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'secret request failed') as SecretError;
-    err.code = (res?.code as SecretError['code']) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'secret request failed');
   return res.data as T;
 };
 

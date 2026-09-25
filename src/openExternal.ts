@@ -47,6 +47,12 @@ type OpenExternalReply = { ok: true; url?: string } | { ok: false; code?: string
  * the opened tab loading. Rejects with a typed {@link OpenExternalError} carrying `code` when
  * the host refuses.
  *
+ * **Known gap, 2026-09-25 (R3-778): this does NOT reject today.** The host handler
+ * RETURNS its refusals — `invalid`, `no-activation` and **`declined`** (the user pressing "no" on the host's confirmation) — and site-main's dispatcher wraps a
+ * handler's return value in an `ok: true` envelope, so every one of those refusals
+ * reaches this function as a SUCCESS and `openExternal()` resolves. Do not rely on the
+ * `code` branch until R3-778 lands; see `protocolRefusal.ts` for the mechanism.
+ *
  * Call it directly from a user gesture. The host samples its own transient activation when
  * the request arrives, so anything that defers the call past the gesture (an `await` before
  * it, a `setTimeout`, a retry) will be refused `no-activation`. None of the refusals are

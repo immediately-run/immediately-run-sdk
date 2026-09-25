@@ -1,4 +1,5 @@
 import { APP_ROOT } from '@immediately-run/platform-constants';
+import { throwOnRefusal } from './protocolRefusal';
 
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
@@ -439,11 +440,7 @@ type SpaceResult = { ok: true; data: unknown } | { ok: false; code: string; mess
 // throwing a typed SpaceError on failure.
 const request = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'space request failed') as SpaceError;
-    err.code = (res?.code as SpaceError['code']) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'space request failed');
   return res.data as T;
 };
 
