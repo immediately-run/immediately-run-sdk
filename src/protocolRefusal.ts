@@ -9,15 +9,15 @@
 // eight files — `mounts.ts` alone has three separate request helpers, each with its own
 // copy, which round 2 read as one helper reached from three call sites.
 //
-// This PR folds the five that its own review rounds actually looked at:
+// All ten now call this:
 //
-//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts · mounts.ts `request`
+//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts
+//   mounts.ts (×3) · editor.ts · vcs.ts · dnd.ts · ipc.ts (×2)
 //
-// The other five — `mounts.ts`'s `settingsRequest` and `localStoreRequest`, `editor.ts`,
-// `vcs.ts`, `dnd.ts` and `ipc.ts` (two sites) — were folded here too and then SPLIT BACK
-// OUT, because the gate caps at three rounds and they landed after the last one; nothing
-// had reviewed them. They go in their own PR. If you are reading this and that PR has
-// merged, this paragraph is the thing to delete.
+// Five landed in R3-708, which is where this file came from. The other five — `mounts.ts`'s
+// `settingsRequest` and `localStoreRequest`, `editor.ts`, `vcs.ts`, `dnd.ts` and `ipc.ts` —
+// were folded there too, then SPLIT BACK OUT because they landed after that PR's last
+// review round and nothing had looked at them. This is that split: R3-780.
 //
 // Not folded at all, deliberately: the UNTYPED family — `catalog.ts`, `feed.ts`,
 // `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (three sites) and `launch.ts`. They

@@ -19,6 +19,7 @@
 // validates everything else. v1 inlines bytes only for small files (the source can
 // only relay data it can already read — no new read authority is minted).
 import { useEffect, useState } from 'react';
+import { throwOnRefusal } from './protocolRefusal';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { DND_CANCEL, DROPPED_ITEM, PROTOCOL_DND } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -71,11 +72,7 @@ export const startItemDrag = async (item: DraggableItem): Promise<void> => {
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'dnd startDrag failed') as ItemDragError;
-    err.code = (res?.code as ItemDragError['code']) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'dnd startDrag failed');
 };
 
 /** Abort an in-progress host-mediated drag this app started (e.g. the user pressed

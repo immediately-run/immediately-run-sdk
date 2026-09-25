@@ -19,6 +19,41 @@ const load = (): MountsModule => {
 // matters more than an ordinary coverage gap here: `request` ends `return res.data as T`,
 // which narrows off `asserts res is { ok: true }` — a helper that stopped throwing would
 // COMPILE and hand back `undefined` typed as a `SandboxMount`.
+// R3-780: `mounts.ts` has THREE request helpers and this one had no refusal test at all —
+// `grep -rn "stubProtocol('settings'" src/*.test.ts` was empty before this. Folding it onto
+// `throwOnRefusal` without one would have repeated R3-708's mistake exactly: the file's
+// suite reddens under a neutered helper, so an AGGREGATE measurement says "covered", while
+// the site doing the reddening is a different helper in the same file.
+describe('the protocol-settings `settingsRequest` helper surfaces a coded refusal', () => {
+  let host: MockHost;
+  beforeEach(() => {
+    host = createMockHost();
+    host.install();
+  });
+  afterEach(() => host.uninstall());
+
+  it('listSettingsApps rejects with the host code rather than resolving undefined', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: false, code: 'forbidden', message: 'not allowed' }));
+
+    await expect(listSettingsApps()).rejects.toMatchObject({ code: 'forbidden', message: 'not allowed' });
+  });
+
+  it('a refusal with no code is `unknown`, never a silent success', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: false }));
+
+    await expect(listSettingsApps()).rejects.toMatchObject({ code: 'unknown' });
+  });
+
+  it('a success still unwraps the envelope to `data`', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: true, data: ['app.one', 'app.two'] }));
+
+    await expect(listSettingsApps()).resolves.toEqual(['app.one', 'app.two']);
+  });
+});
+
 describe('the protocol-spaces `request` helper surfaces a coded refusal', () => {
   let host: MockHost;
   beforeEach(() => {
