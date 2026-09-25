@@ -58,3 +58,73 @@ describe('chat() carries the model choice (R3-620)', () => {
     expect(sig).toBe(signal);
   });
 });
+
+// R3-688 review round 1 (BLOCKING) — the line that reads the host's mark off the wire,
+// `ungrantedMark = msg.ungranted === true`, was covered by nothing. The four derivation
+// tests call `deriveChatProviderState` directly and prove only the pure function, so
+// severing the read (`= false`) left the whole 805-test suite green — the feature's entire
+// reason for existing, silently disconnected.
+//
+// These drive the REAL `parse` that `llm.ts` hands to `createPushChannel`, captured from
+// the mock, so the wire read is exercised rather than reasoned about.
+describe('the host ungranted mark is read off the wire (R3-688)', () => {
+  type ParseFn = (msg: Record<string, unknown>) => unknown;
+
+  // Load `llm.ts` fresh and hand back the `parse` it registered plus its state reader.
+  const load = (): { parse: ParseFn; describeChatState: () => { status: string } } => {
+    jest.resetModules();
+    let parse: ParseFn | undefined;
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const push = require('./pushChannel') as { createPushChannel: jest.Mock };
+    push.createPushChannel.mockImplementation((opts: { parse: ParseFn }) => {
+      parse = opts.parse;
+      let current: unknown = null;
+      return {
+        get: () => current,
+        subscribe: () => () => {},
+        onChange: () => () => {},
+        use: () => current,
+        __set: (v: unknown) => {
+          current = v;
+        },
+      };
+    });
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('./llm') as { describeChatState: () => { status: string } };
+    if (!parse) throw new Error('llm.ts did not register a parse with createPushChannel');
+    return { parse, describeChatState: mod.describeChatState };
+  };
+
+  it('a grantless answer CARRYING the mark reads as `ungranted`', () => {
+    const { parse, describeChatState } = load();
+    parse({ provider: null, ungranted: true });
+    expect(describeChatState().status).toBe('ungranted');
+  });
+
+  it('a grantless answer WITHOUT the mark reads as `not-configured`, not `ungranted`', () => {
+    // The other half of the pair: without it, a parse that hard-codes `true` also passes.
+    const { parse, describeChatState } = load();
+    parse({ provider: null });
+    expect(describeChatState().status).toBe('not-configured');
+  });
+
+  it('`ungranted: false` does not mark', () => {
+    const { parse, describeChatState } = load();
+    parse({ provider: null, ungranted: false });
+    expect(describeChatState().status).toBe('not-configured');
+  });
+
+  it('a truthy NON-BOOLEAN does not mark — the wire declares a boolean', () => {
+    // `=== true`, not `!!`. Named separately because the `false` case above cannot tell
+    // the two apart (`!!false === false`), so it passed under a `!!` mutation and I had
+    // called it "not truthy-read" — a test named for a property it did not hold.
+    const { parse, describeChatState } = load();
+    parse({ provider: null, ungranted: 'yes' });
+    expect(describeChatState().status).toBe('not-configured');
+  });
+
+  it('before any answer the state is `unknown`, mark or no mark', () => {
+    const { describeChatState } = load();
+    expect(describeChatState().status).toBe('unknown');
+  });
+});

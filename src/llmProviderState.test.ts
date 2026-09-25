@@ -122,9 +122,17 @@ describe('the compatibility collapse', () => {
 // grantless answer on the SAME message, and the state read must separate "no key"
 // (`not-configured`) from "may not ask" (`ungranted`) — the distinct cause G-GA-10
 // promises the reach card.
-import { deriveChatProviderState } from './llm';
+import { deriveChatProviderState, normalizeProviderInfo } from './llm';
 
-const provider = { providerId: 'llm.chat.openrouter' } as never;
+// Built through the module's OWN normalizer rather than cast. `as never` erased the shape,
+// so the `configured` assertions proved nothing about it and would have survived a new
+// required field on ChatProviderInfo (ways_of_working §4: one input from the real producer).
+const provider = normalizeProviderInfo({
+  providerId: 'llm.chat.openrouter',
+  hostVouched: true,
+  // Distinguishable values, so a derivation that conflated fields would show it.
+  features: { vision: true, tools: false, jsonMode: true, reasoning: false, maxContextTokens: 128000 },
+})!;
 
 describe('the ungranted state (R3-688, G-GA-10)', () => {
   it('a frame WITHOUT llm:chat resolves UNGRANTED — distinct from not-configured', () => {
