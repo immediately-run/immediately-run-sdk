@@ -16,7 +16,6 @@
 // initial. Action side: `protocol-vcs` requests gated host-side — `refreshDiff` /
 // `refreshPRs` by `vcs:read`, `resetWorkingTree` by first-party-only `vcs:reset`.
 import { createPushChannel } from './pushChannel';
-import { throwOnRefusal } from './protocolRefusal';
 import { protocolRequest } from './sandboxUtils';
 import { PROTOCOL_VCS, REQUEST_VCS_STATE, VCS_STATE } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -124,7 +123,11 @@ type VcsResult = { ok: true; data: unknown } | { ok: false; code: string; messag
 
 const vcsRequest = async (method: string, arg: Record<string, unknown> = {}): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_VCS], method, [arg])) as VcsResult;
-  throwOnRefusal(res, `vcs ${method} failed`);
+  if (!res || res.ok !== true) {
+    const err = new Error(res?.message ?? `vcs ${method} failed`) as VcsActionError;
+    err.code = (res?.code as VcsActionError['code']) ?? 'unknown';
+    throw err;
+  }
 };
 
 /** Ask the host to recompute the working-tree diff and push a fresh {@link VcsState}.

@@ -1,28 +1,34 @@
 // The one place the SDK turns a host reply envelope into a typed, coded rejection (R6).
 //
 // ---------------------------------------------------------------------------
-// THE CENSUS — got wrong twice, so here is how to re-derive it
+// THE CENSUS — counted wrong twice, so here is how to re-derive it
 // ---------------------------------------------------------------------------
 //
-// Round 1 found three copies. Round 2 said five. Round 3 counted the grep and found the
-// TYPED family was ten, across eight files — `mounts.ts` alone had three separate helpers
-// (`request`, `settingsRequest`, `localStoreRequest`), each with its own copy, which round
-// 2 read as one helper reached from three call sites. All ten now call this:
+// Review round 1 found three copies of this block and this file said "three". Round 2
+// found five. Round 3 counted the grep and found the TYPED family is **ten**, across
+// eight files — `mounts.ts` alone has three separate request helpers, each with its own
+// copy, which round 2 read as one helper reached from three call sites.
 //
-//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts
-//   mounts.ts (×3) · editor.ts · vcs.ts · dnd.ts · ipc.ts (×2)
+// This PR folds the five that its own review rounds actually looked at:
 //
-// What is deliberately NOT folded is the UNTYPED family — `catalog.ts`, `feed.ts`,
-// `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (×3) and `launch.ts`. They are not
-// all alike: `launch.ts` folds an extra `!res.data?.launchId` condition into the same test,
+//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts · mounts.ts `request`
+//
+// The other five — `mounts.ts`'s `settingsRequest` and `localStoreRequest`, `editor.ts`,
+// `vcs.ts`, `dnd.ts` and `ipc.ts` (two sites) — were folded here too and then SPLIT BACK
+// OUT, because the gate caps at three rounds and they landed after the last one; nothing
+// had reviewed them. They go in their own PR. If you are reading this and that PR has
+// merged, this paragraph is the thing to delete.
+//
+// Not folded at all, deliberately: the UNTYPED family — `catalog.ts`, `feed.ts`,
+// `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (three sites) and `launch.ts`. They
+// are not alike: `launch.ts` folds an extra `!res.data?.launchId` into the same condition,
 // and the rest build their errors differently. Folding them is a behaviour change, not an
-// extraction, and does not belong in an R3-708 PR.
+// extraction.
 //
-// **Do not trust the list above; re-derive it.** `grep -n 'ok !== true' src/ | grep -v
-// '\.test\.'` is the whole population, and the two miscounts above both came from reading
-// a file rather than counting the grep. `check:clones` cannot help: minLines 6, minTokens
-// 50, and no identifier normalisation, so blocks differing only in type names read as
-// distinct.
+// **Do not trust any list above; re-derive it.** `grep -n 'ok !== true' src/ | grep -v
+// '\.test\.'` is the whole population, and both miscounts came from reading files instead
+// of counting the grep. `check:clones` cannot help: minLines 6, minTokens 50, and no
+// identifier normalisation, so blocks differing only in type names read as distinct.
 //
 // ---------------------------------------------------------------------------
 // WHICH `ok` THIS READS, AND WHY IT MATTERS
