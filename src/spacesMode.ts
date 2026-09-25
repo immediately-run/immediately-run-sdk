@@ -52,6 +52,15 @@ export interface SpacesRoute {
  *
  * `kind` (not `mode`) matches site-main's `SpaceKind`: one noun for the personal/shared
  * axis (R-IX-6).
+ *
+ * **None of this is a grant.** The object describes what the host chose to tell this
+ * frame; it confers nothing. `role` is a label for deciding which affordances to *show* —
+ * it is not permission to act, and an app that branches on `role === 'owner'` to skip
+ * asking has only skipped its own UI, not the check. Enforcement lives entirely on the
+ * host side: the mount at `root` is what a reader's frame can actually read, and every
+ * mutation still goes through a host request that refuses on its own authority. A frame
+ * the host does not push to reads `null` — which is an absence of information, not a
+ * denial, and equally not a reason to assume access.
  */
 export interface SpacesModeSpace {
   id: string;
