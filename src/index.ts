@@ -31,6 +31,8 @@ export * from './chromeState';
 export * from './workspace';
 export * from './hostAttention';
 export * from './region';
+// R3-708 — the spaces mode's route channel and its one navigation verb.
+export * from './spacesMode';
 export * from './mounts';
 export * from './analytics';
 export * from './contribute';
