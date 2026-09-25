@@ -74,25 +74,35 @@ describe('the host ungranted mark is read off the wire (R3-688)', () => {
   const load = (): { parse: ParseFn; describeChatState: () => { status: string } } => {
     jest.resetModules();
     let parse: ParseFn | undefined;
+    let store: (v: unknown) => void = () => {};
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const push = require('./pushChannel') as { createPushChannel: jest.Mock };
     push.createPushChannel.mockImplementation((opts: { parse: ParseFn }) => {
       parse = opts.parse;
       let current: unknown = null;
+      // `createPushChannel` keeps a non-undefined parse result as the new value
+      // (pushChannel.ts). Doing the same here is what makes `parse`'s RETURN observable —
+      // without it the fake held null forever and `return null` in llm.ts passed.
+      store = (v: unknown) => {
+        if (v !== undefined) current = v;
+      };
       return {
         get: () => current,
-        subscribe: () => () => {},
         onChange: () => () => {},
         use: () => current,
-        __set: (v: unknown) => {
-          current = v;
-        },
       };
     });
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const mod = require('./llm') as { describeChatState: () => { status: string } };
     if (!parse) throw new Error('llm.ts did not register a parse with createPushChannel');
-    return { parse, describeChatState: mod.describeChatState };
+    const registered = parse;
+    // Drive `parse` exactly as the channel does: call it, then keep what it returned.
+    const feed: ParseFn = (msg) => {
+      const next = registered(msg);
+      store(next);
+      return next;
+    };
+    return { parse: feed, describeChatState: mod.describeChatState };
   };
 
   it('a grantless answer CARRYING the mark reads as `ungranted`', () => {
@@ -126,5 +136,22 @@ describe('the host ungranted mark is read off the wire (R3-688)', () => {
   it('before any answer the state is `unknown`, mark or no mark', () => {
     const { describeChatState } = load();
     expect(describeChatState().status).toBe('unknown');
+  });
+
+  it('a CONFIGURED answer carries the provider through, mark absent', () => {
+    // The other half of what `parse` does: its RETURN value becomes the channel's value.
+    // Without this, the fake held `null` forever and `return null` in llm.ts passed the
+    // whole suite — the review's round-2 finding.
+    const { parse, describeChatState } = load();
+    parse({
+      provider: {
+        providerId: 'llm.chat.openrouter',
+        hostVouched: true,
+        features: { vision: true, tools: false, jsonMode: true, reasoning: false, maxContextTokens: 128000 },
+      },
+    });
+    const state = describeChatState() as { status: string; provider?: { providerId: string } };
+    expect(state.status).toBe('configured');
+    expect(state.provider?.providerId).toBe('llm.chat.openrouter');
   });
 });
