@@ -382,6 +382,7 @@
     "PROTOCOL_SECRETS": "const(\"protocol-secrets\")",
     "PROTOCOL_SETTINGS": "const(\"protocol-settings\")",
     "PROTOCOL_SPACES": "const(\"protocol-spaces\")",
+    "PROTOCOL_SPACES_MODE": "const(\"protocol-spaces-mode\")",
     "PROTOCOL_TASK": "const(\"protocol-task\")",
     "PROTOCOL_THEME": "const(\"protocol-theme\")",
     "PROTOCOL_VCS": "const(\"protocol-vcs\")",
@@ -429,6 +430,7 @@
     "REQUEST_REGION_VISIBILITY": "const(\"request-region-visibility\")",
     "REQUEST_SECRETS_METADATA": "const(\"request-secrets-metadata\")",
     "REQUEST_SESSION_MOUNTS": "const(\"request-session-mounts\")",
+    "REQUEST_SPACES_MODE": "const(\"request-spaces-mode\")",
     "REQUEST_THEME": "const(\"request-theme\")",
     "REQUEST_THEME_CATALOG": "const(\"request-theme-catalog\")",
     "REQUEST_VCS_STATE": "const(\"request-vcs-state\")",
@@ -437,6 +439,7 @@
     "SDK_HANDSHAKE": "const(\"sdk-handshake\")",
     "SECRETS_METADATA": "const(\"secrets-metadata\")",
     "SESSION_MOUNTS": "const(\"session-mounts\")",
+    "SPACES_MODE": "const(\"spaces-mode\")",
     "SdkHandshakePayload": "interface(protocolVersion?, sandboxProtocolVersion?, sdkVersion?)",
     "TASK_CANCEL": "const(\"task-cancel\")",
     "TASK_COMPLETE": "const(\"task-complete\")",
@@ -447,9 +450,9 @@
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-spaces-mode'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-spaces-mode'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'spaces-mode'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
   },
   "generated/spaces": {
     "AcceptInviteError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -666,6 +669,8 @@
     "NETWORK_TIMEOUT_MS": "const(120000)",
     "NO_HOST_ATTENTION": "const(HostAttention)",
     "NUDGE_TEXT": "const(\"You ended your turn without calling a tool. If the task is already complete, say so plainly in one line and stop. Otherwise don't just describe the next step \\u2014 emit the tool call now.\")",
+    "NavigateSpacesError": "interface(code)",
+    "NavigateSpacesErrorCode": "union('forbidden'|'invalid'|'unknown'|'unsupported')",
     "NavigationDirection": "union('back'|'forward'|'push')",
     "ObjectUrlState": "interface(error, loading, url)",
     "OpenExternalError": "interface(code)",
@@ -707,7 +712,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.72.0\")",
+    "SDK_VERSION": "const(\"0.73.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -739,6 +744,11 @@
     "SourceReader": "fn(1..1)",
     "SpaceError": "interface(code)",
     "SpaceInfo": "interface(name?, owner?, role?, spaceId)",
+    "SpacesActivity": "union('inbox'|'people'|'settings'|'spaces')",
+    "SpacesModeSpace": "interface(id, kind, name, role, root)",
+    "SpacesModeState": "interface(route, space)",
+    "SpacesRoute": "interface(activity, member?, path?, roomId?, section?, spaceId)",
+    "SpacesTarget": "union(SpacesRoute|{destination})",
     "Spinner": "fn(1..1)",
     "StallReason": "union('announced-no-call'|'empty')",
     "Status": "fn(1..1)",
@@ -846,6 +856,7 @@
     "getSecrets": "fn(0..0)",
     "getSessionMounts": "fn(0..0)",
     "getSpaceMembers": "fn(1..1)&{try}",
+    "getSpacesMode": "fn(0..0)",
     "getTaskInput": "fn(0..0)",
     "getThemeCatalog": "fn(0..0)",
     "getVcsState": "fn(0..0)",
@@ -878,6 +889,7 @@
     "mount": "fn(1..1)",
     "mountSpace": "fn(1..1)",
     "navigate": "fn(1..2)",
+    "navigateSpaces": "fn(1..1)",
     "nextRestoreAction": "fn(1..1)",
     "normalizeAbsolute": "fn(1..1)",
     "normalizeProviderInfo": "fn(1..1)",
@@ -901,6 +913,7 @@
     "onRegionVisibilityChange": "fn(1..1)",
     "onSecretsChange": "fn(1..1)",
     "onSessionMountsChange": "fn(1..1)",
+    "onSpacesModeChange": "fn(1..1)",
     "onThemeCatalogChange": "fn(1..1)",
     "onVcsStateChange": "fn(1..1)",
     "onWorkspaceChange": "fn(1..1)",
@@ -1011,6 +1024,7 @@
     "useRouteParams": "fn(0..0)",
     "useSecrets": "fn(0..0)",
     "useSessionMounts": "fn(0..0)",
+    "useSpacesMode": "fn(0..0)",
     "useTaskInput": "fn(0..0)",
     "useThemeCatalog": "fn(0..0)",
     "useTinkerableLink": "fn(1..1)",
@@ -1244,8 +1258,12 @@
     "firstFrameTimeoutFor": "fn(2..2)",
     "timeoutFor": "fn(2..2)"
   },
+  "protocolRefusal": {
+    "CodedRefusalError": "interface(code)",
+    "throwOnRefusal": "fn(2..2)"
+  },
   "protocolSchemes": {
-    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-localstore\", \"protocol-openlink\", \"protocol-openrepo\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
+    "SCHEMES": "const({\"protocol-analytics\", \"protocol-contribute\", \"protocol-dnd\", \"protocol-editor\", \"protocol-feed\", \"protocol-fetch\", \"protocol-ipc\", \"protocol-launch\", \"protocol-llm\", \"protocol-localstore\", \"protocol-openlink\", \"protocol-openrepo\", \"protocol-recents\", \"protocol-secrets\", \"protocol-settings\", \"protocol-spaces\", \"protocol-spaces-mode\", \"protocol-task\", \"protocol-theme\", \"protocol-vcs\"})"
   },
   "protocolStream": {
     "StreamError": "class(code)",
@@ -1298,7 +1316,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.72.0\")",
+    "SDK_VERSION": "const(\"0.73.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1390,6 +1408,19 @@
     "SourceReader": "fn(1..1)",
     "createSourceCache": "fn(1..1)"
   },
+  "spacesMode": {
+    "NavigateSpacesError": "interface(code)",
+    "NavigateSpacesErrorCode": "union('forbidden'|'invalid'|'unknown'|'unsupported')",
+    "SpacesActivity": "union('inbox'|'people'|'settings'|'spaces')",
+    "SpacesModeSpace": "interface(id, kind, name, role, root)",
+    "SpacesModeState": "interface(route, space)",
+    "SpacesRoute": "interface(activity, member?, path?, roomId?, section?, spaceId)",
+    "SpacesTarget": "union(SpacesRoute|{destination})",
+    "getSpacesMode": "fn(0..0)",
+    "navigateSpaces": "fn(1..1)",
+    "onSpacesModeChange": "fn(1..1)",
+    "useSpacesMode": "fn(0..0)"
+  },
   "status": {
     "Busy": "fn(1..1)",
     "BusyProps": "interface(className?, floorMs?, label, style?)",
@@ -1479,7 +1510,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.72.0\")"
+    "SDK_VERSION": "const(\"0.73.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

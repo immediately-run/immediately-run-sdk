@@ -1,4 +1,5 @@
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { SCHEMES } from './protocolSchemes';
 import { PROTOCOL_EDITOR } from './generated/protocol';
 
@@ -28,11 +29,7 @@ type EditorResult = { ok: true; data: unknown } | { ok: false; code: string; mes
 
 const editorRequest = async (method: string, arg: Record<string, unknown>): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_EDITOR], method, [arg])) as EditorResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? `editor ${method} failed`) as EditorWriteError;
-    err.code = (res?.code as EditorWriteError['code']) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, `editor ${method} failed`);
 };
 
 /** Where in a file to land when opening it (R3-388). 1-indexed `line`, matching every

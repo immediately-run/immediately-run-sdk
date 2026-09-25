@@ -12,6 +12,80 @@ const load = (): MountsModule => {
   return require('./mounts') as MountsModule;
 };
 
+// R3-708 round 3: `mounts.ts` carries THREE request helpers, and the refusal unwrap in
+// each was folded onto `throwOnRefusal`. Only two were reachable from a test — the third,
+// the `protocol-spaces` `request`, is used by `resolveContentRef`, `resolveContentRefs`,
+// `requestMountInternal` and `unmountSpace`, and no suite sent any of them a refusal. That
+// matters more than an ordinary coverage gap here: `request` ends `return res.data as T`,
+// which narrows off `asserts res is { ok: true }` — a helper that stopped throwing would
+// COMPILE and hand back `undefined` typed as a `SandboxMount`.
+// R3-780: `mounts.ts` has THREE request helpers and this one had no refusal test at all —
+// `grep -rn "stubProtocol('settings'" src/*.test.ts` was empty before this. Folding it onto
+// `throwOnRefusal` without one would have repeated R3-708's mistake exactly: the file's
+// suite reddens under a neutered helper, so an AGGREGATE measurement says "covered", while
+// the site doing the reddening is a different helper in the same file.
+describe('the protocol-settings `settingsRequest` helper surfaces a coded refusal', () => {
+  let host: MockHost;
+  beforeEach(() => {
+    host = createMockHost();
+    host.install();
+  });
+  afterEach(() => host.uninstall());
+
+  it('listSettingsApps rejects with the host code rather than resolving undefined', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: false, code: 'forbidden', message: 'not allowed' }));
+
+    await expect(listSettingsApps()).rejects.toMatchObject({ code: 'forbidden', message: 'not allowed' });
+  });
+
+  it('a refusal with no code is `unknown`, never a silent success', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: false }));
+
+    await expect(listSettingsApps()).rejects.toMatchObject({ code: 'unknown' });
+  });
+
+  it('a success still unwraps the envelope to `data`', async () => {
+    const { listSettingsApps } = load();
+    host.stubProtocol('settings', 'list', () => ({ ok: true, data: ['app.one', 'app.two'] }));
+
+    await expect(listSettingsApps()).resolves.toEqual(['app.one', 'app.two']);
+  });
+});
+
+describe('the protocol-spaces `request` helper surfaces a coded refusal', () => {
+  let host: MockHost;
+  beforeEach(() => {
+    host = createMockHost();
+    host.install();
+  });
+  afterEach(() => host.uninstall());
+
+  it('resolveContentRef rejects with the host code rather than resolving undefined', async () => {
+    const { resolveContentRef, makeContentRef } = load();
+    host.stubProtocol('spaces', 'resolveRef', () => ({ ok: false, code: 'forbidden', message: 'not a member' }));
+
+    await expect(
+      resolveContentRef(makeContentRef({ mountId: 'space:sp_1', relPath: 'a.md' }, { mode: 'ro' })),
+    ).rejects.toMatchObject({ code: 'forbidden', message: 'not a member' });
+  });
+
+  it('unmountSpace rejects on a refusal', async () => {
+    const { unmountSpace } = load();
+    host.stubProtocol('spaces', 'unmount', () => ({ ok: false, code: 'forbidden' }));
+
+    await expect(unmountSpace({ spaceId: 'sp_1' })).rejects.toMatchObject({ code: 'forbidden' });
+  });
+
+  it('a refusal with no code is `unknown`, never a silent success', async () => {
+    const { unmountSpace } = load();
+    host.stubProtocol('spaces', 'unmount', () => ({ ok: false }));
+
+    await expect(unmountSpace({ spaceId: 'sp_1' })).rejects.toMatchObject({ code: 'unknown' });
+  });
+});
+
 describe('openLocalStore over the transport (FILESYSTEM_SPEC sec 2.8)', () => {
   let host: MockHost;
   beforeEach(() => {

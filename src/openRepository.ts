@@ -15,6 +15,7 @@
 // click, which the host samples rather than believes), and one gesture opens exactly one
 // tab. Both surface here as ordinary coded refusals.
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { PROTOCOL_OPENREPO } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -53,6 +54,12 @@ type OpenRepositoryReply = { ok: true; url?: string } | { ok: false; code?: stri
  * the opened tab loading. Rejects with a typed {@link OpenRepositoryError} carrying `code`
  * when the host refuses.
  *
+ * **Known gap, 2026-09-25 (R3-778): this does NOT reject today.** The host handler
+ * RETURNS its refusals — `invalid` and `no-activation` — and site-main's dispatcher wraps a
+ * handler's return value in an `ok: true` envelope, so every one of those refusals
+ * reaches this function as a SUCCESS and `openRepository()` resolves. Do not rely on the
+ * `code` branch until R3-778 lands; see `protocolRefusal.ts` for the mechanism.
+ *
  * Call it directly from a user gesture. The host samples its own transient activation when
  * the request arrives, so anything that defers the call past the gesture (an `await` before
  * it, a `setTimeout`, a retry) will be refused `no-activation`. None of the refusals are
@@ -63,13 +70,5 @@ export async function openRepository(coordinates: RepositoryCoordinates): Promis
   const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENREPO], 'open', [
     { provider, namespace, repository },
   ])) as OpenRepositoryReply;
-  // The refusal resolves inside the reply, so `res.ok !== true` is the only failure test
-  // there is — a bare-promise shape here would swallow every coded refusal as a success.
-  if (!res || res.ok !== true) {
-    const err = new Error(
-      (res && 'message' in res ? res.message : undefined) ?? 'repository open refused',
-    ) as OpenRepositoryError;
-    err.code = ((res && 'code' in res ? res.code : undefined) as OpenRepositoryErrorCode) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'repository open refused');
 }
