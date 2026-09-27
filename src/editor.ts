@@ -15,7 +15,14 @@ import { PROTOCOL_EDITOR } from './generated/protocol';
  * (the file explorer) can call this; anyone else is refused at the gate.
  */
 
-/** An error from {@link openInEditor}, carrying a machine-readable `.code`. */
+/** An error from {@link openInEditor}, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorOpenError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:open` (or `editor:reveal`, for a `reveal`)
@@ -118,7 +125,14 @@ export interface EditTarget {
   file?: { mountId: string; relPath: string };
 }
 
-/** An error from {@link requestEdit}, carrying a machine-readable `.code`. */
+/** An error from {@link requestEdit}, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface RequestEditError extends Error {
   code:
     | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer) — HIDE the affordance

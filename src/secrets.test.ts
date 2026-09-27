@@ -66,7 +66,7 @@ describe('secrets — app-facing surface (§4/§5)', () => {
     expect(grant.secret).not.toHaveProperty('value');
   });
 
-  it('maps a host refusal to a typed SecretError (cancelled == no oracle)', async () => {
+  it('maps a host refusal to a coded rejection (cancelled == no oracle)', async () => {
     protocolRequest.mockResolvedValue(fail('cancelled', 'user dismissed'));
     await expect(requestSecret({ type: 'api-key' })).rejects.toMatchObject({
       code: 'cancelled',

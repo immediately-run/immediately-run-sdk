@@ -23,8 +23,9 @@
 // previous excuse and it was false for three of them:
 //
 //   · `catalog.ts`, `recents.ts`, `tasks.ts` are pure copies of the shape `ipc.ts` had
-//     until R3-780 folded it — same untyped `Error & { code?: string }`, same
-//     `res?.code ?? 'unknown'`. They are foldable and nothing here argues otherwise;
+//     until R3-780 folded it — untyped `Error & { code?: string }`, `res?.code ??
+//     'unknown'`. (`recents.ts` casts `code` as required rather than optional; immaterial,
+//     the cast erases.) They are foldable and nothing here argues otherwise;
 //   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
 //     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
 //     that, so it is a behaviour change — an improvement, but not an extraction;
@@ -40,11 +41,16 @@
 // THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWELVE SITES
 // ---------------------------------------------------------------------------
 //
-// Measured: changing the guard to `r.ok !== false` compiles clean AND leaves nine of the
-// twelve sites' suites green — `dnd`, `editor`, `ipc`, `mounts` and `vcs` all stub an
-// explicit `{ ok: false }`, so they pin "throws on a refusal envelope" and nothing about a
-// malformed or absent reply. Only `openExternal`, `openRepository` and
-// `protocolRefusal.test.ts` catch it.
+// Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
+// twelve SITES** green — seven of the nine files: `dnd`, `editor`, `ipc`, `mounts`,
+// `secrets`, `spacesMode` and `vcs`. Every one of them stubs an explicit `{ ok: false }`,
+// so they pin "throws on a refusal envelope" and nothing about a malformed or absent
+// reply. Only `openExternal` and `openRepository` — two sites — plus
+// `protocolRefusal.test.ts` catch it: 7 tests across 3 suites.
+//
+// (An earlier version of this paragraph said "nine of the twelve sites' suites", which
+// mixes sites with suites — the exact mistake the census block above is headed about —
+// and omitted `secrets` and `spacesMode` from the green list.)
 //
 // Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
 // That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
@@ -105,11 +111,25 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. The five call sites this replaced
- * tested for PRESENCE (`'code' in res`, `res?.message ?? …`), so a host sending
- * `code: 42` surfaced `err.code === 42` on a field the type declares `string`, and
- * `message: 42` became the string `"42"`. Both now fall back. That is a deliberate
- * tightening, pinned by tests, not an accident of the rewrite.
+ * `code` and `message` must be STRINGS to be used. The twelve call sites this replaced
+ * tested for PRESENCE, in two shapes:
+ *
+ * - the typed ten: `(res?.code as SomeError['code']) ?? 'unknown'`;
+ * - `ipc.ts`'s two: a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }`.
+ *
+ * Either way a host sending `code: 42` surfaced `err.code === 42` on a field declared
+ * `string`, and `message: 42` became the string `"42"`. Both now fall back, to `'unknown'`
+ * and `fallbackMessage`. A deliberate tightening, pinned by `protocolRefusal.test.ts` —
+ * and since this package ships no changelog, this paragraph is where a consumer learns it.
+ *
+ * The `ipc.ts` pair changes one more thing: their anonymous type declared `code` OPTIONAL
+ * and `CodedRefusalError` requires it. No runtime difference — the old code assigned
+ * `'unknown'` in exactly the cases the new one does — but a consumer narrowing on
+ * `'code' in err` can stop.
+ *
+ * What none of the replaced sites used, despite an earlier version of this comment saying
+ * so: `'code' in res`. That form lives only in the untyped family this file deliberately
+ * does not fold, where it is also a latent `TypeError` on a string reply.
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read
