@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.72.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.73.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -835,6 +835,22 @@ Import: `@immediately-run/sdk/sourceCache`
 - `createSourceCache` (function)
 - `SourceCache` (interface)
 - `SourceReader` (type)
+
+## spacesMode
+
+Import: `@immediately-run/sdk/spacesMode`
+
+- `getSpacesMode` (function) — The host's spaces-mode state for this frame, or `null` when this app is not running in the spaces mode — a standalone tab, `vite dev`, an older host, or a frame the host does not push this to.
+- `navigateSpaces` (function) — Ask the host to move the spaces mode to `target`.
+- `NavigateSpacesError` (interface)
+- `NavigateSpacesErrorCode` (type) — Why the host refused to navigate.
+- `onSpacesModeChange` (function) — Subscribe to spaces-mode changes.
+- `SpacesActivity` (type) — The spaces mode's four top-level activities.
+- `SpacesModeSpace` (interface) — The selected space, as the host resolved it for THIS frame.
+- `SpacesModeState` (interface) — The host's view of this frame: where the user is, and which space that resolves to.
+- `SpacesRoute` (interface) — Where the user is inside the spaces mode, as the host parsed it.
+- `SpacesTarget` (type) — Where to move to.
+- `useSpacesMode` (function) — React hook form of getSpacesMode — re-renders when the host's route changes.
 
 ## status
 
