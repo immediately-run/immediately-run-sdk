@@ -28,7 +28,10 @@
 //     the cast erases.) They are foldable and nothing here argues otherwise;
 //   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
 //     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
-//     that, so it is a behaviour change — an improvement, but not an extraction;
+//     that, so it is a behaviour change — an improvement, but not an extraction. Note the
+//     precedent cuts both ways: R3-708 already folded two sites carrying this exact form
+//     (`openExternal`, `openRepository`), so "behaviour change" is a reason to review them
+//     as their own item, not a reason they cannot be folded;
 //   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
 //     `{ ok: false, code }` instead of throwing. Different control flow entirely.
 //
@@ -111,25 +114,34 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. The twelve call sites this replaced
- * tested for PRESENCE, in two shapes:
+ * `code` and `message` must be STRINGS to be used. Twelve sites call this; **eleven** had
+ * an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708 and
+ * replaced nothing). All eleven tested for PRESENCE, in **three** shapes:
  *
- * - the typed ten: `(res?.code as SomeError['code']) ?? 'unknown'`;
- * - `ipc.ts`'s two: a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }`.
+ * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
+ *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
+ * - **two** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
+ *   Code) ?? 'unknown'` — `openExternal`, `openRepository`, both folded in R3-708;
+ * - **two** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
+ *   `ipc.ts`.
  *
- * Either way a host sending `code: 42` surfaced `err.code === 42` on a field declared
- * `string`, and `message: 42` became the string `"42"`. Both now fall back, to `'unknown'`
- * and `fallbackMessage`. A deliberate tightening, pinned by `protocolRefusal.test.ts` —
- * and since this package ships no changelog, this paragraph is where a consumer learns it.
+ * Every one of them let a host sending `code: 42` surface `err.code === 42` on a field
+ * declared `string`, and turned `message: 42` into the string `"42"`. Both now fall back,
+ * to `'unknown'` and `fallbackMessage`. A deliberate tightening, pinned by
+ * `protocolRefusal.test.ts` — and since this package ships no changelog, this paragraph is
+ * where a consumer learns of it.
  *
- * The `ipc.ts` pair changes one more thing: their anonymous type declared `code` OPTIONAL
+ * The `ipc.ts` pair changed one more thing: their anonymous type declared `code` OPTIONAL
  * and `CodedRefusalError` requires it. No runtime difference — the old code assigned
  * `'unknown'` in exactly the cases the new one does — but a consumer narrowing on
  * `'code' in err` can stop.
  *
- * What none of the replaced sites used, despite an earlier version of this comment saying
- * so: `'code' in res`. That form lives only in the untyped family this file deliberately
- * does not fold, where it is also a latent `TypeError` on a string reply.
+ * Folding the two `in`-operator sites also removed a latent `TypeError`: `'code' in res`
+ * throws on a string reply. Two revisions of this paragraph got that backwards — first
+ * claiming the `in` form was among the shapes replaced without saying which sites, then
+ * "correcting" that to say NO replaced site used it. It was two of them. Both errors came
+ * from reading `main`, where R3-708 had already erased the form, instead of the tree before
+ * it (`d4b07cc1^`).
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read

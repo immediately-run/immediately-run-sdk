@@ -29,7 +29,13 @@ import { SCHEMES } from './protocolSchemes';
  *  - `declined` — the host showed the confirmation and the user did not confirm.
  *  - `forbidden` — the app does not hold the baseline `link:open` capability.
  *  - `unsupported` — this host has no outward-link surface wired (an older host).
- *  - `unknown` — the host refused without naming a code. */
+ *  - `unknown` — the host refused without naming a code.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. These are the
+ *  `.code` VALUES the host sends; the union was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test. */
 export type OpenExternalErrorCode = 'invalid' | 'no-activation' | 'declined' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface OpenExternalError extends Error {
