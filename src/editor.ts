@@ -204,7 +204,8 @@ export interface EditorWriteError extends Error {
 }
 
 /** Create an empty working-tree file at `path` and open it. Rejects `exists` if a
- *  file is already there. */
+ *  file is already there — see {@link EditorWriteError} for the full code list, which
+ *  every helper below shares. */
 export const createFile = (path: string): Promise<void> => editorRequest('createFile', { path });
 
 /** Create a working-tree folder at `path` (materialised with a `.gitkeep`). */

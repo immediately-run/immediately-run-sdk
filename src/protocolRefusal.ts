@@ -1,34 +1,55 @@
 // The one place the SDK turns a host reply envelope into a typed, coded rejection (R6).
 //
 // ---------------------------------------------------------------------------
-// THE CENSUS — counted wrong twice, so here is how to re-derive it
+// THE CENSUS — miscounted four times. COUNT THE GREP, and say which unit.
 // ---------------------------------------------------------------------------
 //
-// Review round 1 found three copies of this block and this file said "three". Round 2
-// found five. Round 3 counted the grep and found the TYPED family is **ten**, across
-// eight files — `mounts.ts` alone has three separate request helpers, each with its own
-// copy, which round 2 read as one helper reached from three call sites.
+// R3-708's review said three copies, then five, then "ten across eight files". This file
+// then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
+// that. The count is:
 //
-// All ten now call this:
+//   **twelve CALL SITES across nine FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
+//   the declaration here and minus `*.test.*`:
 //
-//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts
-//   mounts.ts (×3) · editor.ts · vcs.ts · dnd.ts · ipc.ts (×2)
+//   dnd.ts · editor.ts · ipc.ts (×2) · mounts.ts (×3) · openExternal.ts ·
+//   openRepository.ts · secrets.ts · spacesMode.ts · vcs.ts
 //
-// Five landed in R3-708, which is where this file came from. The other five — `mounts.ts`'s
-// `settingsRequest` and `localStoreRequest`, `editor.ts`, `vcs.ts`, `dnd.ts` and `ipc.ts` —
-// were folded there too, then SPLIT BACK OUT because they landed after that PR's last
-// review round and nothing had looked at them. This is that split: R3-780.
+// Every miscount came from the same two mistakes: reading files instead of counting the
+// grep, and never saying which unit was being counted. `mounts.ts` has three separate
+// request helpers, each with its own copy; R3-780 touched five FILES and seven SITES.
+// "Ten" was neither.
 //
-// Not folded at all, deliberately: the UNTYPED family — `catalog.ts`, `feed.ts`,
-// `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (three sites) and `launch.ts`. They
-// are not alike: `launch.ts` folds an extra `!res.data?.launchId` into the same condition,
-// and the rest build their errors differently. Folding them is a behaviour change, not an
-// extraction.
+// Not folded, deliberately, and the reason is NOT that they are all unalike — that was the
+// previous excuse and it was false for three of them:
 //
-// **Do not trust any list above; re-derive it.** `grep -n 'ok !== true' src/ | grep -v
-// '\.test\.'` is the whole population, and both miscounts came from reading files instead
-// of counting the grep. `check:clones` cannot help: minLines 6, minTokens 50, and no
-// identifier normalisation, so blocks differing only in type names read as distinct.
+//   · `catalog.ts`, `recents.ts`, `tasks.ts` are pure copies of the shape `ipc.ts` had
+//     until R3-780 folded it — same untyped `Error & { code?: string }`, same
+//     `res?.code ?? 'unknown'`. They are foldable and nothing here argues otherwise;
+//   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
+//     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
+//     that, so it is a behaviour change — an improvement, but not an extraction;
+//   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
+//     `{ ok: false, code }` instead of throwing. Different control flow entirely.
+//
+// So the remaining work is two items, not one, and they are not the same size.
+//
+// `check:clones` cannot help with any of this: minLines 6, minTokens 50, and no identifier
+// normalisation, so blocks differing only in type names read as distinct.
+//
+// ---------------------------------------------------------------------------
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWELVE SITES
+// ---------------------------------------------------------------------------
+//
+// Measured: changing the guard to `r.ok !== false` compiles clean AND leaves nine of the
+// twelve sites' suites green — `dnd`, `editor`, `ipc`, `mounts` and `vcs` all stub an
+// explicit `{ ok: false }`, so they pin "throws on a refusal envelope" and nothing about a
+// malformed or absent reply. Only `openExternal`, `openRepository` and
+// `protocolRefusal.test.ts` catch it.
+//
+// Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
+// That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
+// grounds that "the consumers cover it" — they do not, and twelve near-duplicate malformed
+// -reply tests would be the duplication this extraction exists to remove.
 //
 // ---------------------------------------------------------------------------
 // WHICH `ok` THIS READS, AND WHY IT MATTERS
