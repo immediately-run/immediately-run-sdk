@@ -162,7 +162,14 @@ export const requestEdit = (target?: EditTarget): Promise<void> =>
 // ---------------------------------------------------------------------------
 
 /** An error from a session intent ({@link setActiveFile} / {@link closeFile}),
- *  carrying a machine-readable `.code`. */
+ *  carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorSessionError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:document`
@@ -190,7 +197,14 @@ export const closeFile = (path: string): Promise<void> => editorRequest('close',
 // file explorer) can call these; anyone else is refused at the gate.
 // ---------------------------------------------------------------------------
 
-/** An error from a working-tree mutation, carrying a machine-readable `.code`. */
+/** An error from a working-tree mutation, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorWriteError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:write` (first-party-only)

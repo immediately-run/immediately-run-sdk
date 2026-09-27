@@ -421,7 +421,14 @@ export const useSessionMounts = (): SessionMount[] => sessionMountsChannel.use()
 // and only then resolves these calls. See docs/specs/FILE_SHARING_SPEC.md.
 // ---------------------------------------------------------------------------
 
-/** An error from a space operation, carrying a machine-readable `code`. */
+/** An error from a space operation, carrying a machine-readable `code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface SpaceError extends Error {
   code:
     | 'auth-required'
@@ -436,8 +443,10 @@ export interface SpaceError extends Error {
 
 type SpaceResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
-// Issue a spaces protocol request, unwrapping the host's {ok,data} envelope and
-// throwing a typed SpaceError on failure.
+// Issue a spaces protocol request, unwrapping the host's {ok,data} envelope and throwing
+// a coded refusal on failure — `throwOnRefusal` raises a `CodedRefusalError` whose `code`
+// is whatever string the host sent, NOT a `SpaceError` (that union was always a cast, and
+// this helper no longer performs the throw). See `protocolRefusal.ts`.
 const request = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
   throwOnRefusal(res, 'space request failed');
@@ -568,8 +577,9 @@ export const resolveContentRefs = async (refs: FileCap[]): Promise<{ paths: stri
 // port — there is deliberately no key/value get/set API; settings are just files.
 // ---------------------------------------------------------------------------
 
-// Issue a `protocol-settings` request, unwrapping {ok,data} and throwing a typed
-// SpaceError on failure (mirrors `request` for the spaces surface).
+// Issue a `protocol-settings` request, unwrapping {ok,data} and throwing a coded refusal
+// on failure (mirrors `request`; the thrown value is a `CodedRefusalError`, not a
+// `SpaceError` — see `protocolRefusal.ts`).
 const settingsRequest = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SETTINGS], method, [query])) as SpaceResult;
   throwOnRefusal(res, 'settings request failed');
@@ -654,8 +664,8 @@ export const listSettingsApps = (): Promise<string[]> => settingsRequest<string[
 // to the app via the mount's `type: 'localstore'`, never a guess.
 // ---------------------------------------------------------------------------
 
-// Issue a `protocol-localstore` request, unwrapping {ok,data} and throwing a typed
-// SpaceError on failure (mirrors `settingsRequest`).
+// Issue a `protocol-localstore` request, unwrapping {ok,data} and throwing a coded refusal
+// on failure (mirrors `settingsRequest`; a `CodedRefusalError`, not a `SpaceError`).
 const localStoreRequest = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_LOCALSTORE], method, [query])) as SpaceResult;
   throwOnRefusal(res, 'localstore request failed');

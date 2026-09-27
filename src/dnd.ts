@@ -49,7 +49,14 @@ export interface DroppedItem {
   position: { x: number; y: number };
 }
 
-/** An error from {@link startItemDrag}, carrying a machine-readable `.code`. */
+/** An error from {@link startItemDrag}, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface ItemDragError extends Error {
   code:
     | 'forbidden' // the frame lacks the first-party `dnd:source` capability
