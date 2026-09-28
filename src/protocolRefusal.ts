@@ -50,19 +50,19 @@
 // **A handler that RETURNS `{ok:false, code}` instead of throwing does not produce a
 // refusal.** The dispatcher wraps a return value as `result: {ok: true, data: <return>}`,
 // so the envelope says the call succeeded and the refusal is buried one level down, where
-// nothing looks. Two shipped handlers do this today (site-main; audited round 2):
+// nothing looks. Two shipped handlers did this until R3-778 closed it (site-main; audited sdk#184 round 2, 2026-09-25; fixed 2026-09-28 — both now throw, and a dispatcher assertion reddens on the shape):
 //
 //   `handleOpenRepository`  returns `invalid`, `no-activation`
 //   `handleOpenLink`        returns `invalid`, `no-activation`, **`declined`**
 //
 // `declined` is the user pressing "no" on the host's confirmation dialog, and
-// `openExternal()` reports that to the app as a successful open. Driven against the built
+// `openExternal()` reported that to the app as a successful open, until R3-778 closed it. Driven against the built
 // SDK with each reply shape:
 //
 //     thrown    -> threw, code=no-activation
 //     returned  -> RESOLVED (the app believes the tab opened)
 //
-// That is a live defect in site-main's handlers, not here — the envelope is the contract
+// That was a live defect in site-main's handlers until R3-778 closed it (2026-09-28), not here — the envelope is the contract
 // and this reads the contract. Filed as R3-778. It is written down here because this is
 // the file a host author will be pointed at when they ask what shape to reply with, and
 // the answer is: **throw `spaceError`; never return `{ok:false}`.**
