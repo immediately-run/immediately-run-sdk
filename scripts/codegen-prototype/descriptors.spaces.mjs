@@ -352,6 +352,102 @@ export const methods = [
     errors: SPACE_ERRORS,
     alias: { fn: 'declineInvite', positional: ['spaceId'] },
   },
+  // R3-723 — the space lifecycle verbs (FILE_SHARING_SPEC §6.2/§9.7). The wire
+  // carries `confirm: true` on delete/restore/leave/convertToShared (the T22
+  // belt-and-braces the host gate requires); the wrapper injects it
+  // (`constParams`), because the app's explicit call IS the intent and the
+  // host-drawn disclosure carries the real copy.
+  {
+    name: 'spaces:delete',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc:
+      'Soft-delete a space you own (FILE_SHARING_SPEC §6.2): sets the tombstone, so every member\u2019s ' +
+      'live mount falls within one snapshot and the space lists nowhere. Membership is retained — ' +
+      'undo it with {@link restoreSpace} from the surface that just deleted (there is no ' +
+      '"recently deleted" list). Not a hard delete: the space\u2019s content is not destroyed by this call.',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    constParams: { confirm: true },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'deleteSpace', positional: ['spaceId'] },
+  },
+  {
+    name: 'spaces:restore',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc:
+      'Undo a {@link deleteSpace}: clears the §6.2 tombstone, and every retained member\u2019s access ' +
+      'returns with no re-share fan-out. Reachable only while you still hold the space id — the ' +
+      'deleting surface does.',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    constParams: { confirm: true },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'restoreSpace', positional: ['spaceId'] },
+  },
+  {
+    name: 'spaces:leave',
+    capability: 'spaces:user',
+    kind: 'request',
+    doc:
+      'Remove YOURSELF from a space (FILE_SHARING_SPEC §9.7): your membership and flattened access ' +
+      'go in one batch, and live mounts fall through the same watch as an unshare. The anchor owner ' +
+      'cannot leave — they {@link deleteSpace} instead — and a leave that would drop the last owner ' +
+      'is refused; both surface as `owner-lockout`.',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    constParams: { confirm: true },
+    result: { type: 'void' },
+    errors: [...SPACE_ERRORS, 'owner-lockout'],
+    alias: { fn: 'leaveSpace', positional: ['spaceId'] },
+  },
+  {
+    name: 'spaces:rename',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc:
+      'Rename a space you own (FILE_SHARING_SPEC §9.7). The name is trimmed host-side and bounded ' +
+      '(non-empty, at most the platform MAX_SPACE_NAME_LENGTH); an over-long or empty name fails ' +
+      'validation with `invalid-params` before any write.',
+    params: {
+      type: 'object',
+      required: ['spaceId', 'name'],
+      properties: { spaceId: { type: 'string' }, name: { type: 'string' } },
+    },
+    result: { type: 'void' },
+    errors: [...SPACE_ERRORS, 'invalid-params'],
+    alias: { fn: 'renameSpace', positional: ['spaceId', 'name'] },
+  },
+  {
+    name: 'spaces:convertToShared',
+    capability: 'spaces:admin',
+    kind: 'request',
+    doc:
+      'Convert a personal space to shared (R3-259) — the deliberate, ONE-WAY conversion. Only the ' +
+      'owner may call it; the irreversibility disclosure is host-drawn chrome. Converting an ' +
+      'already-shared space is a no-op.',
+    params: {
+      type: 'object',
+      required: ['spaceId'],
+      properties: { spaceId: { type: 'string' } },
+    },
+    constParams: { confirm: true },
+    result: { type: 'void' },
+    errors: SPACE_ERRORS,
+    alias: { fn: 'convertSpaceToShared', positional: ['spaceId'] },
+  },
 ];
 
 export const family = {

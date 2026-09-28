@@ -34,6 +34,20 @@ export {
   listMyInvites,
   acceptInvite,
   declineInvite,
+  // R3-723 — the space lifecycle verbs (FILE_SHARING_SPEC §6.2/§9.7): soft
+  // delete + undo, leave, rename, and the named one-way conversion.
+  deleteSpace,
+  restoreSpace,
+  leaveSpace,
+  renameSpace,
+  convertSpaceToShared,
+} from './generated/spaces';
+export type {
+  DeleteSpaceError,
+  RestoreSpaceError,
+  LeaveSpaceError,
+  RenameSpaceError,
+  ConvertSpaceToSharedError,
 } from './generated/spaces';
 // Type-only: `tasks.ts` registers a host listener at module load, so we reuse the
 // FileCap SHAPE without pulling that side effect into every `mounts` importer.

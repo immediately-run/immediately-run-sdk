@@ -293,3 +293,88 @@ export const declineInvite = withTry<[string], void, DeclineInviteError>(
   'unknown',
 );
 
+export type DeleteSpaceError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Soft-delete a space you own (FILE_SHARING_SPEC §6.2): sets the tombstone,
+ * so every member’s live mount falls within one snapshot and the space lists
+ * nowhere. Membership is retained — undo it with {@link restoreSpace} from
+ * the surface that just deleted (there is no "recently deleted" list). Not a
+ * hard delete: the space’s content is not destroyed by this call.
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:delete`.
+ * @throws `Error & { code: DeleteSpaceError }` on host refusal.
+ */
+export const deleteSpace = withTry<[string], void, DeleteSpaceError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:delete", { spaceId, confirm: true }); },
+  'unknown',
+);
+
+export type RestoreSpaceError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Undo a {@link deleteSpace}: clears the §6.2 tombstone, and every retained
+ * member’s access returns with no re-share fan-out. Reachable only while you
+ * still hold the space id — the deleting surface does.
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:restore`.
+ * @throws `Error & { code: RestoreSpaceError }` on host refusal.
+ */
+export const restoreSpace = withTry<[string], void, RestoreSpaceError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:restore", { spaceId, confirm: true }); },
+  'unknown',
+);
+
+export type LeaveSpaceError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown' | 'owner-lockout';
+
+/**
+ * Remove YOURSELF from a space (FILE_SHARING_SPEC §9.7): your membership and
+ * flattened access go in one batch, and live mounts fall through the same
+ * watch as an unshare. The anchor owner cannot leave — they {@link
+ * deleteSpace} instead — and a leave that would drop the last owner is
+ * refused; both surface as `owner-lockout`.
+ *
+ * Capability: `spaces:user`. Catalog name: `spaces:leave`.
+ * @throws `Error & { code: LeaveSpaceError }` on host refusal.
+ */
+export const leaveSpace = withTry<[string], void, LeaveSpaceError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:leave", { spaceId, confirm: true }); },
+  'unknown',
+);
+
+export type RenameSpaceError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown' | 'invalid-params';
+
+/**
+ * Rename a space you own (FILE_SHARING_SPEC §9.7). The name is trimmed
+ * host-side and bounded (non-empty, at most the platform
+ * MAX_SPACE_NAME_LENGTH); an over-long or empty name fails validation with
+ * `invalid-params` before any write.
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:rename`.
+ * @throws `Error & { code: RenameSpaceError }` on host refusal.
+ */
+export const renameSpace = withTry<[string, string], void, RenameSpaceError>(
+  async (spaceId: string, name: string): Promise<void> => { await invoke<void>("spaces:rename", { spaceId, name }); },
+  'unknown',
+);
+
+export type ConvertSpaceToSharedError =
+  'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'unsupported-scheme' | 'unknown';
+
+/**
+ * Convert a personal space to shared (R3-259) — the deliberate, ONE-WAY
+ * conversion. Only the owner may call it; the irreversibility disclosure is
+ * host-drawn chrome. Converting an already-shared space is a no-op.
+ *
+ * Capability: `spaces:admin`. Catalog name: `spaces:convertToShared`.
+ * @throws `Error & { code: ConvertSpaceToSharedError }` on host refusal.
+ */
+export const convertSpaceToShared = withTry<[string], void, ConvertSpaceToSharedError>(
+  async (spaceId: string): Promise<void> => { await invoke<void>("spaces:convertToShared", { spaceId, confirm: true }); },
+  'unknown',
+);
+
