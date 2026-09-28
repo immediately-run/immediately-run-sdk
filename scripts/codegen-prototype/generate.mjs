@@ -182,6 +182,17 @@ function emitWrappers() {
     const fn = m.alias.fn;
     const positional = m.alias.positional ?? [];
 
+    // constParams is HONORED ONLY in the positional branch below — refuse to
+    // generate when a descriptor declares it anywhere else, so a wire constant
+    // can never be silently dropped (review round 1, R3-723: the drift check
+    // regenerates from this same generator and could not see the omission).
+    if (m.constParams && !(m.kind !== 'stream' && positional.length && positional[0] !== 'opts')) {
+      throw new Error(
+        `generate: ${m.name} declares constParams but is not a positional request — ` +
+          `the opts/no-arg/stream branches have no injection site. Restructure the alias or extend the generator.`,
+      );
+    }
+
     if (m.kind === 'stream') {
       const eventType = tsType(m.event);
       const paramsType = tsType(m.params);
