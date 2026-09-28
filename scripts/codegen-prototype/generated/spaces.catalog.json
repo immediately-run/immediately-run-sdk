@@ -54,5 +54,25 @@
   {
     "name": "spaces:declineInvite",
     "capability": "spaces:user"
+  },
+  {
+    "name": "spaces:delete",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:restore",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:leave",
+    "capability": "spaces:user"
+  },
+  {
+    "name": "spaces:rename",
+    "capability": "spaces:admin"
+  },
+  {
+    "name": "spaces:convertToShared",
+    "capability": "spaces:admin"
   }
 ]

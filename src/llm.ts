@@ -136,6 +136,20 @@ export interface ChatResult {
  *   a declined powerbox produces — a working degraded state: catch it and
  *   degrade, e.g. skip the AI feature);
  * - an older host without the gate throws `code: 'provider-not-configured'`.
+ *
+ * `provider-not-configured` also fires when a key EXISTS but was never entered
+ * under the routing the provider now takes (R3-583, SECRETS_SPEC §2.1 C6 /
+ * §7.1 S4): a key an app added through `requestAddSecret`, or one sealed before
+ * the provider's row moved to the proxied path, is refused because its routing
+ * disclosure was never shown. The host raises the same connect gate in-call,
+ * carrying the re-entry door, so the throw means the user declined it or
+ * settled without a usable key; the recovery is the user entering the key again
+ * under the disclosure. The app cannot repair this itself — surface the refusal
+ * (its message is the re-entry instruction). A decline latches for the app's
+ * session (TS-19/21: the dialog must not be farmed), so a retry re-throws
+ * without re-opening the gate; the user re-enters the key from Settings or in a
+ * fresh session. Do not retry in a loop.
+ *
  * A signed-out user throws `code: 'auth-required'`; an un-granted call throws
  * `forbidden`.
  */

@@ -16,5 +16,10 @@
 | `listMyInvites` | `spaces:listInvites` | `spaces:user` | request | — | `Invite[]` |
 | `acceptInvite` | `spaces:acceptInvite` | `spaces:user` | request | spaceId | `void` |
 | `declineInvite` | `spaces:declineInvite` | `spaces:user` | request | spaceId | `void` |
+| `deleteSpace` | `spaces:delete` | `spaces:admin` | request | spaceId | `void` |
+| `restoreSpace` | `spaces:restore` | `spaces:admin` | request | spaceId | `void` |
+| `leaveSpace` | `spaces:leave` | `spaces:user` | request | spaceId | `void` |
+| `renameSpace` | `spaces:rename` | `spaces:admin` | request | spaceId, name | `void` |
+| `convertSpaceToShared` | `spaces:convertToShared` | `spaces:admin` | request | spaceId | `void` |
 
 Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: true; value } | { ok: false; code }>` — the same call without the throw.
