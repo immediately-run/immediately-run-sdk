@@ -50,7 +50,7 @@
 // **A handler that RETURNS `{ok:false, code}` instead of throwing does not produce a
 // refusal.** The dispatcher wraps a return value as `result: {ok: true, data: <return>}`,
 // so the envelope says the call succeeded and the refusal is buried one level down, where
-// nothing looks. Two shipped handlers did this until R3-778 (audited 2026-09-25; fixed 2026-09-28 — both now throw, and a dispatcher assertion reddens on the shape) (site-main; audited round 2):
+// nothing looks. Two shipped handlers did this until R3-778 closed it (site-main; audited sdk#184 round 2, 2026-09-25; fixed 2026-09-28 — both now throw, and a dispatcher assertion reddens on the shape):
 //
 //   `handleOpenRepository`  returns `invalid`, `no-activation`
 //   `handleOpenLink`        returns `invalid`, `no-activation`, **`declined`**
