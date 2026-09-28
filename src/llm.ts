@@ -141,10 +141,13 @@ export interface ChatResult {
  * under the routing the provider now takes (R3-583, SECRETS_SPEC §2.1 C6 /
  * §7.1 S4): a key an app added through `requestAddSecret`, or one sealed before
  * the provider's row moved to the proxied path, is refused because its routing
- * disclosure was never shown. The same connect gate carries the re-entry door —
- * the recovery is the user entering the key again under the disclosure. The app
- * cannot repair this itself; surface the gate's prompt and do not retry in a
- * loop, which would just re-throw.
+ * disclosure was never shown. The host raises the same connect gate in-call,
+ * carrying the re-entry door, so the throw means the user declined it or
+ * settled without a usable key; the recovery is the user entering the key again
+ * under the disclosure. The app cannot repair this itself — surface the refusal
+ * (its message is the re-entry instruction), and let a user-initiated retry
+ * re-open the gate. Do not retry in a loop, which would just farm the dialog
+ * (TS-19/21).
  *
  * A signed-out user throws `code: 'auth-required'`; an un-granted call throws
  * `forbidden`.
