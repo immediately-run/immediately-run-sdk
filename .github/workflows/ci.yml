@@ -69,6 +69,13 @@ jobs:
       # `compat:previous` below). `--offline-ok` comes from the `check:published` script,
       # not passed here: a network blip must not redden every PR.
       - run: npm run check:published
+      # R3-779 — the parity watcher itself, FIRST among the content gates: it reads
+      # only package.json and this file (no install needed), so a verify leg with no
+      # CI step fails the run in seconds instead of after the build. It is also a leg
+      # of `verify` — the gate that watches the enumeration is inside what it watches
+      # (the item's exit criterion 3: otherwise it is the next thing to go
+      # CI-invisible).
+      - run: npm run check:verify-parity
       - run: npm ci
       # The formatting gate. `format:check`, never `format -- --check`: appending
       # --check to a `prettier --write` script does not make it read-only — Prettier
@@ -78,6 +85,16 @@ jobs:
       # Fail fast on a circular import — the sandbox bundler infinite-loops on one
       # at app boot ("Maximum call stack size exceeded"). Caught the 0.2.7 cycle.
       - run: npm run check:circular
+      # R3-779 — the source-scan verify legs this file used to omit, grouped into ONE
+      # step (site-main's R3-641 block is the pattern): the scans cost seconds against
+      # the one install this job already pays for, and `check:untested` — the leg whose
+      # absence let sdk#184's branch read green while `npm run verify` was red — diffs
+      # merge-base..HEAD, which the fetch-depth: 0 checkout above makes resolvable.
+      - name: Verify source-scan legs (R3-779)
+        run: |
+          npm run check:clones
+          npm run check:unused
+          npm run check:untested
       - run: npm test
       - run: npm run build
       # R3-755: the payload half of the published-parity gate needs a BUILT dist, so it
@@ -87,6 +104,21 @@ jobs:
       # payload gate rests on: two builds of this tree, byte-identical.
       - run: npm run check:published
       - run: npm run check:reproducible
+      # R3-779 — the build-dependent verify legs this file used to omit (they read
+      # dist/ or build their own artifact, so they run after `build`). Same
+      # one-step grouping as the source scans above.
+      - name: Verify build-artifact legs (R3-779)
+        run: |
+          npm run check:bundler:selftest
+          npm run check:bundler
+          npm run check:ambient:selftest
+          npm run check:ambient
+          npm run check:selfhost:selftest
+          npm run check:selfhost
+          npm run check:dist-specifiers:selftest
+          npm run test:subpath-imports
+          npm run test:metadata-e2e
+          npm run test:safe-content
       # Fail if the public surface SHRANK vs api-snapshot.json — pinned forks depend
       # on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after build because
       # it reads the emitted dist/*.d.ts. Since R3-261 it compares each export's
