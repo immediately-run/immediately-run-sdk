@@ -145,9 +145,10 @@ export interface ChatResult {
  * carrying the re-entry door, so the throw means the user declined it or
  * settled without a usable key; the recovery is the user entering the key again
  * under the disclosure. The app cannot repair this itself — surface the refusal
- * (its message is the re-entry instruction), and let a user-initiated retry
- * re-open the gate. Do not retry in a loop, which would just farm the dialog
- * (TS-19/21).
+ * (its message is the re-entry instruction). A decline latches for the app's
+ * session (TS-19/21: the dialog must not be farmed), so a retry re-throws
+ * without re-opening the gate; the user re-enters the key from Settings or in a
+ * fresh session. Do not retry in a loop.
  *
  * A signed-out user throws `code: 'auth-required'`; an un-granted call throws
  * `forbidden`.
