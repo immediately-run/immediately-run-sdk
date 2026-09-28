@@ -30,9 +30,17 @@
 //              is a gap. An exemption naming a leg `verify` no longer has is
 //              stale and fails the same way — delete the line.
 //
+//   scope    — "covered" means a `run:` block ANYWHERE in the workflow file,
+//              including push-only jobs: the gate asserts a leg RUNS in CI, not
+//              that it gates PRs. Every current leg maps to the PR-triggered
+//              job (verified 2026-09-28); a leg moving to a push-only job is
+//              the known hole, named here rather than scanned for.
+//
 //     node scripts/check-verify-parity.mjs --self-test   (prove the classifier can fail)
 //     node scripts/check-verify-parity.mjs               (the check)
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const PACKAGE_PATH = 'package.json';
 const WORKFLOW_PATH = '.github/workflows/ci.yml';
@@ -69,9 +77,10 @@ export function parseCiRunBlocks(ciText) {
     // A separate index for the block walk: the line that ENDS the block (indent
     // no longer deeper) is a line the OUTER loop must still read — reusing `i`
     // and letting the outer `i++` advance past it skips a `run:` that follows a
-    // block scalar directly (caught here when the R3-779 step block preceded
-    // `- run: npm test` and the `test` leg falsely read uncovered). Fail-LOUD,
-    // but a false red on an innocent PR is still a bug.
+    // block scalar directly (fired the moment a `run: |` step group was
+    // followed by `- run: npm test` and the `test` leg falsely read uncovered;
+    // site-main#626 / sdk#189, R3-779). Fail-LOUD, but a false red on an
+    // innocent PR is still a bug.
     let j = i + 1;
     for (; j < lines.length; j++) {
       const line = lines[j];
@@ -106,8 +115,21 @@ export function parseExemptions(ciText) {
   return exemptions;
 }
 
+// A leg is covered when a block RUNS it, in command position — the start of a
+// block or right after a command separator, with only `VAR=value` environment
+// prefixes allowed between (an env-prefixed `CI=true npm run build` RUNS the
+// leg) — never merely NAMED (an echo'd error message quoting `npm run <leg>` is
+// prose about the command, not an execution of it). The leg name is
+// regex-escaped before interpolation: a future leg name carrying a
+// metacharacter must not read a different command as coverage — the silent
+// direction this gate exists to catch.
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const COMMAND_HEAD = '(?:^|[\\n;&|]\\s*)(?:[A-Za-z_][A-Za-z0-9_]*=\\S+\\s+)*';
 function legCoveredIn(block, leg) {
-  const pattern = leg === 'test' ? /\bnpm test\b(?![-\w])/ : new RegExp(`\\bnpm run ${leg}(?![-\\w:])`);
+  const pattern =
+    leg === 'test'
+      ? new RegExp(`${COMMAND_HEAD}npm test\\b(?![-\\w])`)
+      : new RegExp(`${COMMAND_HEAD}npm run ${escapeRe(leg)}(?![-\\w:])`);
   return pattern.test(block);
 }
 
@@ -197,7 +219,34 @@ function selfTest() {
       ci: 'steps:\n  - run: |\n      npm run check:a\n  - run: npm test\n',
       expect: 'ok',
     },
+    {
+      name: "a leg named inside a QUOTED STRING (an echo'd error message) is not coverage",
+      verify: 'npm run check:a && npm run check:b',
+      ci: 'steps:\n  - run: npm run check:a\n  - run: echo "::error::add npm run check:b to ci.yml"\n',
+      expect: 'fail',
+    },
+    {
+      name: 'an env-prefix still counts as command position (CI=true npm run <leg> RUNS the leg)',
+      verify: 'npm run check:a',
+      ci: 'steps:\n  - run: CI=true npm run check:a\n',
+      expect: 'ok',
+    },
   ];
+  // The anchoring case: the parser against the REAL package.json and ci.yml —
+  // a fixture-only suite proves the classifier logic and nothing about the
+  // producer it parses (the check-docs-wiki lesson: self-tests that hand-type
+  // both inputs pass while the real file drifts past the grammar).
+  const realVerify = JSON.parse(readFileSync(PACKAGE_PATH, 'utf8')).scripts.verify;
+  const realLegs = parseVerifyLegs(realVerify);
+  const anchored = realLegs.length >= 10 && realLegs.includes('test');
+  if (!anchored) {
+    console.error(
+      `  ✗ self-test: the REAL verify script parsed to ${realLegs.length} legs — parser broke against its producer`,
+    );
+    process.exit(1);
+  }
+  console.log(`  ✓ self-test: the real verify script parses to ${realLegs.length} legs (anchored to the producer)`);
+
   let failed = 0;
   for (const c of cases) {
     const { missing, stale } = auditVerifyParity(c.verify, c.ci);
@@ -223,6 +272,13 @@ function main() {
   const { verify: verifyScript } = JSON.parse(readFileSync(PACKAGE_PATH, 'utf8')).scripts;
   const ciText = readFileSync(WORKFLOW_PATH, 'utf8');
   const { legs, missing, stale, exemptions } = auditVerifyParity(verifyScript, ciText);
+  // A zero-leg parse is a BROKEN parser, not parity achieved — otherwise the
+  // gate vacuously passes on the day the verify script changes shape, which is
+  // one level up the exact blind spot this check exists to close.
+  if (legs.length === 0) {
+    console.error('✗ verify-parity: the verify script parsed to ZERO legs — the parser broke, not parity achieved');
+    process.exit(1);
+  }
   if (stale.length) {
     for (const leg of stale) {
       console.error(`✗ verify-parity: exempt leg "${leg}" is not in the verify script — delete the exemption line`);
@@ -245,4 +301,8 @@ function main() {
   );
 }
 
-main();
+// Run only as a script — the parsers stay importable for tests without an
+// import executing the audit (and its process.exit) inside the importer.
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main();
+}
