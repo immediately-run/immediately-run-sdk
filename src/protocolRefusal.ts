@@ -56,7 +56,7 @@
 //   `handleOpenLink`        returns `invalid`, `no-activation`, **`declined`**
 //
 // `declined` is the user pressing "no" on the host's confirmation dialog, and
-// `openExternal()` reports that to the app as a successful open. Driven against the built
+// `openExternal()` reported that to the app as a successful open, until R3-778 closed it. Driven against the built
 // SDK with each reply shape:
 //
 //     thrown    -> threw, code=no-activation
