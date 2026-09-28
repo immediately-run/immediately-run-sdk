@@ -3,6 +3,7 @@
 // + the `ipc` capability; receiver `ipc.accepts`). The host enforces both halves
 // and attaches an unspoofable `from`; you still treat the payload as untrusted.
 import { useEffect, useState } from 'react';
+import { throwOnRefusal } from './protocolRefusal';
 import { protocolRequest, addListener } from './sandboxUtils';
 import { PROTOCOL_IPC, REGION_MESSAGE } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -24,11 +25,7 @@ export const postToRegion = async (region: string, data: unknown): Promise<void>
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'ipc post failed') as Error & { code?: string };
-    err.code = res?.code ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'ipc post failed');
 };
 
 /**
@@ -64,11 +61,7 @@ export const revealRegion = async (region: string): Promise<void> => {
     | { ok: true }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'ipc reveal failed') as Error & { code?: string };
-    err.code = res?.code ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'ipc reveal failed');
 };
 
 /** Subscribe to inbound region messages. Returns an unsubscribe fn. */

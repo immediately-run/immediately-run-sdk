@@ -1,34 +1,64 @@
 // The one place the SDK turns a host reply envelope into a typed, coded rejection (R6).
 //
 // ---------------------------------------------------------------------------
-// THE CENSUS — counted wrong twice, so here is how to re-derive it
+// THE CENSUS — miscounted four times. COUNT THE GREP, and say which unit.
 // ---------------------------------------------------------------------------
 //
-// Review round 1 found three copies of this block and this file said "three". Round 2
-// found five. Round 3 counted the grep and found the TYPED family is **ten**, across
-// eight files — `mounts.ts` alone has three separate request helpers, each with its own
-// copy, which round 2 read as one helper reached from three call sites.
+// R3-708's review said three copies, then five, then "ten across eight files". This file
+// then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
+// that. The count is:
 //
-// This PR folds the five that its own review rounds actually looked at:
+//   **twelve CALL SITES across nine FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
+//   the declaration here and minus `*.test.*`:
 //
-//   openExternal.ts · openRepository.ts · spacesMode.ts · secrets.ts · mounts.ts `request`
+//   dnd.ts · editor.ts · ipc.ts (×2) · mounts.ts (×3) · openExternal.ts ·
+//   openRepository.ts · secrets.ts · spacesMode.ts · vcs.ts
 //
-// The other five — `mounts.ts`'s `settingsRequest` and `localStoreRequest`, `editor.ts`,
-// `vcs.ts`, `dnd.ts` and `ipc.ts` (two sites) — were folded here too and then SPLIT BACK
-// OUT, because the gate caps at three rounds and they landed after the last one; nothing
-// had reviewed them. They go in their own PR. If you are reading this and that PR has
-// merged, this paragraph is the thing to delete.
+// Every miscount came from the same two mistakes: reading files instead of counting the
+// grep, and never saying which unit was being counted. `mounts.ts` has three separate
+// request helpers, each with its own copy; R3-780 touched five FILES and seven SITES.
+// "Ten" was neither.
 //
-// Not folded at all, deliberately: the UNTYPED family — `catalog.ts`, `feed.ts`,
-// `netFetch.ts`, `recents.ts`, `tasks.ts`, `theme.ts` (three sites) and `launch.ts`. They
-// are not alike: `launch.ts` folds an extra `!res.data?.launchId` into the same condition,
-// and the rest build their errors differently. Folding them is a behaviour change, not an
-// extraction.
+// Not folded, deliberately, and the reason is NOT that they are all unalike — that was the
+// previous excuse and it was false for three of them:
 //
-// **Do not trust any list above; re-derive it.** `grep -n 'ok !== true' src/ | grep -v
-// '\.test\.'` is the whole population, and both miscounts came from reading files instead
-// of counting the grep. `check:clones` cannot help: minLines 6, minTokens 50, and no
-// identifier normalisation, so blocks differing only in type names read as distinct.
+//   · `catalog.ts`, `recents.ts`, `tasks.ts` are pure copies of the shape `ipc.ts` had
+//     until R3-780 folded it — untyped `Error & { code?: string }`, `res?.code ??
+//     'unknown'`. (`recents.ts` casts `code` as required rather than optional; immaterial,
+//     the cast erases.) They are foldable and nothing here argues otherwise;
+//   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
+//     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
+//     that, so it is a behaviour change — an improvement, but not an extraction. Note the
+//     precedent cuts both ways: R3-708 already folded two sites carrying this exact form
+//     (`openExternal`, `openRepository`), so "behaviour change" is a reason to review them
+//     as their own item, not a reason they cannot be folded;
+//   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
+//     `{ ok: false, code }` instead of throwing. Different control flow entirely.
+//
+// So the remaining work is two items, not one, and they are not the same size.
+//
+// `check:clones` cannot help with any of this: minLines 6, minTokens 50, and no identifier
+// normalisation, so blocks differing only in type names read as distinct.
+//
+// ---------------------------------------------------------------------------
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWELVE SITES
+// ---------------------------------------------------------------------------
+//
+// Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
+// twelve SITES** green — seven of the nine files: `dnd`, `editor`, `ipc`, `mounts`,
+// `secrets`, `spacesMode` and `vcs`. Every one of them stubs an explicit `{ ok: false }`,
+// so they pin "throws on a refusal envelope" and nothing about a malformed or absent
+// reply. Only `openExternal` and `openRepository` — two sites — plus
+// `protocolRefusal.test.ts` catch it: 7 tests across 3 suites.
+//
+// (An earlier version of this paragraph said "nine of the twelve sites' suites", which
+// mixes sites with suites — the exact mistake the census block above is headed about —
+// and omitted `secrets` and `spacesMode` from the green list.)
+//
+// Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
+// That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
+// grounds that "the consumers cover it" — they do not, and twelve near-duplicate malformed
+// -reply tests would be the duplication this extraction exists to remove.
 //
 // ---------------------------------------------------------------------------
 // WHICH `ok` THIS READS, AND WHY IT MATTERS
@@ -84,11 +114,35 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. The five call sites this replaced
- * tested for PRESENCE (`'code' in res`, `res?.message ?? …`), so a host sending
- * `code: 42` surfaced `err.code === 42` on a field the type declares `string`, and
- * `message: 42` became the string `"42"`. Both now fall back. That is a deliberate
- * tightening, pinned by tests, not an accident of the rewrite.
+ * `code` and `message` must be STRINGS to be used. Twelve sites call this; **eleven** had
+ * an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708 and
+ * replaced nothing). All eleven tested for PRESENCE, in **three** shapes:
+ *
+ * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
+ *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
+ * - **two** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
+ *   Code) ?? 'unknown'` — `openExternal`, `openRepository`, both folded in R3-708;
+ * - **two** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
+ *   `ipc.ts`.
+ *
+ * Every one of them let a host sending `code: 42` surface `err.code === 42` on a field
+ * declared `string`, and turned `message: 42` into the string `"42"`. Both now fall back,
+ * to `'unknown'` and `fallbackMessage`. A deliberate tightening, pinned by
+ * `protocolRefusal.test.ts` — and since this package ships no changelog, this paragraph is
+ * where a consumer learns of it.
+ *
+ * The `ipc.ts` pair changed one more thing: their anonymous type declared `code` OPTIONAL
+ * and `CodedRefusalError` requires it. No runtime difference for a missing code — the old
+ * code assigned `'unknown'` exactly when the new one does (a non-string `code` falls back
+ * too, as the paragraph above discloses) — but a consumer narrowing on `'code' in err`
+ * can stop.
+ *
+ * Folding the two `in`-operator sites also removed a latent `TypeError`: `'code' in res`
+ * throws on a string reply. Two revisions of this paragraph got that backwards — first
+ * claiming the `in` form was among the shapes replaced without saying which sites, then
+ * "correcting" that to say NO replaced site used it. It was two of them. Both errors came
+ * from reading `main`, where R3-708 had already erased the form, instead of the tree before
+ * it (`d4b07cc1^`).
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read

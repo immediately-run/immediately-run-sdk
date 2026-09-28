@@ -115,7 +115,13 @@ export type SpacesTarget = SpacesRoute | { destination: 'notifications' };
  *  - `forbidden` — this frame lacks the CAPABILITY to navigate at all. It is a statement
  *    about the caller, never about the target, so it discloses nothing about what exists.
  *  - `unsupported` — this host has no spaces mode wired.
- *  - `unknown` — the host refused without naming a code. */
+ *  - `unknown` — the host refused without naming a code.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. These are the
+ *  `.code` VALUES the host sends; the union was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test. */
 export type NavigateSpacesErrorCode = 'invalid' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface NavigateSpacesError extends Error {

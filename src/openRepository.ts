@@ -36,7 +36,13 @@ export interface RepositoryCoordinates {
  *    buys exactly one tab and the next needs a real second click.
  *  - `forbidden` — the app does not hold the baseline `route:read` capability.
  *  - `unsupported` — this host has no repository-open surface wired.
- *  - `unknown` — the host refused without naming a code. */
+ *  - `unknown` — the host refused without naming a code.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. These are the
+ *  `.code` VALUES the host sends; the union was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test. */
 export type OpenRepositoryErrorCode = 'invalid' | 'no-activation' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface OpenRepositoryError extends Error {

@@ -65,15 +65,23 @@ export interface SecretGrant {
   secret: SecretView;
 }
 
-/** An error from a secret operation, carrying a machine-readable `code`. */
+/** An error from a secret operation, carrying a machine-readable `code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface SecretError extends Error {
   code: 'auth-required' | 'cancelled' | 'forbidden' | 'not-found' | 'invalid-params' | 'unknown';
 }
 
 type SecretResult = { ok: true; data: unknown } | { ok: false; code: string; message: string };
 
-// Issue a `protocol-secrets` request, unwrapping the host's {ok,data} envelope
-// and throwing a typed SecretError on failure (mirrors mounts.ts `request`).
+// Issue a `protocol-secrets` request, unwrapping the host's {ok,data} envelope and
+// throwing a coded refusal on failure (mirrors mounts.ts `request`; a
+// `CodedRefusalError`, not a `SecretError` — see `protocolRefusal.ts`).
 const request = async <T = unknown>(method: string, query: object = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SECRETS], method, [query])) as SecretResult;
   throwOnRefusal(res, 'secret request failed');

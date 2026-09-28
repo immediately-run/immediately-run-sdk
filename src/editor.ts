@@ -1,4 +1,5 @@
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { SCHEMES } from './protocolSchemes';
 import { PROTOCOL_EDITOR } from './generated/protocol';
 
@@ -14,7 +15,14 @@ import { PROTOCOL_EDITOR } from './generated/protocol';
  * (the file explorer) can call this; anyone else is refused at the gate.
  */
 
-/** An error from {@link openInEditor}, carrying a machine-readable `.code`. */
+/** An error from {@link openInEditor}, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorOpenError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:open` (or `editor:reveal`, for a `reveal`)
@@ -28,11 +36,7 @@ type EditorResult = { ok: true; data: unknown } | { ok: false; code: string; mes
 
 const editorRequest = async (method: string, arg: Record<string, unknown>): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_EDITOR], method, [arg])) as EditorResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? `editor ${method} failed`) as EditorWriteError;
-    err.code = (res?.code as EditorWriteError['code']) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, `editor ${method} failed`);
 };
 
 /** Where in a file to land when opening it (R3-388). 1-indexed `line`, matching every
@@ -121,7 +125,14 @@ export interface EditTarget {
   file?: { mountId: string; relPath: string };
 }
 
-/** An error from {@link requestEdit}, carrying a machine-readable `.code`. */
+/** An error from {@link requestEdit}, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface RequestEditError extends Error {
   code:
     | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer) — HIDE the affordance
@@ -165,7 +176,14 @@ export const requestEdit = (target?: EditTarget): Promise<void> =>
 // ---------------------------------------------------------------------------
 
 /** An error from a session intent ({@link setActiveFile} / {@link closeFile}),
- *  carrying a machine-readable `.code`. */
+ *  carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorSessionError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:document`
@@ -193,7 +211,14 @@ export const closeFile = (path: string): Promise<void> => editorRequest('close',
 // file explorer) can call these; anyone else is refused at the gate.
 // ---------------------------------------------------------------------------
 
-/** An error from a working-tree mutation, carrying a machine-readable `.code`. */
+/** An error from a working-tree mutation, carrying a machine-readable `.code`.
+ *
+ *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
+ *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
+ *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
+ *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
+ *  reliable test.
+ */
 export interface EditorWriteError extends Error {
   code:
     | 'forbidden' // the frame lacks `editor:write` (first-party-only)
@@ -207,7 +232,8 @@ export interface EditorWriteError extends Error {
 }
 
 /** Create an empty working-tree file at `path` and open it. Rejects `exists` if a
- *  file is already there. */
+ *  file is already there — see {@link EditorWriteError} for the full code list, which
+ *  every helper below shares. */
 export const createFile = (path: string): Promise<void> => editorRequest('createFile', { path });
 
 /** Create a working-tree folder at `path` (materialised with a `.gitkeep`). */
