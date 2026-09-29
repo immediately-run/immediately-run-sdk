@@ -138,11 +138,19 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * can stop.
  *
  * Folding the two `in`-operator sites also removed a latent `TypeError`: `'code' in res`
- * throws on a string reply. Two revisions of this paragraph got that backwards — first
- * claiming the `in` form was among the shapes replaced without saying which sites, then
- * "correcting" that to say NO replaced site used it. It was two of them. Both errors came
- * from reading `main`, where R3-708 had already erased the form, instead of the tree before
- * it (`d4b07cc1^`).
+ * throws on a string reply.
+ *
+ * ONE revision of this paragraph got that backwards, and this is the third attempt to
+ * describe it accurately. The original text was right — it named `'code' in res` as a shape
+ * replaced, without saying which sites. A later revision "corrected" that to say NO
+ * replaced site used it, which is false: `openExternal` and `openRepository` did.
+ *
+ * The mechanism is worth more than the correction, because it is repeatable. `'code' in
+ * res` is *still on `main`* at five unfolded sites (see the census above), so a reviewer who
+ * greps `main` finds the form alive and concludes — reasonably — that it belongs to the
+ * untyped family this file declines to fold. What a grep of `main` cannot show is that the
+ * form was ALSO at two sites R3-708 folded. The tree that answers the question is the one
+ * before the fold, `d4b07cc1^`. Read that before rewriting this paragraph again.
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read
