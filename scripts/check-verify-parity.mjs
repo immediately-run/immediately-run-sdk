@@ -11,9 +11,9 @@
 // gap accumulated because nothing watched it; this check is the watcher.
 //
 // Ported from site-main's R3-641 gate (scripts/check-verify-parity.mjs) — the same
-// mechanism, the same self-test; the two copies are byte-comparable except for this
-// header. If you change the MECHANISM here, change it there too (or the port claim
-// here becomes a lie).
+// mechanism, the same self-test; the THREE copies (site-main, this repo, and sandbox's
+// R3-814 port) are byte-comparable below this header. If you change the MECHANISM here,
+// change it in BOTH siblings too (or the port claim here becomes a lie).
 //
 // MECHANICS.
 //   legs     — every `npm run <name>` in the `verify` script, plus `test` for
