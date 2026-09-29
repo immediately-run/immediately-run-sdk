@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.73.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.74.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -574,11 +574,17 @@ Import: `@immediately-run/sdk/fs`
 Import: `@immediately-run/sdk/generated/spaces`
 
 - `acceptInvite` (function) — Accept an invitation: materialize your membership at the invited role and clear the invite.
+- `convertSpaceToShared` (function) — Convert a personal space to shared (R3-259) — the deliberate, ONE-WAY conversion.
+- `ConvertSpaceToSharedError` (type)
 - `declineInvite` (function) — Decline (dismiss) an invitation from your inbox; writes no membership.
+- `deleteSpace` (function) — Soft-delete a space you own (FILE_SHARING_SPEC §6.2): sets the tombstone, so every member’s live mount falls within one snapshot and the space lists nowhere.
+- `DeleteSpaceError` (type)
 - `getSpaceMembers` (function) — Read a space's members one-shot.
 - `GrantRecord` (interface) — One durable grant an app holds, for the §8.11 capability audit view.
 - `Invite` (interface) — A pending invitation to a space (pull-based sharing, FILE_SHARING_SPEC §6.4).
 - `inviteToSpace` (function) — Invite a user (by provider handle) to a space at a role.
+- `leaveSpace` (function) — Remove YOURSELF from a space (FILE_SHARING_SPEC §9.7): your membership and flattened access go in one batch, and live mounts fall through the same watch as an unshare.
+- `LeaveSpaceError` (type)
 - `listAllSpaces` (function) — Enumerate ALL the user's spaces (not just this app's).
 - `listGrants` (function) — Enumerate every (app, mount) grant the user holds — the audit view (§8.11).
 - `listMyInvites` (function) — The caller's OWN invitation inbox.
@@ -586,7 +592,11 @@ Import: `@immediately-run/sdk/generated/spaces`
 - `listSpaces` (function) — List spaces you can access — all of them, or just those bound to this app.
 - `lookupUser` (function) — Resolve a provider handle to a principal (for the invite flow).
 - `Member` (interface) — A member of a space (for the share/manage UI).
+- `renameSpace` (function) — Rename a space you own (FILE_SHARING_SPEC §9.7).
+- `RenameSpaceError` (type)
 - `ResolvedUser` (interface) — A handle resolved to a principal (handle → who).
+- `restoreSpace` (function) — Undo a deleteSpace: clears the §6.2 tombstone, and every retained member’s access returns with no re-share fan-out.
+- `RestoreSpaceError` (type)
 - `revokeGrant` (function) — Revoke one app's grant on a space — durable (the app can't re-mount) plus a best-effort live teardown.
 - `revokeInvite` (function) — Withdraw a pending invitation (distinct from unshareSpace, which removes an ACCEPTED member).
 - `Role` (type) — A collaborator's role on a shared space: full `owner`, read-write `writer`, or read-only `reader`.
@@ -917,6 +927,11 @@ Import: `@immediately-run/sdk/workspace`
 | `listMyInvites` | `spaces:listInvites` | `spaces:user` | request | — | `Invite[]` |
 | `acceptInvite` | `spaces:acceptInvite` | `spaces:user` | request | spaceId | `void` |
 | `declineInvite` | `spaces:declineInvite` | `spaces:user` | request | spaceId | `void` |
+| `deleteSpace` | `spaces:delete` | `spaces:admin` | request | spaceId | `void` |
+| `restoreSpace` | `spaces:restore` | `spaces:admin` | request | spaceId | `void` |
+| `leaveSpace` | `spaces:leave` | `spaces:user` | request | spaceId | `void` |
+| `renameSpace` | `spaces:rename` | `spaces:admin` | request | spaceId, name | `void` |
+| `convertSpaceToShared` | `spaces:convertToShared` | `spaces:admin` | request | spaceId | `void` |
 
 Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: true; value } | { ok: false; code }>` — the same call without the throw.
 
