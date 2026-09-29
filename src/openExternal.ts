@@ -38,8 +38,10 @@ import { SCHEMES } from './protocolSchemes';
  *  as the only reliable test.
  *
  *  (This note is on the code alias rather than on the interface because the alias is where
- *  the codes are documented. The doclinks above name the INTERFACE, so a reader following
- *  one lands a hop away from this — a wart, not a plan.) */
+ *  the codes are documented. Every doclink in this file names the INTERFACE, so a reader
+ *  following one lands a hop away from this — a wart, not a plan. Stated without a
+ *  direction on purpose: two earlier revisions of this sentence asserted a positional
+ *  claim, and both were wrong.) */
 export type OpenExternalErrorCode = 'invalid' | 'no-activation' | 'declined' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface OpenExternalError extends Error {

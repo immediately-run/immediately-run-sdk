@@ -124,8 +124,10 @@ export type SpacesTarget = SpacesRoute | { destination: 'notifications' };
  *  as the only reliable test.
  *
  *  (This note is on the code alias rather than on the interface because the alias is where
- *  the codes are documented. The doclinks above name the INTERFACE, so a reader following
- *  one lands a hop away from this — a wart, not a plan.) */
+ *  the codes are documented. Every doclink in this file names the INTERFACE, so a reader
+ *  following one lands a hop away from this — a wart, not a plan. Stated without a
+ *  direction on purpose: two earlier revisions of this sentence asserted a positional
+ *  claim, and both were wrong.) */
 export type NavigateSpacesErrorCode = 'invalid' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface NavigateSpacesError extends Error {
