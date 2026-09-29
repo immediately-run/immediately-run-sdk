@@ -33,9 +33,15 @@ import { SCHEMES } from './protocolSchemes';
  *
  *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
  *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. These are the
- *  `.code` VALUES the host sends; the union was always a cast and is not enforced at
- *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
- *  reliable test. */
+ *  `.code` VALUES the host sends. Nothing enforces the union at runtime — `.code` is
+ *  whatever string arrived — so treat an unlisted code as possible and `instanceof Error`
+ *  as the only reliable test.
+ *
+ *  (This note is on the code alias rather than on the interface because the alias is where
+ *  the codes are documented. Every doclink in this file names the INTERFACE, so a reader
+ *  following one lands a hop away from this — a wart, not a plan. Stated without a
+ *  direction on purpose: two earlier revisions of this sentence asserted a positional
+ *  claim, and both were wrong.) */
 export type OpenExternalErrorCode = 'invalid' | 'no-activation' | 'declined' | 'forbidden' | 'unsupported' | 'unknown';
 
 export interface OpenExternalError extends Error {

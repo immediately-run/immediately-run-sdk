@@ -53,9 +53,9 @@ export interface DroppedItem {
  *
  *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
  *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
- *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
- *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
- *  reliable test.
+ *  documents the `.code` VALUES the host sends. Nothing enforces the union at runtime —
+ *  `.code` is whatever string arrived — so treat an unlisted code as possible and
+ *  `instanceof Error` as the only reliable test.
  */
 export interface ItemDragError extends Error {
   code:

@@ -439,9 +439,9 @@ export const useSessionMounts = (): SessionMount[] => sessionMountsChannel.use()
  *
  *  **What you actually catch.** The SDK throws a plain `Error` with `.code` assigned — a
  *  `CodedRefusalError` from `protocolRefusal.ts` — never a distinct class. This interface
- *  documents the `.code` VALUES the host sends; it was always a cast and is not enforced at
- *  runtime, so treat an unlisted code as possible and `instanceof Error` as the only
- *  reliable test.
+ *  documents the `.code` VALUES the host sends. Nothing enforces the union at runtime —
+ *  `.code` is whatever string arrived — so treat an unlisted code as possible and
+ *  `instanceof Error` as the only reliable test.
  */
 export interface SpaceError extends Error {
   code:
@@ -459,7 +459,7 @@ type SpaceResult = { ok: true; data: unknown } | { ok: false; code: string; mess
 
 // Issue a spaces protocol request, unwrapping the host's {ok,data} envelope and throwing
 // a coded refusal on failure — `throwOnRefusal` raises a `CodedRefusalError` whose `code`
-// is whatever string the host sent, NOT a `SpaceError` (that union was always a cast, and
+// is whatever string the host sent, NOT a `SpaceError` (nothing enforces that union, and
 // this helper no longer performs the throw). See `protocolRefusal.ts`.
 const request = async <T = unknown>(method: string, query: Record<string, unknown> = {}): Promise<T> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_SPACES], method, [query])) as SpaceResult;
