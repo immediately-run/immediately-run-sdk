@@ -40,7 +40,7 @@
 // normalisation, so blocks differing only in type names read as distinct.
 //
 // ---------------------------------------------------------------------------
-// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWELVE SITES
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL SEVENTEEN SITES
 // ---------------------------------------------------------------------------
 //
 // Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
