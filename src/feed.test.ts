@@ -85,3 +85,15 @@ describe('feedFetch — typed refusals', () => {
     await expect(feedFetch('fe00ff', { page: 'x' })).rejects.toThrow('no slot named "page"');
   });
 });
+
+// R3-817 — the folded refusal (feed.ts) must reject CODED on a bare-string reply,
+// not throw the TypeError the pre-fold `'code' in res` raised. Injection cover for
+// exit 3: neuter throwOnRefusal by deleting its `throw err;` — this test then
+// resolves `undefined` instead of rejecting, and goes red.
+describe('feedFetch — a bare-string reply is a coded refusal, never a TypeError (R3-817)', () => {
+  it('rejects with code unknown, not a TypeError', async () => {
+    protocolRequest.mockResolvedValue('nope' as never);
+    await expect(feedFetch('fe00ff')).rejects.toMatchObject({ code: 'unknown', message: 'feedFetch failed' });
+    await expect(feedFetch('fe00ff')).rejects.not.toBeInstanceOf(TypeError);
+  });
+});

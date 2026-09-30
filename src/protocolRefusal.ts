@@ -27,11 +27,9 @@
 //     'unknown'`. (`recents.ts` casts `code` as required rather than optional; immaterial,
 //     the cast erases.) They are foldable and nothing here argues otherwise;
 //   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
-//     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
-//     that, so it is a behaviour change — an improvement, but not an extraction. Note the
-//     precedent cuts both ways: R3-708 already folded two sites carrying this exact form
-//     (`openExternal`, `openRepository`), so "behaviour change" is a reason to review them
-//     as their own item, not a reason they cannot be folded;
+//     THREW `TypeError: Cannot use 'in' operator` on a string reply — FOLDED in R3-817
+//     (0.74.3), a behaviour change reviewed as its own item, exactly as this bullet
+//     prescribed;
 //   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
 //     `{ ok: false, code }` instead of throwing. Different control flow entirely.
 //
@@ -163,6 +161,13 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the throw can ignore the narrowing; one that reads the payload gets it for free. (TS
  * requires the call target to be an explicitly-typed declared name — this is why it is a
  * `function` declaration and not an arrow const.)
+ *
+ * R3-817 (0.74.3): the five remaining inline copies (`feed.ts`, `netFetch.ts`,
+ * `theme.ts` ×3) folded onto this — removing a latent defect with them: their
+ * `res && 'code' in res` guard threw `TypeError: Cannot use 'in' operator` on a
+ * bare-STRING reply (a proxy error page, a relay), escaping past every `err.code`
+ * branch an app wrote. This function reads `typeof r?.code === 'string'` and
+ * cannot throw on any input; the TypeError path no longer exists.
  */
 export function throwOnRefusal(res: unknown, fallbackMessage: string): asserts res is { ok: true; data?: unknown } {
   const r = res as { ok?: unknown; code?: unknown; message?: unknown } | null | undefined;

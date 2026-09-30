@@ -1,5 +1,6 @@
 import { createPushChannel } from './pushChannel';
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { PROTOCOL_THEME, REQUEST_THEME, REQUEST_THEME_CATALOG, THEME, THEME_CATALOG } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -189,13 +190,7 @@ const setTheme = async (params: SetHostThemeSelectionParams): Promise<void> => {
     | { ok: true; data?: unknown }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'setHostTheme failed') as Error & {
-      code?: string;
-    };
-    err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'setHostTheme failed');
 };
 
 /**
@@ -236,13 +231,7 @@ export const addThemeSource = async (location: ThemeBundleLocation): Promise<voi
     | { ok: true; data?: unknown }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'addThemeSource failed') as Error & {
-      code?: string;
-    };
-    err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'addThemeSource failed');
 };
 
 /**
@@ -256,11 +245,5 @@ export const removeThemeSource = async (themeKey: string): Promise<void> => {
     | { ok: true; data?: unknown }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'removeThemeSource failed') as Error & {
-      code?: string;
-    };
-    err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'removeThemeSource failed');
 };

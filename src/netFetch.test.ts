@@ -21,7 +21,7 @@ jest.mock('./sandboxUtils', () => ({
   },
 }));
 
-import { hostFetchStream } from './netFetch';
+import { hostFetchStream, hostFetch } from './netFetch';
 
 const emit = (type: string, msgId: number, stream: StreamFrame) => {
   for (const h of listeners[type] || []) h({ msgId, stream });
@@ -111,3 +111,20 @@ function doneResult(over: Partial<Record<string, unknown>> = {}) {
     ...over,
   };
 }
+
+// R3-817 — the folded refusal (netFetch.ts `hostFetch`): a bare-string reply
+// rejects CODED, never the TypeError the pre-fold `'code' in res` raised.
+// Injection cover for exit 3: neuter throwOnRefusal by deleting its
+// `throw err;` — this test then resolves instead of rejecting, and goes red.
+describe('hostFetch — a bare-string reply is a coded refusal, never a TypeError (R3-817)', () => {
+  it('rejects with code unknown, not a TypeError', async () => {
+    const { protocolRequest } = jest.requireMock('./sandboxUtils') as { protocolRequest: jest.Mock };
+    protocolRequest.mockResolvedValueOnce('nope');
+    await expect(hostFetch('https://example.com')).rejects.toMatchObject({
+      code: 'unknown',
+      message: 'hostFetch failed',
+    });
+    protocolRequest.mockResolvedValueOnce('nope');
+    await expect(hostFetch('https://example.com')).rejects.not.toBeInstanceOf(TypeError);
+  });
+});
