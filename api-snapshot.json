@@ -225,7 +225,7 @@
   },
   "contribute": {
     "ContributeMode": "union('direct'|'pr')",
-    "ContributeOptions": "interface(branchName?, commitMessage, mode?)",
+    "ContributeOptions": "interface(branchName?, commitMessage, mode?, transcriptRequested?)",
     "ContributionEvent": "union({alreadyExists, forkOwner, stage}|{branchName, provider, pushOwner, repository, stage}|{branchName, stage}|{commitSha, prNumber, prUrl, stage}|{commitSha, prNumber?, prUrl?, stage}|{commitSha, ref, stage}|{details?, message, stage}|{index, path, stage, total}|{installUrl, stage, targetOwner, targetRepo}|{message, recoverable, stage}|{stage})",
     "ContributionResult": "interface(branchName, commitSha, mode, prNumber?, prUrl?, treeSha)",
     "contribute": "fn(1..1)"
@@ -388,7 +388,7 @@
     "PROTOCOL_VCS": "const(\"protocol-vcs\")",
     "ProtocolAnalyticsEmitParams": "interface(name, props?)",
     "ProtocolAnalyticsRouteParams": "interface(path)",
-    "ProtocolContributeRunParams": "interface(branchName?, commitMessage, mode?)",
+    "ProtocolContributeRunParams": "interface(branchName?, commitMessage, mode?, transcriptRequested?)",
     "ProtocolDndStartDragParams": "interface(bytes?, kind, mountId, name, relPath)",
     "ProtocolFeedFetchParams": "interface(instanceId, params)",
     "ProtocolFetchFetchParams": "interface(body, headers, method, url)",
@@ -581,7 +581,7 @@
     "ContentBlock": "union(ImageBlock|ReasoningBlock|TextBlock|ToolResultBlock|ToolUseBlock)",
     "ContentPart": "union({content, isError?, toolCallId, type}|{data, mimeType, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
     "ContributeMode": "union('direct'|'pr')",
-    "ContributeOptions": "interface(branchName?, commitMessage, mode?)",
+    "ContributeOptions": "interface(branchName?, commitMessage, mode?, transcriptRequested?)",
     "ContributionEvent": "union({alreadyExists, forkOwner, stage}|{branchName, provider, pushOwner, repository, stage}|{branchName, stage}|{commitSha, prNumber, prUrl, stage}|{commitSha, prNumber?, prUrl?, stage}|{commitSha, ref, stage}|{details?, message, stage}|{index, path, stage, total}|{installUrl, stage, targetOwner, targetRepo}|{message, recoverable, stage}|{stage})",
     "ContributionResult": "interface(branchName, commitSha, mode, prNumber?, prUrl?, treeSha)",
     "ConvertSpaceToSharedError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -732,7 +732,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.74.2\")",
+    "SDK_VERSION": "const(\"0.75.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -795,10 +795,11 @@
     "ToolUseBlock": "object(id, input, name, type)",
     "UNATTENDED_TIMEOUT_MS": "const(30000)",
     "VcsActionError": "interface(code)",
+    "VcsAgentSession": "interface(conversationId, messageCount, repo, running, updatedAt?)",
     "VcsBranch": "interface(name, parentCommitSha, parentRef, parentRepo, upstreamPushable)",
     "VcsChange": "interface(path, status)",
     "VcsPR": "interface(draft, number, state, title, url)",
-    "VcsState": "interface(branch, changes, diffLoading, prs)",
+    "VcsState": "interface(agentSession?, branch, changes, diffLoading, prs)",
     "WikiLink": "fn(1..1)",
     "WikiLinkToken": "interface(label?, target)",
     "WikiPart": "union({text}|{wiki})",
@@ -1351,7 +1352,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.74.2\")",
+    "SDK_VERSION": "const(\"0.75.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1533,10 +1534,11 @@
   },
   "vcs": {
     "VcsActionError": "interface(code)",
+    "VcsAgentSession": "interface(conversationId, messageCount, repo, running, updatedAt?)",
     "VcsBranch": "interface(name, parentCommitSha, parentRef, parentRepo, upstreamPushable)",
     "VcsChange": "interface(path, status)",
     "VcsPR": "interface(draft, number, state, title, url)",
-    "VcsState": "interface(branch, changes, diffLoading, prs)",
+    "VcsState": "interface(agentSession?, branch, changes, diffLoading, prs)",
     "getVcsState": "fn(0..0)",
     "onVcsStateChange": "fn(1..1)",
     "refreshDiff": "fn(0..0)",
@@ -1545,7 +1547,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.74.2\")"
+    "SDK_VERSION": "const(\"0.75.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
