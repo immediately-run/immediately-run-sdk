@@ -50,6 +50,20 @@ export interface VcsPR {
   draft: boolean;
 }
 
+/** The gate facts the host projects about an active agent session on the
+ *  target repo (CONTRIBUTE_TRANSCRIPT_SPEC §3/§4, R3-632/R3-659): enough for a
+ *  contribute app to render the "Commit session transcript" checkbox — never
+ *  transcript bytes, a title, or message content. Absent (undefined) unless a
+ *  qualifying session exists — R-CT-3: no session ⇒ no fact, not a disabled
+ *  rendering of one. */
+export interface VcsAgentSession {
+  repo: string;
+  conversationId: string;
+  messageCount: number;
+  updatedAt?: number | undefined;
+  running: boolean;
+}
+
 /** The whole source-control snapshot the host projects to a `vcs:read` frame.
  *  Plain JSON — never a `DiffResult` / `FileSystem` / `Journal`. */
 export interface VcsState {
@@ -59,6 +73,11 @@ export interface VcsState {
   /** True while the host is recomputing the diff — the panel shows a spinner
    *  without a separate request (plan gotcha). */
   diffLoading: boolean;
+  /** See {@link VcsAgentSession}. Present only while a qualifying agent
+   *  session exists on the target repo. The explicit `| undefined` mirrors
+   *  the wire contract exactly (the wire-shape extractor reads union members
+   *  literally). */
+  agentSession?: VcsAgentSession | null | undefined;
 }
 
 /** Value before the host answers — also the value when the app may not read the
@@ -68,6 +87,37 @@ const EMPTY: VcsState = { changes: [], branch: null, prs: [], diffLoading: false
 const isChangeArray = (v: unknown): v is VcsChange[] =>
   Array.isArray(v) &&
   v.every((c) => !!c && typeof (c as VcsChange).path === 'string' && typeof (c as VcsChange).status === 'string');
+
+// The agentSession fact is fail-closed for the transcript feature (R-CT-1): a
+// malformed one reads as NO session — dropped, never thrown into the vcs
+// channel, so a fault can never conjure a checkbox (and the rest of the
+// snapshot still lands).
+const parseAgentSession = (v: unknown): VcsAgentSession | undefined => {
+  if (v === undefined || v === null) return undefined;
+  if (typeof v !== 'object') return undefined;
+  const s = v as Record<string, unknown>;
+  // Number.isFinite, not typeof: structured clone (the postMessage transport)
+  // carries NaN/Infinity intact, and a non-finite count must not conjure the
+  // fact — the producer's parser (site-main agentSessionState.ts) rejects the
+  // same way.
+  if (
+    typeof s.repo !== 'string' ||
+    typeof s.conversationId !== 'string' ||
+    typeof s.messageCount !== 'number' ||
+    !Number.isFinite(s.messageCount) ||
+    typeof s.running !== 'boolean' ||
+    (s.updatedAt !== undefined && (typeof s.updatedAt !== 'number' || !Number.isFinite(s.updatedAt)))
+  ) {
+    return undefined;
+  }
+  return {
+    repo: s.repo,
+    conversationId: s.conversationId,
+    messageCount: s.messageCount,
+    running: s.running,
+    ...(s.updatedAt !== undefined ? { updatedAt: s.updatedAt } : {}),
+  };
+};
 
 const channel = createPushChannel<VcsState>({
   pushType: VCS_STATE,
@@ -79,11 +129,13 @@ const channel = createPushChannel<VcsState>({
     if (!isChangeArray(msg.changes)) return undefined;
     const branch = msg.branch && typeof msg.branch === 'object' ? (msg.branch as VcsBranch) : null;
     const prs = Array.isArray(msg.prs) ? (msg.prs as VcsPR[]) : [];
+    const agentSession = parseAgentSession(msg.agentSession);
     return {
       changes: msg.changes,
       branch,
       prs,
       diffLoading: msg.diffLoading === true,
+      ...(agentSession ? { agentSession } : {}),
     };
   },
 });

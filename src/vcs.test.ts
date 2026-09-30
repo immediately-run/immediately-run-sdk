@@ -101,6 +101,52 @@ describe('vcs read channel', () => {
     expect(seen).toHaveLength(goodLen);
     expect(mod.getVcsState().changes).toHaveLength(2);
   });
+
+  // R3-659 (CONTRIBUTE_TRANSCRIPT_SPEC §4): the agentSession gate facts ride
+  // the vcs channel to the contribute apps — whitelisted fields only, never
+  // transcript bytes (R-CT-6); absent unless qualifying (R-CT-3).
+  it('passes a well-formed agentSession through, whitelisted fields only', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({
+      ...sample,
+      agentSession: {
+        repo: 'acme/notes',
+        conversationId: 'c1',
+        messageCount: 3,
+        running: false,
+        updatedAt: 1727000000000,
+        transcript: 'evil-bytes', // never forwarded
+      },
+    });
+    expect(got!.agentSession).toEqual({
+      repo: 'acme/notes',
+      conversationId: 'c1',
+      messageCount: 3,
+      running: false,
+      updatedAt: 1727000000000,
+    });
+    expect(JSON.stringify(got)).not.toContain('evil-bytes');
+  });
+
+  it('a malformed agentSession reads as NO session (fail-closed, R-CT-1) — the snapshot still lands', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, agentSession: { repo: 'acme/notes', messageCount: 'three' } });
+    expect(got).not.toHaveProperty('agentSession');
+    expect(got!.changes).toHaveLength(2);
+    // Structured clone carries non-finite numbers: NaN is a number to typeof
+    // and must not conjure the fact either (mirrors the producer's parser).
+    push({ ...sample, agentSession: { repo: 'acme/notes', conversationId: 'c1', messageCount: NaN, running: false } });
+    expect(got).not.toHaveProperty('agentSession');
+  });
+
+  it('no agentSession key when the push carries none (absent, never null-rendered)', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push(sample);
+    expect(got).not.toHaveProperty('agentSession');
+  });
 });
 
 describe('vcs actions — request shape', () => {

@@ -46,7 +46,7 @@ export interface ContributionResult {
 }
 
 /** Options for a contribution: the commit message, save {@link ContributeMode},
- *  and (PR mode) an optional branch name. */
+ *  (PR mode) an optional branch name, and the transcript request hint. */
 export interface ContributeOptions {
   /** The commit message / PR title. */
   commitMessage: string;
@@ -55,6 +55,11 @@ export interface ContributeOptions {
   mode?: ContributeMode;
   /** Override the generated branch name (PR mode). */
   branchName?: string;
+  /** CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript"
+   *  checkbox's sole effect — a boolean request HINT, never bytes/path/render
+   *  (R-CT-6). The host's disclosure review remains the consent (R-CT-7) and
+   *  the hint is spent per contribution (R-CT-8). */
+  transcriptRequested?: boolean;
 }
 
 /**
