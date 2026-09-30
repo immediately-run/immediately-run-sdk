@@ -8,11 +8,12 @@
 // then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
 // that. The count is:
 //
-//   **twelve CALL SITES across nine FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
-//   the declaration here and minus `*.test.*`:
+//   **seventeen CALL SITES across twelve FILES** — `grep -n 'throwOnRefusal(' src/*.ts`,
+//   minus the declaration here and minus `*.test.*`:
 //
-//   dnd.ts · editor.ts · ipc.ts (×2) · mounts.ts (×3) · openExternal.ts ·
-//   openRepository.ts · secrets.ts · spacesMode.ts · vcs.ts
+//   dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
+//   openExternal.ts · openRepository.ts · secrets.ts · spacesMode.ts · theme.ts (×3) ·
+//   vcs.ts
 //
 // Every miscount came from the same two mistakes: reading files instead of counting the
 // grep, and never saying which unit was being counted. `mounts.ts` has three separate
@@ -43,11 +44,14 @@
 // ---------------------------------------------------------------------------
 //
 // Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
-// twelve SITES** green — seven of the nine files: `dnd`, `editor`, `ipc`, `mounts`,
+// seventeen SITES** green — seven of the twelve files: `dnd`, `editor`, `ipc`, `mounts`,
 // `secrets`, `spacesMode` and `vcs`. Every one of them stubs an explicit `{ ok: false }`,
 // so they pin "throws on a refusal envelope" and nothing about a malformed or absent
-// reply. Only `openExternal` and `openRepository` — two sites — plus
-// `protocolRefusal.test.ts` catch it: 7 tests across 3 suites.
+// reply. The catchers: `openExternal`, `openRepository`, the five R3-817 sites (whose
+// string-reply tests reject on a non-envelope — the mutation never throws), plus
+// `protocolRefusal.test.ts`. (Re-run 2026-09-30 on the post-fold tree: suites red —
+// feed, netFetch, theme, openExternal, openRepository, protocolRefusal; the seven
+// families green.)
 //
 // (An earlier version of this paragraph said "nine of the twelve sites' suites", which
 // mixes sites with suites — the exact mistake the census block above is headed about —
@@ -55,7 +59,7 @@
 //
 // Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
 // That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
-// grounds that "the consumers cover it" — they do not, and twelve near-duplicate malformed
+// grounds that "the consumers cover it" — they do not, and seventeen near-duplicate malformed
 // -reply tests would be the duplication this extraction exists to remove.
 //
 // ---------------------------------------------------------------------------
@@ -112,14 +116,16 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Twelve sites call this; **eleven** had
- * an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708 and
- * replaced nothing). All eleven tested for PRESENCE, in **three** shapes:
+ * `code` and `message` must be STRINGS to be used. Seventeen sites call this;
+ * **sixteen** had an inline copy it replaced (`spacesMode.ts` was written against the
+ * helper in R3-708 and replaced nothing). All sixteen tested for PRESENCE, in **three**
+ * shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
- * - **two** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
- *   Code) ?? 'unknown'` — `openExternal`, `openRepository`, both folded in R3-708;
+ * - **seven** used the `in` operator — `openExternal`, `openRepository` (with the cast;
+ *   folded in R3-708) and `feed`, `netFetch`, `theme` ×3 (without it; folded in R3-817,
+ *   the TypeError fix disclosed above);
  * - **two** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
  *   `ipc.ts`.
  *
@@ -148,10 +154,9 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * `openExternal` and `openRepository` did.
  *
  * The mechanism is worth more than the correction, because it is repeatable. `'code' in
- * res` is *still on `main`* at five unfolded sites (see the census above — R3-817 is filed
- * to fold exactly those, so this count is expected to reach zero), so a reviewer who greps
- * `main` finds the form alive and concludes — reasonably — that it belongs to the untyped
- * family this file declines to fold. What a grep of `main` cannot show is that the
+ * res` is **gone from `main`** since R3-817 (0.74.3) folded the last five — a reviewer who
+ * greps `main` finds nothing, and this paragraph is the record of where it lived and why
+ * it misread twice before. What a grep of `main` cannot show is that the
  * form was ALSO at two sites R3-708 folded. The tree that answers the question is the one
  * before the fold, `d4b07cc1^`. Read that before rewriting this paragraph again.
  *
