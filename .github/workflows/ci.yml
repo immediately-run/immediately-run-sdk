@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          package-manager-cache: false  # never use caching in release builds
+          package-manager-cache: false # never use caching in release builds
       # Trusted publishing requires npm >= 11.5.1. Pin to the 11.x line: npm@latest
       # went to 12.0.0 (2026-07), whose provenance path throws `Cannot find module
       # 'sigstore'` under `npm publish` (a .0 major regression that broke the 0.29.0
@@ -51,6 +51,9 @@ jobs:
       # hypothetical.
       - name: A pinned @immediately-run/* version exists, and the lockfile agrees (R3-327)
         run: npm run check:pins
+      # R3-869 — the manifest↔lock version sync (check:publish-version checks
+      # the registry, never the lock).
+      - run: npm run check:lock-version
       # Check 2 answers on a PR the question the release job only asks after merge —
       # it is `if: github.event_name == 'push'`, so a PR never runs it. That is how
       # sdk #111 merged with changed shipped bytes and no version bump, and turned
@@ -215,9 +218,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     permissions:
-      contents: write   # gh-pages deploy + integrity trust-root commit/tag
-      id-token: write   # npm trusted publishing (OIDC)
-      actions: read     # read THIS run's approval history (the assertion below)
+      contents: write # gh-pages deploy + integrity trust-root commit/tag
+      id-token: write # npm trusted publishing (OIDC)
+      actions: read # read THIS run's approval history (the assertion below)
     steps:
       # Fail-closed authority gate (ways_of_working §2 "authority gates fail
       # closed"): a run that reached here without a recorded `production`
@@ -240,7 +243,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false  # never use caching in release builds
+          package-manager-cache: false # never use caching in release builds
       - run: npm install -g npm@11
       - run: npm ci
       # A fresh build in the release job: jobs share no filesystem, and the
@@ -346,7 +349,7 @@ jobs:
           # setup-node's registry-url writes an .npmrc that binds npm to NODE_AUTH_TOKEN.
           # Clearing it forces npm to use OIDC trusted publishing instead of (empty) token
           # auth, which otherwise fails with ENEEDAUTH.
-          NODE_AUTH_TOKEN: ""
+          NODE_AUTH_TOKEN: ''
         run: |
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VER=$(node -p "require('./package.json').version")
@@ -573,7 +576,7 @@ jobs:
       - name: Publish to npm via trusted publishing (skip if version already published)
         working-directory: safe-content
         env:
-          NODE_AUTH_TOKEN: ""
+          NODE_AUTH_TOKEN: ''
         run: |
           set -uo pipefail
           PKG_NAME=$(node -p "require('./package.json').name")
