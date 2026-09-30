@@ -35,6 +35,7 @@
 // which is why they are two capabilities and not one with a flag.
 
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { SCHEMES } from './protocolSchemes';
 import { PROTOCOL_FEED } from './generated/protocol';
 
@@ -96,10 +97,6 @@ export const feedFetch = async (
     | { ok: true; data: FeedFetchResponse }
     | { ok: false; code?: string; message?: string }
     | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'feedFetch failed') as Error & { code?: string };
-    err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'feedFetch failed');
   return res.data;
 };

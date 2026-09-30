@@ -7,6 +7,7 @@
 // only the serialized response.
 
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { protocolStream } from './protocolStream';
 import { SCHEMES } from './protocolSchemes';
 import { PROTOCOL_FETCH } from './generated/protocol';
@@ -44,11 +45,7 @@ export const hostFetch = async (url: string, init: HostFetchInit = {}): Promise<
   const res = (await protocolRequest(SCHEMES[PROTOCOL_FETCH], 'fetch', [
     { url, method: init.method, headers: init.headers, body: init.body },
   ])) as { ok: true; data: HostFetchResponse } | { ok: false; code?: string; message?: string } | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'hostFetch failed') as Error & { code?: string };
-    err.code = (res && 'code' in res ? res.code : undefined) ?? 'unknown';
-    throw err;
-  }
+  throwOnRefusal(res, 'hostFetch failed');
   return res.data;
 };
 
