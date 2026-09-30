@@ -50,6 +50,14 @@ describe('listRecentProjects', () => {
     mockRequest.mockResolvedValue({ ok: false });
     await expect(listRecentProjects()).rejects.toMatchObject({ code: 'unknown' });
   });
+
+  it('an ABSENT reply (transport settled with nothing) throws as unknown — the !res guard (R3-816)', async () => {
+    mockRequest.mockResolvedValue(undefined as never);
+    await expect(listRecentProjects()).rejects.toMatchObject({
+      code: 'unknown',
+      message: 'recents request failed',
+    });
+  });
 });
 
 describe('clearRecentProjects', () => {

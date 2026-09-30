@@ -4,6 +4,7 @@
 // Handing the catalog to an embedded agent as its tool list confines the agent to
 // the app's authority (agent sandboxing falls out of the capability model, §5.9).
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import type { StreamFrame, StreamTransport } from './protocolStream';
 import { consumeStream } from './protocolStream';
 import { createPushChannel } from './pushChannel';
@@ -45,15 +46,11 @@ export const invoke = async <T = unknown>(name: string, params: Record<string, u
   // The host replies with an `{ ok, data } | { ok:false, code }` envelope; unwrap
   // it and THROW on refusal (a `.code` like `forbidden` for an off-catalog call)
   // so callers — and any agent driving `invoke` — see the gate's verdict.
-  const res = (await protocolRequest(scheme, method, [params])) as
-    | { ok: true; data: unknown }
-    | { ok: false; code?: string; message?: string }
-    | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? `${name} failed`) as Error & { code?: string };
-    err.code = res?.code ?? 'unknown';
-    throw err;
-  }
+  const res = await protocolRequest(scheme, method, [params]);
+  // The one refusal unwrap (R6, R3-816): an absent/malformed reply and a coded
+  // refusal both throw — the code rides through (`forbidden` for an
+  // off-catalog call).
+  throwOnRefusal(res, `${name} failed`);
   return res.data as T;
 };
 
