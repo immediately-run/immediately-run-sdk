@@ -135,6 +135,10 @@ describe('vcs read channel', () => {
     push({ ...sample, agentSession: { repo: 'acme/notes', messageCount: 'three' } });
     expect(got).not.toHaveProperty('agentSession');
     expect(got!.changes).toHaveLength(2);
+    // Structured clone carries non-finite numbers: NaN is a number to typeof
+    // and must not conjure the fact either (mirrors the producer's parser).
+    push({ ...sample, agentSession: { repo: 'acme/notes', conversationId: 'c1', messageCount: NaN, running: false } });
+    expect(got).not.toHaveProperty('agentSession');
   });
 
   it('no agentSession key when the push carries none (absent, never null-rendered)', () => {

@@ -96,12 +96,17 @@ const parseAgentSession = (v: unknown): VcsAgentSession | undefined => {
   if (v === undefined || v === null) return undefined;
   if (typeof v !== 'object') return undefined;
   const s = v as Record<string, unknown>;
+  // Number.isFinite, not typeof: structured clone (the postMessage transport)
+  // carries NaN/Infinity intact, and a non-finite count must not conjure the
+  // fact — the producer's parser (site-main agentSessionState.ts) rejects the
+  // same way.
   if (
     typeof s.repo !== 'string' ||
     typeof s.conversationId !== 'string' ||
     typeof s.messageCount !== 'number' ||
+    !Number.isFinite(s.messageCount) ||
     typeof s.running !== 'boolean' ||
-    (s.updatedAt !== undefined && typeof s.updatedAt !== 'number')
+    (s.updatedAt !== undefined && (typeof s.updatedAt !== 'number' || !Number.isFinite(s.updatedAt)))
   ) {
     return undefined;
   }
