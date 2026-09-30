@@ -21,6 +21,7 @@
 // throws instead of leaving the caller to hang out its deadline.
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { transport } from './hostTransport';
 import { PROTOCOL_TASK, REQUEST_TASK_INPUT, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
@@ -122,16 +123,11 @@ export const capDir = (ref: { mountId: string; relPath: string }, opts: { mode: 
  * "no host transport" error: there is no host to resolve the task binding.
  */
 export const invokeTask = async <R = unknown>(task: string, params: Record<string, unknown> = {}): Promise<R> => {
-  const res = (await protocolRequest(SCHEMES[PROTOCOL_TASK], 'invoke', [{ task, params }])) as
-    | { ok: true; data: R }
-    | { ok: false; code?: string; message?: string }
-    | undefined;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? `task '${task}' failed`) as Error & { code?: string };
-    err.code = res?.code ?? 'unknown';
-    throw err;
-  }
-  return res.data;
+  const res = await protocolRequest(SCHEMES[PROTOCOL_TASK], 'invoke', [{ task, params }]);
+  // The one refusal unwrap (R6, R3-816): an absent/malformed reply and a coded
+  // refusal both throw, the task named in the fallback message.
+  throwOnRefusal(res, `task '${task}' failed`);
+  return res.data as R;
 };
 
 // ── the host-provided CAPTURE contracts (R3-425) ────────────────────────────
