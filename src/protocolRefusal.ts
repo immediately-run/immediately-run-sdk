@@ -9,7 +9,8 @@
 // that. After R3-816 folded the three pure copies (catalog / recents / tasks), the count is:
 //
 //   **fifteen CALL SITES across twelve FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
-//   the declaration here and minus `*.test.*`:
+//   the declaration here, minus `*.test.*`, and minus this census's own mention of the
+//   pattern (the recipe's literal matches it):
 //
 //   catalog.ts · dnd.ts · editor.ts · ipc.ts (×2) · mounts.ts (×3) · openExternal.ts ·
 //   openRepository.ts · recents.ts · secrets.ts · spacesMode.ts · tasks.ts · vcs.ts
@@ -119,9 +120,9 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Twelve sites call this; **eleven** had
- * an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708 and
- * replaced nothing). All eleven tested for PRESENCE, in **three** shapes:
+ * `code` and `message` must be STRINGS to be used. Fifteen sites call this; **fourteen**
+ * had an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708
+ * and replaced nothing). All fourteen tested for PRESENCE, in **three** shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;

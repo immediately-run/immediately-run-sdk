@@ -1,7 +1,7 @@
 // catalog.test.ts — `invoke()`'s wire mapping and envelope unwrap (R3-816).
-// The refusal path is throwOnRefusal itself: each case here reddens when that
-// helper's body is neutered, because nothing between the reply and the caller
-// re-checks the envelope.
+// The refusal path is throwOnRefusal itself: each REFUSAL case here reddens
+// when that helper's body is neutered (the mapping/name cases never reach it),
+// because nothing between the reply and the caller re-checks the envelope.
 
 jest.mock('./sandboxUtils', () => ({
   protocolRequest: jest.fn(),
