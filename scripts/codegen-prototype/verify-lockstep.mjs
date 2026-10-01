@@ -61,8 +61,11 @@ export function lockstepViolations(mirror, sdk) {
     if (m.paramsSchema) {
       const hostReq = m.paramsSchema.required ?? [];
       const hostProps = Object.keys(m.paramsSchema.properties ?? {});
-      const sdkReq = d.params?.required ?? [];
-      const sdkProps = Object.keys(d.params?.properties ?? {});
+      // The SDK's delivered set = declared params ∪ wrapper-injected constants
+      // (constParams, e.g. the lifecycle verbs' confirm:true): an injected key
+      // is satisfied on every call, not dropped.
+      const sdkReq = [...(d.params?.required ?? []), ...Object.keys(d.constParams ?? {})];
+      const sdkProps = [...Object.keys(d.params?.properties ?? {}), ...Object.keys(d.constParams ?? {})];
       const droppedReq = hostReq.filter((k) => !sdkReq.includes(k));
       const droppedProps = hostProps.filter((k) => !sdkProps.includes(k));
       if (droppedReq.length) out.push(`PARAMS ${d.name}: SDK drops host-required key(s) ${droppedReq.join(', ')}`);
@@ -184,11 +187,31 @@ const selfTest = () => {
       ],
       ['PARAMS vcs:diff'],
     ],
+    // R3-860: a host-required key the wrapper INJECTS (constParams — the
+    // lifecycle verbs' confirm:true) is satisfied on every call, not dropped.
+    [
+      'a constParams-injected host-required key (must NOT flag)',
+      [
+        ...base,
+        {
+          name: 'vcs:diff',
+          capability: 'vcs:read',
+          kind: 'request',
+          errors: [],
+          params: { required: [], properties: {} },
+          constParams: { path: 'x' },
+        },
+      ],
+      [],
+    ],
   ];
   let ok = 0;
   for (const [label, mutated, expect] of cases) {
     const got = lockstepViolations(mirror, mutated);
-    const caught = expect.every((e) => got.some((g) => g.includes(e)));
+    // An empty expectation must mean "nothing flagged", or a [] case passes
+    // without checking anything.
+    const caught =
+      expect.every((e) => got.some((g) => g.includes(e))) && (expect.length === 0 ? got.length === 0 : true);
     console.log(`${caught ? 'PASS' : 'FAIL'}  detects: ${label}`);
     if (caught) ok++;
   }
