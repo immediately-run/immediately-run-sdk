@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.74.3)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.75.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -284,7 +284,7 @@ Import: `@immediately-run/sdk/contribute`
 
 - `contribute` (function) — Save the current working tree, streaming each stage.
 - `ContributeMode` (type) — The save strategy.
-- `ContributeOptions` (interface) — Options for a contribution: the commit message, save ContributeMode, and (PR mode) an optional branch name.
+- `ContributeOptions` (interface) — Options for a contribution: the commit message, save ContributeMode, (PR mode) an optional branch name, and the transcript request hint.
 - `ContributionEvent` (type) — A stage emitted as the contribution runs.
 - `ContributionResult` (interface) — The settled outcome (the stream's return value).
 
@@ -889,6 +889,7 @@ Import: `@immediately-run/sdk/vcs`
 - `resetWorkingTree` (function) — Ask the host to DISCARD the working tree (COW writable wipe + journal clear) — irreversible.
 - `useVcsState` (function) — React hook: the current source-control state, re-rendering on every change.
 - `VcsActionError` (interface) — An error from a `vcs` action, carrying a machine-readable `.code`.
+- `VcsAgentSession` (interface) — The gate facts the host projects about an active agent session on the target repo (CONTRIBUTE_TRANSCRIPT_SPEC §3/§4, R3-632/R3-659): enough for a contribute app to render the "Commit session transcript" checkbox — never transcript bytes, a title, or message content.
 - `VcsBranch` (interface) — The branch the working tree sits on and the upstream it diverged from (host `BranchInfo`, §15.1).
 - `VcsChange` (interface) — One changed path in the working tree (vs.
 - `VcsPR` (interface) — One pull request open from the current branch (host `BranchPR`).
