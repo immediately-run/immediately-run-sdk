@@ -86,7 +86,7 @@ export type ContributeError =
  * Capability: `contribute:any`. Catalog name: `contribute:run`.
  * @throws `StreamError & { code: ContributeError }` if the host rejects the stream.
  */
-export function contribute(req: { commitMessage: string; mode?: ContributeMode; branchName?: string }): AsyncGenerator<ContributionEvent, ContributionResult, void> {
+export function contribute(req: { commitMessage: string; mode?: ContributeMode; branchName?: string; transcriptRequested?: boolean }): AsyncGenerator<ContributionEvent, ContributionResult, void> {
   return invokeStream<ContributionEvent, ContributionResult>("contribute:run", req);
 }
 

@@ -127,7 +127,19 @@ export const methods = [
     params: {
       type: 'object',
       required: ['commitMessage'],
-      properties: { commitMessage: str(), mode: ref('ContributeMode'), branchName: str() },
+      properties: {
+        commitMessage: str(),
+        mode: ref('ContributeMode'),
+        branchName: str(),
+        // Was missing here while src/contribute.ts's ContributeOptions carried it —
+        // found by the host's descriptor lockstep leg (R3-860): the descriptor
+        // dropped a property the wrapper accepts.
+        transcriptRequested: {
+          type: 'boolean',
+          description:
+            'CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript" hint (a boolean request, never bytes).',
+        },
+      },
     },
     event: ref('ContributionEvent'),
     result: ref('ContributionResult'),
