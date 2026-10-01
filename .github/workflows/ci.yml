@@ -77,6 +77,8 @@ jobs:
       # CI-invisible).
       - run: npm run check:verify-parity
       - run: npm ci
+      # R3-869 — the manifest↔lock version sync.
+      - run: npm run check:lock-version
       # The formatting gate. `format:check`, never `format -- --check`: appending
       # --check to a `prettier --write` script does not make it read-only — Prettier
       # rewrites the tree and exits 0, which is how the sandbox repo drifted 106 files
