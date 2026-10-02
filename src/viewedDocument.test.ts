@@ -8,6 +8,7 @@
 //  - the `editor-context` parser tolerates hosts on either side of the change.
 import * as sandboxUtils from './sandboxUtils';
 import { navigate, setViewedDocumentResolver } from './routing';
+import { resetEntryState, saveEntryState } from './entryState';
 
 jest.mock('./sandboxUtils', () => ({
   ...jest.requireActual('./sandboxUtils'),
@@ -114,7 +115,12 @@ describe('navigate replace encoding (R3-874, APP_CUSTOMIZATION §5)', () => {
   });
 
   it('replace composes with entryState + a declared viewedDocument (one typed message)', () => {
-    navigate('/edit/x/y/z/main/files/a.md', { viewedDocument: 'content/a.md', replace: true });
+    saveEntryState('ir.scroll', 300); // the REAL producer — the spread must survive
+    try {
+      navigate('/edit/x/y/z/main/files/a.md', { viewedDocument: 'content/a.md', replace: true });
+    } finally {
+      resetEntryState();
+    }
     const data = sendMessage.mock.calls[0][1];
     expect(data).toMatchObject({
       url: '/edit/x/y/z/main/files/a.md',
@@ -122,6 +128,7 @@ describe('navigate replace encoding (R3-874, APP_CUSTOMIZATION §5)', () => {
       forward: false,
       viewedDocument: 'content/a.md',
       replace: true,
+      entryState: { 'ir.scroll': 300 },
     });
   });
 });
