@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.75.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.76.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -100,6 +100,7 @@ Import: `@immediately-run/sdk/mounts`
 - `getSessionMounts` (function) — The session's mounts (the "Session" lens superset), or `[]` when this frame is not first-party.
 - `importSettingsFromParent` (function) — One-time SEED of this app's settings from the parent it declares as `forkOf` (its `package.json` `immediately.run.forkOf`) — so a fork inherits your preferences from the original app (UI_AS_APPS_SPEC §3.4).
 - `listSettingsApps` (function) — List every app that has per-user settings — the elevated "file commander" enumeration.
+- `listSpaceKeys` (function) — The published public halves of a space's members (REALTIME_MESSAGING §6.1) — readable by every member, refused `forbidden` for a non-member (the store read is the membership gate).
 - `makeContentRef` (function) — Build a persisted CONTENT REFERENCE to a file in a mount — a `{mountId, relPath}` pointer your app serializes into ITS OWN content (a board's JSON, an MDX file's frontmatter, an album manifest — the platform doesn't dictate the container) so a later viewer can resolve it.
 - `mount` (function) — Mount a filesystem by its **universal mount id** (UI_AS_APPS_SPEC §3.5) — `scheme:locator`, e.g.
 - `MountQuery` (type) — A predicate-style matcher for findMount / waitForMount.
@@ -112,6 +113,8 @@ Import: `@immediately-run/sdk/mounts`
 - `openLocalStore` (function) — Mount this app's **device-local** store — a private, per-device, IndexedDB-backed filesystem, NOT synced (unlike openSettings).
 - `openSettings` (function) — Mount this app's per-user settings — a private `~/.config`-style filesystem, auto-provisioned for the signed-in user and isolated to THIS app (the host chroots it; a different app can never name it).
 - `openSettingsOf` (function) — Mount ANOTHER app's per-user settings by its `appKey` — the elevated "file commander" surface.
+- `PublishedSpaceKey` (interface) — One member's published space key — the PUBLIC half only.
+- `publishSpaceKey` (function) — Publish the caller's own space key (REALTIME_MESSAGING §6.1) — minted at join time by the host already; this call is the explicit retry/self-heal an app can offer.
 - `RemovedMount` (interface) — A descriptor delivered as REMOVED to a mounts-change listener: the mount that went away, plus the `reason` it did.
 - `requestMount` (function) — Ask the user to grant a filesystem to this app — the §8.6 powerbox.
 - `requestSpace` (function) **[DEPRECATED]** — Prompt the user to grant a mount, returning the granted SandboxMount.
@@ -940,7 +943,7 @@ Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: tru
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName | `ContributionEvent → ContributionResult` |
+| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested | `ContributionEvent → ContributionResult` |
 | `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |
 
 ---

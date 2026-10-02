@@ -1373,6 +1373,10 @@
               },
               "branchName": {
                 "type": "string"
+              },
+              "transcriptRequested": {
+                "type": "boolean",
+                "description": "CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the \"Commit session transcript\" hint (a boolean request, never bytes)."
               }
             }
           },

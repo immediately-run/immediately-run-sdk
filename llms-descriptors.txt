@@ -28,5 +28,5 @@ Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: tru
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName | `ContributionEvent → ContributionResult` |
+| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested | `ContributionEvent → ContributionResult` |
 | `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |
