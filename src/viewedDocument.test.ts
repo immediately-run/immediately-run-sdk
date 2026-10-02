@@ -8,6 +8,7 @@
 //  - the `editor-context` parser tolerates hosts on either side of the change.
 import * as sandboxUtils from './sandboxUtils';
 import { navigate, setViewedDocumentResolver } from './routing';
+import { resetEntryState, saveEntryState } from './entryState';
 
 jest.mock('./sandboxUtils', () => ({
   ...jest.requireActual('./sandboxUtils'),
@@ -93,5 +94,41 @@ describe('editor-context viewedFile parsing (R3-268)', () => {
     });
     expect(getEditorContext().viewedFile).toBe('/content/themes.mdx');
     delete (globalThis as any).__immediatelyRun__;
+  });
+});
+
+describe('navigate replace encoding (R3-874, APP_CUSTOMIZATION §5)', () => {
+  beforeEach(() => sendMessage.mockClear());
+
+  it('replace: true sends replace: true on the wire', () => {
+    navigate('/edit/x/y/z/main/files/a.md', { replace: true });
+    const [type, data] = sendMessage.mock.calls[0];
+    expect(type).toBe('urlchange');
+    expect(data.replace).toBe(true);
+  });
+
+  it('omitting the option (or replace: false) keeps the field OFF the wire', () => {
+    navigate('/edit/x/y/z/main/files/a.md');
+    expect('replace' in sendMessage.mock.calls[0][1]).toBe(false);
+    navigate('/edit/x/y/z/main/files/a.md', { replace: false });
+    expect('replace' in sendMessage.mock.calls[1][1]).toBe(false);
+  });
+
+  it('replace composes with entryState + a declared viewedDocument (one typed message)', () => {
+    saveEntryState('ir.scroll', 300); // the REAL producer — the spread must survive
+    try {
+      navigate('/edit/x/y/z/main/files/a.md', { viewedDocument: 'content/a.md', replace: true });
+    } finally {
+      resetEntryState();
+    }
+    const data = sendMessage.mock.calls[0][1];
+    expect(data).toMatchObject({
+      url: '/edit/x/y/z/main/files/a.md',
+      back: false,
+      forward: false,
+      viewedDocument: 'content/a.md',
+      replace: true,
+      entryState: { 'ir.scroll': 300 },
+    });
   });
 });
