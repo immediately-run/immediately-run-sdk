@@ -807,8 +807,11 @@ export const publishSpaceKey = async (spaceId: string): Promise<{ kid: string; c
   // `invoke`, not the local `request` helper: the wire-shape gate
   // (check-protocol-snapshot) extracts the catalog front door's call sites, and
   // a helper call is invisible to it — the published contract and this source
-  // must agree byte-for-byte. Semantics are identical (same envelope unwrap +
-  // coded refusal).
+  // must agree byte-for-byte. Same envelope unwrap + coded refusal, with one
+  // recorded difference: `request`'s throwOnRefusal coerces a NON-STRING refusal
+  // code/message to 'unknown'/a fallback, while catalog.ts's invoke assigns
+  // `res?.code ?? 'unknown'` unchecked (its pre-fold shape — protocolRefusal.ts's
+  // census). The wire sends strings; the difference is unreachable today.
   const r = await invoke<{ ok: true; kid: string; created: boolean }>('spaces:publishSpaceKey', { spaceId });
   return { kid: r.kid, created: r.created };
 };
@@ -823,9 +826,9 @@ export const publishSpaceKey = async (spaceId: string): Promise<{ kid: string; c
 export const listSpaceKeys = async (spaceId: string, uid?: string): Promise<PublishedSpaceKey[]> => {
   // One declared params type (never a conditional literal) so the wire-shape
   // gate fingerprints `uid` as `string | undefined` — the published snapshot's
-  // recorded shape (sandbox-protocol 0.15.0). And `invoke`, not the local
-  // `request` helper: the gate extracts the catalog front door's call sites,
-  // and a helper call is invisible to it.
+  // recorded shape (sandbox-protocol 0.15.0). `invoke` here for the same reason
+  // as publishSpaceKey above (the gate extracts the catalog front door's call
+  // sites); the same invoke-vs-throwOnRefusal coercion note applies.
   const params: { spaceId: string; uid?: string } = { spaceId };
   if (uid !== undefined) params.uid = uid;
   const rows = await invoke<Array<Record<string, unknown>>>('spaces:listSpaceKeys', params);
