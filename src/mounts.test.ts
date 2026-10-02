@@ -144,6 +144,8 @@ describe('SandboxMount.bundle — federated bundle facts on the descriptor (R3-5
     path: '/task/task-9/items',
     type: 'task-delegation',
     bundle: {
+      // R3-184 (PERSISTENCE §8.0/§8.5): the DECLARED in-bundle alias, beside the host slot.
+      at: '/items',
       kind: 'wiki',
       diagnostics: ['not-a-bundle'],
       layout: {
