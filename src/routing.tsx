@@ -109,6 +109,13 @@ export const useRoute = () => {
  * existence — a wrong path degrades to "no highlight", never an error. The
  * host remembers declarations per URL, so back/forward reproduces them
  * without re-announcement.
+ *
+ * `opts.replace` (R3-874, APP_CUSTOMIZATION_SPEC §5): `true` asks the host to
+ * REPLACE the current history entry instead of pushing — for an app whose URL
+ * encodes view state, so re-renders don't flood the reader's Back chain.
+ * In-prefix targets only: the host ignores it for a navigation that leaves the
+ * app (an app must not erase the entry the user would press Back to reach,
+ * G-CUST-6). Absent or `false` keeps the field off the wire entirely.
  */
 // R3-268: an app-registered rule mapping a navigation TARGET to its viewed
 // document, consulted by `navigate()` whenever the caller did not declare one
