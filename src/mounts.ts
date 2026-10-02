@@ -138,6 +138,15 @@ export interface SandboxMount {
 export interface SandboxMountBundle {
   /** The target bundle's declared `kind`, when it declares one. */
   kind?: string;
+  /**
+   * R3-184 (PERSISTENCE_SPEC §8.0/§8.5) — the DECLARED in-bundle mount name
+   * (`requests.mounts[].at`, e.g. `/items`): the alias the declaring bundle's own
+   * documents address this view by, carried beside the mount's `path` (the
+   * host-assigned task slot, §8.3). Pure data — it is never authority and never a
+   * second mount point; a bundle-carrying app matches the alias back to the
+   * declaration that minted the view. Absent on older hosts.
+   */
+  at?: string;
   /** The target's layout, pruned to this mount's view (`pruneLayoutToView`). */
   layout?: BundleLayout;
   /**
