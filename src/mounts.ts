@@ -65,6 +65,7 @@ import {
   SESSION_MOUNTS,
 } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
+import { invoke } from './catalog';
 // Re-exported here so an app needs ONE import for a federated mount's bundle facts
 // (`SandboxMount.bundle` + the layout type it carries) — the same root-export
 // convention `linkSpace.ts` applies to the mdx-plugins link types.
@@ -767,3 +768,82 @@ export const onInvitesChange = (listener: (invites: Invite[]) => void): (() => v
 /** React hook returning the caller's live invitation inbox, re-rendering on change
  *  (the space-manager Invitations inbox, §9.8). */
 export const useInvites = (): Invite[] => invitesChannel.use();
+
+// ---------------------------------------------------------------------------
+// The space keyring (REALTIME_MESSAGING_SPEC §6.1, R3-633f). Hand-written on
+// purpose, and NOT moved into the generated family: the generated wrappers
+// return the wire payload as typed, while this boundary must PROJECT — a host
+// reply that (wrongly) carried a private half (a `d` field) is never
+// propagated, because the type is the boundary and the projection is the
+// proof (§16's must-establish row: "a member's space private key is never
+// returned to an app sandbox"). Both calls are `spaces:user` (§6.5(d): public
+// halves only — no new capability).
+
+/** One member's published space key — the PUBLIC half only. The ECDH P-256
+ *  public JWK carries exactly `kty`/`crv`/`x`/`y`; there is no field for the
+ *  private scalar anywhere in this type (and none named `d`), so the shape
+ *  cannot carry one. */
+export interface PublishedSpaceKey {
+  /** The member the key belongs to. */
+  uid: string;
+  /** The key id (write-once; rotation appends a new kid). */
+  kid: string;
+  /** The public JWK (four fields, no `d`). */
+  pub: { kty: string; crv: string; x: string; y: string };
+  /** The algorithm label (see the host's SPACE_KEY_ALG_LABEL). */
+  alg: string;
+  /** Epoch milliseconds when the key was published. */
+  addedAt: number;
+}
+
+/** Publish the caller's own space key (REALTIME_MESSAGING §6.1) — minted at join
+ *  time by the host already; this call is the explicit retry/self-heal an app can
+ *  offer. Idempotent: a member who has published resolves the existing kid with
+ *  `created: false`. The private half is sealed under the member's passkey-derived
+ *  KEK host-side and never crosses this boundary. Rejects with a typed refusal:
+ *  `cancelled` (the passkey prompt was dismissed), `unsupported` (the platform
+ *  cannot seal here), `forbidden` (not a member), `auth-required` when signed out. */
+export const publishSpaceKey = async (spaceId: string): Promise<{ kid: string; created: boolean }> => {
+  // `invoke`, not the local `request` helper: the wire-shape gate
+  // (check-protocol-snapshot) extracts the catalog front door's call sites, and
+  // a helper call is invisible to it — the published contract and this source
+  // must agree byte-for-byte. Same envelope unwrap + coded refusal, with one
+  // recorded difference: `request`'s throwOnRefusal coerces a NON-STRING refusal
+  // code/message to 'unknown'/a fallback, while catalog.ts's invoke assigns
+  // `res?.code ?? 'unknown'` unchecked (its pre-fold shape — protocolRefusal.ts's
+  // census). The wire sends strings; the difference is unreachable today.
+  const r = await invoke<{ ok: true; kid: string; created: boolean }>('spaces:publishSpaceKey', { spaceId });
+  return { kid: r.kid, created: r.created };
+};
+
+/** The published public halves of a space's members (REALTIME_MESSAGING §6.1) —
+ *  readable by every member, refused `forbidden` for a non-member (the store read
+ *  is the membership gate). Members who have not published are simply ABSENT
+ *  (§6.2's fail-closed create reads that absence; the targeted probe is the
+ *  optional `uid` form, which answers `not-found` for an unpublished member).
+ *  The returned rows are PROJECTED to {@link PublishedSpaceKey}: a wire row
+ *  carrying anything more (e.g. a `d` field) is not propagated. */
+export const listSpaceKeys = async (spaceId: string, uid?: string): Promise<PublishedSpaceKey[]> => {
+  // One declared params type (never a conditional literal) so the wire-shape
+  // gate fingerprints `uid` as `string | undefined` — the published snapshot's
+  // recorded shape (sandbox-protocol 0.15.0). `invoke` here for the same reason
+  // as publishSpaceKey above (the gate extracts the catalog front door's call
+  // sites); the same invoke-vs-throwOnRefusal coercion note applies.
+  const params: { spaceId: string; uid?: string } = { spaceId };
+  if (uid !== undefined) params.uid = uid;
+  const rows = await invoke<Array<Record<string, unknown>>>('spaces:listSpaceKeys', params);
+  // Project, never coerce (the host store's own doctrine): the four public JWK
+  // fields are copied verbatim and EVERYTHING else is dropped — a row carrying a
+  // private half (`d`) does not propagate; a malformed row is the host's to
+  // reject upstream (its project() refuses one), never this layer's to repair.
+  return rows.map((row) => {
+    const pub = row.pub as PublishedSpaceKey['pub'];
+    return {
+      uid: row.uid as string,
+      kid: row.kid as string,
+      pub: { kty: pub.kty, crv: pub.crv, x: pub.x, y: pub.y },
+      alg: row.alg as string,
+      addedAt: row.addedAt as number,
+    };
+  });
+};
