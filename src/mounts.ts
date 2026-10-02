@@ -65,6 +65,7 @@ import {
   SESSION_MOUNTS,
 } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
+import { invoke } from './catalog';
 // Re-exported here so an app needs ONE import for a federated mount's bundle facts
 // (`SandboxMount.bundle` + the layout type it carries) — the same root-export
 // convention `linkSpace.ts` applies to the mdx-plugins link types.
@@ -803,7 +804,12 @@ export interface PublishedSpaceKey {
  *  `cancelled` (the passkey prompt was dismissed), `unsupported` (the platform
  *  cannot seal here), `forbidden` (not a member), `auth-required` when signed out. */
 export const publishSpaceKey = async (spaceId: string): Promise<{ kid: string; created: boolean }> => {
-  const r = await request<{ ok: true; kid: string; created: boolean }>('publishSpaceKey', { spaceId });
+  // `invoke`, not the local `request` helper: the wire-shape gate
+  // (check-protocol-snapshot) extracts the catalog front door's call sites, and
+  // a helper call is invisible to it — the published contract and this source
+  // must agree byte-for-byte. Semantics are identical (same envelope unwrap +
+  // coded refusal).
+  const r = await invoke<{ ok: true; kid: string; created: boolean }>('spaces:publishSpaceKey', { spaceId });
   return { kid: r.kid, created: r.created };
 };
 
@@ -815,10 +821,14 @@ export const publishSpaceKey = async (spaceId: string): Promise<{ kid: string; c
  *  The returned rows are PROJECTED to {@link PublishedSpaceKey}: a wire row
  *  carrying anything more (e.g. a `d` field) is not propagated. */
 export const listSpaceKeys = async (spaceId: string, uid?: string): Promise<PublishedSpaceKey[]> => {
-  const rows = await request<Array<Record<string, unknown>>>(
-    'listSpaceKeys',
-    uid === undefined ? { spaceId } : { spaceId, uid },
-  );
+  // One declared params type (never a conditional literal) so the wire-shape
+  // gate fingerprints `uid` as `string | undefined` — the published snapshot's
+  // recorded shape (sandbox-protocol 0.15.0). And `invoke`, not the local
+  // `request` helper: the gate extracts the catalog front door's call sites,
+  // and a helper call is invisible to it.
+  const params: { spaceId: string; uid?: string } = { spaceId };
+  if (uid !== undefined) params.uid = uid;
+  const rows = await invoke<Array<Record<string, unknown>>>('spaces:listSpaceKeys', params);
   // Project, never coerce (the host store's own doctrine): the four public JWK
   // fields are copied verbatim and EVERYTHING else is dropped — a row carrying a
   // private half (`d`) does not propagate; a malformed row is the host's to
