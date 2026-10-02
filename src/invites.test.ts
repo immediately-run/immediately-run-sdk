@@ -39,7 +39,10 @@ import {
   declineInvite,
   getInvites,
   onInvitesChange,
+  publishSpaceKey,
+  listSpaceKeys,
   type Invite,
+  type PublishedSpaceKey,
 } from './mounts';
 
 beforeEach(() => {
@@ -141,6 +144,57 @@ describe('invites — SDK surface (§6.4/§7)', () => {
       protocolRequest.mockResolvedValue(fail('forbidden'));
       await expect(acceptInvite('never-invited')).rejects.toMatchObject({ code: 'forbidden' });
       expect(typeof acceptInvite).toBe('function');
+    });
+  });
+
+  describe('R3-633f — the space keyring surface (REALTIME_MESSAGING §6.1)', () => {
+    const pubRow = {
+      uid: 'uid-of-bob',
+      kid: 'kid-1',
+      pub: { kty: 'EC', crv: 'P-256', x: 'x', y: 'y' },
+      alg: 'ECDH-P256',
+      addedAt: 1_700_000_000_000,
+    };
+
+    it("publishSpaceKey('s') drives ('spaces', 'publishSpaceKey', [{ spaceId: 's' }]) and unwraps { kid, created }", async () => {
+      protocolRequest.mockResolvedValue(ok({ ok: true, kid: 'kid-1', created: true }));
+      const res = await publishSpaceKey('space-1');
+      expect(protocolRequest).toHaveBeenCalledWith('spaces', 'publishSpaceKey', [{ spaceId: 'space-1' }]);
+      expect(res).toEqual({ kid: 'kid-1', created: true });
+    });
+
+    it("listSpaceKeys('s') drives ('spaces', 'listSpaceKeys', [{ spaceId: 's' }]) and returns the member rows", async () => {
+      protocolRequest.mockResolvedValue(ok([pubRow]));
+      const res = await listSpaceKeys('space-1');
+      expect(protocolRequest).toHaveBeenCalledWith('spaces', 'listSpaceKeys', [{ spaceId: 'space-1' }]);
+      expect(res).toEqual([pubRow]);
+    });
+
+    it('the targeted probe sends uid only when given', async () => {
+      protocolRequest.mockResolvedValue(ok([pubRow]));
+      await listSpaceKeys('space-1', 'uid-of-bob');
+      expect(protocolRequest).toHaveBeenCalledWith('spaces', 'listSpaceKeys', [
+        { spaceId: 'space-1', uid: 'uid-of-bob' },
+      ]);
+    });
+
+    it('a host refusal rejects with the typed code (matching the acceptInvite case)', async () => {
+      protocolRequest.mockResolvedValue(fail('forbidden', 'not a member of this space'));
+      await expect(listSpaceKeys('space-1')).rejects.toMatchObject({ code: 'forbidden' });
+      protocolRequest.mockResolvedValue(fail('not-found', 'member has not published a space key'));
+      await expect(listSpaceKeys('space-1', 'uid-of-bob')).rejects.toMatchObject({ code: 'not-found' });
+      protocolRequest.mockResolvedValue(fail('cancelled'));
+      await expect(publishSpaceKey('space-1')).rejects.toMatchObject({ code: 'cancelled' });
+    });
+
+    it('§16 boundary: a host row that (wrongly) carries a `d` field is NOT propagated — the returned object has no key for it', async () => {
+      const poisoned = { ...pubRow, d: 'PRIVATE-SCALAR', pub: { ...pubRow.pub, d: 'PRIVATE-SCALAR' } };
+      protocolRequest.mockResolvedValue(ok([poisoned]));
+      const res: PublishedSpaceKey[] = await listSpaceKeys('space-1');
+      expect(res).toEqual([pubRow]);
+      expect(Object.keys(res[0])).not.toContain('d');
+      expect(Object.keys(res[0].pub)).not.toContain('d');
+      expect(JSON.stringify(res)).not.toContain('PRIVATE-SCALAR');
     });
   });
 });
