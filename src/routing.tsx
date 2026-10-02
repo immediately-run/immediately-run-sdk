@@ -8,7 +8,7 @@ import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 import { takeQueuedEntryState } from './entryState';
-import { URLCHANGE } from './generated/protocol';
+import { URLCHANGE, type UrlchangePayload } from './generated/protocol';
 
 /** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
 export type AppliedRoutingRule = {
@@ -126,7 +126,7 @@ export const setViewedDocumentResolver = (
   viewedDocumentResolver = resolver;
 };
 
-export const navigate = (target: string, opts?: { viewedDocument?: string | null }) => {
+export const navigate = (target: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
   console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
   // wire (the host derives from the URL convention). A resolver throw is
@@ -146,12 +146,23 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
   // this call is the one moment the app knows a navigation is happening (R3-627).
   // The host stamps it on the current entry before pushing the target, and hands it
   // back if the reader ever returns; it never parses it.
+  //
+  // R3-874: `replace: true` asks the host to REPLACE the current entry instead of
+  // pushing (an app whose URL encodes view state would otherwise flood history).
+  // The host ignores it for out-of-prefix targets (an app must not erase the entry
+  // the user would press Back to reach — G-CUST-6). The message is built as ONE
+  // typed value — the wire-shape gate fingerprints the declared UrlchangePayload,
+  // and a spread-built union would extract as 'any' and never match (protocol#38).
   const entryState = takeQueuedEntryState();
-  sendMessage(URLCHANGE, {
+  const msg: UrlchangePayload = {
     url: target,
     back: false,
     forward: false,
     ...(entryState ? { entryState } : {}),
     ...declared,
-  });
+    // The wire convention is absence, never `false` (the gate fingerprints the
+    // shape — an explicit false would be a field present with a value).
+    ...(opts?.replace === true ? { replace: true as const } : {}),
+  };
+  sendMessage(URLCHANGE, msg);
 };
