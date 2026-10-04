@@ -180,3 +180,49 @@ describe('SandboxMount.bundle — federated bundle facts on the descriptor (R3-5
     expect('bundle' in getMounts()[0]).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// R3-876 (APP_CUSTOMIZATION_SPEC §5a): a delegation announcement may carry
+// `readerCanEdit` — the host's advisory reading of whether the READER can edit the
+// delegation's source. Additive data, exactly like `bundle`: an announcement
+// without it is unchanged, and the field round-trips as announced.
+// ---------------------------------------------------------------------------
+
+describe('SandboxMount.readerCanEdit — the advisory edit hint (R3-876)', () => {
+  let host: MockHost;
+  beforeEach(() => {
+    host = createMockHost();
+    host.install();
+  });
+  afterEach(() => host.uninstall());
+
+  it('round-trips the hint through getMounts() and onMountsChange()', async () => {
+    const { getMounts, onMountsChange } = load();
+    const mount = {
+      id: 'task-9:bundle',
+      path: '/task/task-9/bundle',
+      type: 'task-delegation',
+      mode: 'ro',
+      readerCanEdit: true,
+    };
+    const seen: unknown[][] = [];
+    const unsub = onMountsChange((mounts) => seen.push(mounts));
+    await new Promise((r) => setTimeout(r, 0));
+    host.emit({ type: 'mount-add', mount });
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(getMounts()).toEqual([mount]);
+    expect(seen[seen.length - 1]).toEqual([mount]);
+    unsub();
+  });
+
+  it('a hint-less announcement stays hint-less (absent = unknown, not false)', async () => {
+    const { getMounts } = load();
+    const plain = { id: 'task-9:bundle', path: '/task/task-9/bundle', type: 'task-delegation', mode: 'ro' };
+    expect(getMounts()).toEqual([]); // initializes the transport cache BEFORE the announce
+    await new Promise((r) => setTimeout(r, 0));
+    host.emit({ type: 'mount-add', mount: plain });
+    await new Promise((r) => setTimeout(r, 0));
+    expect('readerCanEdit' in getMounts()[0]).toBe(false);
+  });
+});

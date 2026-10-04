@@ -16,6 +16,23 @@ export type AppliedRoutingRule = {
   pathParameters?: Record<string, string>;
 };
 
+/** The `urlchange` wire payload, exactly as `@immediately-run/sandbox-protocol`'s
+ *  contract declares it (snapshots/sdk.json). Both call sites (the send below and
+ *  the listener in boot.tsx) are annotated with it so the protocol gate
+ *  fingerprints the DECLARED shape rather than a literal's inferred one — and so a
+ *  future field cannot drift onto the wire untyped. */
+export interface UrlChangeMessage {
+  url: string;
+  back: boolean;
+  forward: boolean;
+  /** Scratch for the entry being left/arrived at (R3-627); opaque to the host. */
+  entryState?: Record<string, unknown> | undefined;
+  /** Replace rather than push the host history entry (R3-874). */
+  replace?: false | true | undefined;
+  /** The app's declaration of which document a navigation shows (null = none). */
+  viewedDocument?: string | null | undefined;
+}
+
 /** Build the full outer href for an in-app target (absolute `sandboxPath` or a
  *  path relative to the current route), e.g. for an `href` attribute. */
 export const useTinkerableLink = (newSandboxLocation: string) => {
@@ -147,11 +164,12 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
   // The host stamps it on the current entry before pushing the target, and hands it
   // back if the reader ever returns; it never parses it.
   const entryState = takeQueuedEntryState();
-  sendMessage(URLCHANGE, {
+  const message: UrlChangeMessage = {
     url: target,
     back: false,
     forward: false,
     ...(entryState ? { entryState } : {}),
     ...declared,
-  });
+  };
+  sendMessage(URLCHANGE, message);
 };

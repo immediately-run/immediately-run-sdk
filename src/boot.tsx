@@ -12,7 +12,7 @@ import { getInitialContext, updateContext } from './contextUtils';
 import { getInjectedMetadataEmitter, resolveMetadataSource } from './injectedBundler';
 import { MDXProvider } from './MDXProvider';
 import { ModuleCache, ModuleCacheContextProvider } from './moduleCache';
-import { Router } from './routing';
+import { Router, type UrlChangeMessage } from './routing';
 import type { RoutingSpec } from './RoutingSpec';
 import { FilesMetadata } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
@@ -75,7 +75,7 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
 export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingSpec; children?: ReactNode }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
-    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }) => {
+    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }: UrlChangeMessage) => {
       // R3-627: record what the host says about this arrival BEFORE the route state
       // updates, so a consumer reacting to the new route already sees the scratch
       // and the direction that produced it.

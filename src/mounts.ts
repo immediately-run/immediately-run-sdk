@@ -132,6 +132,18 @@ export interface SandboxMount {
    * and on older hosts.
    */
   bundle?: SandboxMountBundle;
+  /**
+   * R3-876 (APP_CUSTOMIZATION_SPEC §5a): the host's advisory reading of whether the
+   * READER can edit this delegation's source — computed from the reader's own
+   * authority (their role on the source space, or sign-in for a working tree), NOT
+   * from anything about your own mount. Gate an Edit affordance on it
+   * (`requestEdit({ bundleFile })` is the call it hints at): offer the control when
+   * `true`, hide it when `false`, and treat an absent hint (older host, non-delegation
+   * mount) as "unknown — offer and let the refusal tell you". Display-only: it is
+   * never an authority input, and the host re-announces the mount when a role change
+   * flips it.
+   */
+  readerCanEdit?: boolean;
 }
 
 /** The bundle facts a federated mount descriptor carries (§4a.3). */

@@ -1,5 +1,5 @@
 import { protocolRequest } from './sandboxUtils';
-import { throwOnRefusal } from './protocolRefusal';
+import { throwOnRefusal, type CodedRefusalError } from './protocolRefusal';
 import { SCHEMES } from './protocolSchemes';
 import { PROTOCOL_EDITOR } from './generated/protocol';
 
@@ -96,8 +96,9 @@ export const openInEditor = (path: string, selection?: EditorSelection, opts?: E
 /**
  * Where to land when entering the edit experience (EDITOR_FIRST_EDITING_SPEC §6).
  *
- * Two target classes, and **at most one** may be given — supplying both is refused
- * `invalid-params`. Omit both to edit the current route's entry.
+ * Three target classes, and **at most one** may be given — supplying more than one is
+ * refused `invalid-params` (client-side, before anything is sent). Omit all three to
+ * edit the current route's entry.
  *
  * - **Own-source** (`path`): a repo-relative path in the CURRENT repo. Self-scoped —
  *   the app you are already running; the host navigates within the current route,
@@ -107,8 +108,17 @@ export const openInEditor = (path: string, selection?: EditorSelection, opts?: E
  *   unheld one is `forbidden`, and indistinguishably so from one that does not exist,
  *   because an app must not be able to probe for mounts (no existence oracle).
  *   Editing a file *outside* your mounts stays picker-mediated (`pick-file`).
+ * - **Bundle-file** (`bundleFile`, R3-876 / APP_CUSTOMIZATION_SPEC §5a): a
+ *   bundle-relative path inside a directory delegated to you READ-ONLY (an opener's
+ *   chroot). The host finds which of your held delegations contains it — you never
+ *   name a mount — and opens the delegation's SOURCE file in the main-pane editor
+ *   under the READER's authority: your chroot is never upgraded, and no delegation
+ *   is minted for you. The request needs a real user gesture (transient activation,
+ *   sampled on the host document) and is refused `no-activation` without one; a
+ *   path outside every delegation you hold is `forbidden`, indistinguishable from a
+ *   missing one.
  *
- * A URI, a `..` segment, or a NUL is refused `invalid-params` in either class.
+ * A URI, a `..` segment, or a NUL is refused `invalid-params` in any class.
  */
 export interface EditTarget {
   /** A repo-relative working-tree path in the current repo to focus once in edit
@@ -116,13 +126,17 @@ export interface EditTarget {
   path?: string;
   /** A file in one of YOUR OWN mounts, by the portable mount reference. `relPath` is
    *  mount-relative and leading-slash (e.g. `/notes/idea.mdx`). Mutually exclusive
-   *  with {@link EditTarget.path}.
+   *  with {@link EditTarget.path} and {@link EditTarget.bundleFile}.
    *
    *  There is no `mode` here on purpose: writability is the HOST's live reading of
    *  the mount, not the caller's claim. A `ro` mount — which is also how an anonymous
    *  share-link viewer surfaces — is refused `read-only` at call time, before the
    *  editor is entered, so you never land in an editor that cannot save. */
   file?: { mountId: string; relPath: string };
+  /** A bundle-relative, leading-slash path inside a read-only delegation you hold
+   *  (R3-876 — see the class note above). Mutually exclusive with
+   *  {@link EditTarget.path} and {@link EditTarget.file}. */
+  bundleFile?: string;
 }
 
 /** An error from {@link requestEdit}, carrying a machine-readable `.code`.
@@ -135,11 +149,13 @@ export interface EditTarget {
  */
 export interface RequestEditError extends Error {
   code:
-    | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer) — HIDE the affordance
-    | 'forbidden' // the host refuses: a cross-repo target, or a mount you do not hold
-    | 'invalid-params' // the target was malformed (URI / `..` / NUL / both target classes at once)
-    | 'not-found' // the mount-file target does not exist — and asking did NOT create it
+    | 'read-only' // editing isn't possible here (a `ro` mount / anonymous viewer; for `bundleFile`: the READER cannot edit the source) — HIDE the affordance
+    | 'forbidden' // the host refuses: a cross-repo target, a mount you do not hold, or a `bundleFile` outside every delegation you hold
+    | 'invalid-params' // the target was malformed (URI / `..` / NUL / more than one target class at once)
+    | 'not-found' // the mount-file/bundle-file target does not exist — and asking did NOT create it
     | 'no-target' // there is no host editor session to enter
+    | 'no-activation' // R3-876: a `bundleFile` request without transient user activation on the host document (G-CUST-11) — re-issue from a real click
+    | 'cancelled' // the user dismissed an interactive host UX along the way
     | 'unknown';
 }
 
@@ -162,9 +178,23 @@ export interface RequestEditError extends Error {
  * {@link RequestEditError} (`.code`). Treat `read-only`/`forbidden` as "editing is
  * not available — hide the affordance," never as an error to surface to the user.
  * `not-found` means the file is not there; nothing is created by asking to edit it.
+ *
+ * Naming more than one target class is refused client-side (`invalid-params`),
+ * before anything reaches the wire: a precedence rule is a silent reinterpretation
+ * of an ambiguous request, and the one thing worse than refusing an edit target is
+ * editing a different file than the caller named.
  */
-export const requestEdit = (target?: EditTarget): Promise<void> =>
-  editorRequest('requestEdit', target ? { ...target } : {});
+export const requestEdit = (target?: EditTarget): Promise<void> => {
+  const classes = [target?.path, target?.file, target?.bundleFile].filter((t) => t !== undefined).length;
+  if (classes > 1) {
+    // Client-side twin of the host gate's three-way rule (R3-876): refuse before
+    // the wire so the ambiguous request is never in flight.
+    const err = new Error('requestEdit: give at most one of `path`, `file` or `bundleFile`') as CodedRefusalError;
+    err.code = 'invalid-params';
+    return Promise.reject(err);
+  }
+  return editorRequest('requestEdit', target ? { ...target } : {});
+};
 
 // ---------------------------------------------------------------------------
 // Editor SESSION management (EDITOR_AS_APP_SPEC §5.1; editor-as-app plan Phase
