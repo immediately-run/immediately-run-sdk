@@ -45,8 +45,8 @@ const editorRequest = async (method: string, arg: Record<string, unknown>): Prom
     // R3-853: a `too-large` refusal may carry the host's `limitBytes` — re-attach
     // it to the thrown error (throwOnRefusal builds a code+message error only).
     // Only ever set by `upload` today; forwarded generically and harmlessly. The
-    // optional chain is load-bearing (review round 1): a null/undefined reply is
-    // a coded refusal, never a TypeError from this read (R3-817's property).
+    // `res &&` narrowing guard is load-bearing (review round 1): a null/undefined
+    // reply is a coded refusal, never a TypeError from this read (R3-817's property).
     const limit = res && res.ok === false ? res.limitBytes : undefined;
     if (typeof limit === 'number') (e as EditorWriteError).limitBytes = limit;
     throw e;
