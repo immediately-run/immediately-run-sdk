@@ -279,7 +279,7 @@
     "EditorOpenOptions": "interface(reveal?)",
     "EditorSelection": "interface(column?, line)",
     "EditorSessionError": "interface(code)",
-    "EditorWriteError": "interface(code)",
+    "EditorWriteError": "interface(code, limitBytes?)",
     "RequestEditError": "interface(code)",
     "closeFile": "fn(1..1)",
     "createFile": "fn(1..1)",
@@ -611,7 +611,7 @@
     "EditorOpenOptions": "interface(reveal?)",
     "EditorSelection": "interface(column?, line)",
     "EditorSessionError": "interface(code)",
-    "EditorWriteError": "interface(code)",
+    "EditorWriteError": "interface(code, limitBytes?)",
     "EvaluationContext": "object(dynamicImport(2..2), evaluation, exports, getModuleEvaluationContext(1..1), resolve(1..1))",
     "FS_PREFIX": "const(\"$fs:\")",
     "FeedFetchResponse": "interface(body, headers, status, statusText, truncated)",
@@ -736,7 +736,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.80.0\")",
+    "SDK_VERSION": "const(\"0.81.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1361,7 +1361,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.80.0\")",
+    "SDK_VERSION": "const(\"0.81.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1556,7 +1556,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.80.0\")"
+    "SDK_VERSION": "const(\"0.81.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

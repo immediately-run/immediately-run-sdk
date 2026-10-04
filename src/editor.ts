@@ -36,7 +36,16 @@ type EditorResult = { ok: true; data: unknown } | { ok: false; code: string; mes
 
 const editorRequest = async (method: string, arg: Record<string, unknown>): Promise<void> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_EDITOR], method, [arg])) as EditorResult;
-  throwOnRefusal(res, `editor ${method} failed`);
+  try {
+    throwOnRefusal(res, `editor ${method} failed`);
+  } catch (e) {
+    // R3-853: a `too-large` refusal may carry the host's `limitBytes` — re-attach
+    // it to the thrown error (throwOnRefusal builds a code+message error only).
+    // Only ever set by `upload` today; forwarded generically and harmlessly.
+    const limit = (res as { limitBytes?: unknown }).limitBytes;
+    if (typeof limit === 'number') (e as EditorWriteError).limitBytes = limit;
+    throw e;
+  }
 };
 
 /** Where in a file to land when opening it (R3-388). 1-indexed `line`, matching every
@@ -250,6 +259,10 @@ export const closeFile = (path: string): Promise<void> => editorRequest('close',
  *  `instanceof Error` as the only reliable test.
  */
 export interface EditorWriteError extends Error {
+  /** R3-853: on a `too-large` refusal, the host's actual limit in bytes — the
+   *  host names the limit (LARGE_FILE_SUPPORT §3); absent on an older host.
+   *  Undefined on every other code. */
+  limitBytes?: number;
   code:
     | 'forbidden' // the frame lacks `editor:write` (first-party-only)
     | 'not-found' // the target file/folder does not exist (delete/rename)
@@ -278,5 +291,7 @@ export const deleteEntry = (path: string): Promise<void> => editorRequest('delet
 export const renameEntry = (from: string, to: string): Promise<void> => editorRequest('rename', { from, to });
 
 /** Upload binary/text `bytes` to a working-tree file at `path`. Rejects
- *  `too-large` past the host's size limit. The bytes are transferred (zero-copy). */
+ *  `too-large` past the host's size limit — the rejection carries the limit as
+ *  `err.limitBytes` (R3-853: the host names the limit; absent on an older host).
+ *  The bytes are transferred (zero-copy). */
 export const uploadFile = (path: string, bytes: Uint8Array): Promise<void> => editorRequest('upload', { path, bytes });

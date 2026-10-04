@@ -7,7 +7,15 @@ jest.mock('./sandboxUtils', () => ({
 }));
 
 import { protocolRequest } from './sandboxUtils';
-import { openInEditor, requestEdit, setActiveFile, closeFile, createFile, type EditorSessionError } from './editor';
+import {
+  openInEditor,
+  requestEdit,
+  setActiveFile,
+  closeFile,
+  createFile,
+  uploadFile,
+  type EditorSessionError,
+} from './editor';
 
 const mockRequest = protocolRequest as jest.MockedFunction<typeof protocolRequest>;
 
@@ -95,5 +103,20 @@ describe('editor session intents — typed errors', () => {
     mockRequest.mockResolvedValue({ ok: false } as unknown as { ok: false; code: string; message: string });
     const err = await setActiveFile('x.ts').catch((e: EditorSessionError) => e);
     expect((err as EditorSessionError).code).toBe('unknown');
+  });
+});
+
+describe('uploadFile — the too-large refusal carries limitBytes (R3-853)', () => {
+  it('attaches the host-sent limitBytes to the thrown error', async () => {
+    mockRequest.mockResolvedValue({ ok: false, code: 'too-large', message: 'over', limitBytes: 26214400 } as never);
+    const err = await uploadFile('/big.png', new Uint8Array(4)).catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'too-large', limitBytes: 26214400 });
+  });
+
+  it('an older host (no limitBytes on the reply) rejects without the field', async () => {
+    mockRequest.mockResolvedValue({ ok: false, code: 'too-large', message: 'over' });
+    const err = await uploadFile('/big.png', new Uint8Array(4)).catch((e: unknown) => e);
+    expect(err).toMatchObject({ code: 'too-large' });
+    expect((err as { limitBytes?: unknown }).limitBytes).toBeUndefined();
   });
 });
