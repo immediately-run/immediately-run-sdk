@@ -274,7 +274,7 @@
     "useDroppedItem": "fn(0..0)"
   },
   "editor": {
-    "EditTarget": "interface(file?, path?)",
+    "EditTarget": "interface(bundleFile?, file?, path?)",
     "EditorOpenError": "interface(code)",
     "EditorOpenOptions": "interface(reveal?)",
     "EditorSelection": "interface(column?, line)",
@@ -456,6 +456,7 @@
     "TaskCompletePayload": "interface(result)",
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
+    "UrlchangePayload": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
     "VCS_STATE": "const(\"vcs-state\")",
     "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
@@ -604,7 +605,7 @@
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
     "DroppedItem": "interface(from, item, position)",
     "ENTRY_STATE_MAX_BYTES": "const(4096)",
-    "EditTarget": "interface(file?, path?)",
+    "EditTarget": "interface(bundleFile?, file?, path?)",
     "EditorContext": "interface(activeFile, dirtyPaths, openFiles, viewedFile)",
     "EditorOpenError": "interface(code)",
     "EditorOpenOptions": "interface(reveal?)",
@@ -735,7 +736,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.78.0\")",
+    "SDK_VERSION": "const(\"0.80.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -746,7 +747,7 @@
     "SafeMdastNode": "interface([index], alt?, attributes?, children?, depth?, lang?, name?, ordered?, title?, type, url?, value?)",
     "SafeMdxAttribute": "interface(name?, type, value?)",
     "SandboxFsPort": "interface(promises?, readFile?)",
-    "SandboxMount": "interface(bundle?, id?, mode?, name?, path, rules?, type)",
+    "SandboxMount": "interface(bundle?, id?, mode?, name?, path, readerCanEdit?, rules?, type)",
     "SandboxMountBundle": "interface(at?, diagnostics?, kind?, layout?)",
     "SandboxUser": "interface(login)",
     "ScrollRestoration": "fn(0..1)",
@@ -1189,7 +1190,7 @@
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
     "RestoreSpaceError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
     "Role": "union('owner'|'reader'|'writer')",
-    "SandboxMount": "interface(bundle?, id?, mode?, name?, path, rules?, type)",
+    "SandboxMount": "interface(bundle?, id?, mode?, name?, path, readerCanEdit?, rules?, type)",
     "SandboxMountBundle": "interface(at?, diagnostics?, kind?, layout?)",
     "SessionMount": "interface(forwardedToApp)",
     "SpaceError": "interface(code)",
@@ -1360,7 +1361,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.78.0\")",
+    "SDK_VERSION": "const(\"0.80.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1555,7 +1556,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.78.0\")"
+    "SDK_VERSION": "const(\"0.80.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

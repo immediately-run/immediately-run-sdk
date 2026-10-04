@@ -8,7 +8,7 @@ import { matchRoute } from './routeMatch';
 import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 import { takeQueuedEntryState } from './entryState';
-import { URLCHANGE } from './generated/protocol';
+import { URLCHANGE, type UrlchangePayload } from './generated/protocol';
 
 /** The result of matching a path: the winning {@link RoutingRule} plus its captured params. */
 export type AppliedRoutingRule = {
@@ -147,11 +147,12 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
   // The host stamps it on the current entry before pushing the target, and hands it
   // back if the reader ever returns; it never parses it.
   const entryState = takeQueuedEntryState();
-  sendMessage(URLCHANGE, {
+  const message: UrlchangePayload = {
     url: target,
     back: false,
     forward: false,
     ...(entryState ? { entryState } : {}),
     ...declared,
-  });
+  };
+  sendMessage(URLCHANGE, message);
 };

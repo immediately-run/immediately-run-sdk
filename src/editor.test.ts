@@ -7,7 +7,7 @@ jest.mock('./sandboxUtils', () => ({
 }));
 
 import { protocolRequest } from './sandboxUtils';
-import { openInEditor, setActiveFile, closeFile, createFile, type EditorSessionError } from './editor';
+import { openInEditor, requestEdit, setActiveFile, closeFile, createFile, type EditorSessionError } from './editor';
 
 const mockRequest = protocolRequest as jest.MockedFunction<typeof protocolRequest>;
 
@@ -48,9 +48,35 @@ describe('editor SDK wrappers — request shape', () => {
     ['setActiveFile', () => setActiveFile('src/App.tsx'), 'setActive', { path: 'src/App.tsx' }],
     ['closeFile', () => closeFile('src/App.tsx'), 'close', { path: 'src/App.tsx' }],
     ['createFile', () => createFile('src/new.ts'), 'createFile', { path: 'src/new.ts' }],
+    // R3-876: the bundleFile target class travels as that shape (and no other key).
+    [
+      'requestEdit({ bundleFile })',
+      () => requestEdit({ bundleFile: '/notes/idea.mdx' }),
+      'requestEdit',
+      { bundleFile: '/notes/idea.mdx' },
+    ],
+    [
+      'requestEdit({ file })',
+      () => requestEdit({ file: { mountId: 'space:abc', relPath: '/n.mdx' } }),
+      'requestEdit',
+      { file: { mountId: 'space:abc', relPath: '/n.mdx' } },
+    ],
+    ['requestEdit()', () => requestEdit(), 'requestEdit', {}],
   ])('%s → protocol-editor %s', async (_name, call, method, arg) => {
     await call();
     expect(mockRequest).toHaveBeenCalledWith('editor', method, [arg]);
+  });
+});
+
+describe('requestEdit — client-side mutual exclusion (R3-876)', () => {
+  it.each([
+    ['path + bundleFile', { path: 'a.ts', bundleFile: '/notes/idea.mdx' }],
+    ['file + bundleFile', { file: { mountId: 'space:abc', relPath: '/n.mdx' }, bundleFile: '/notes/idea.mdx' }],
+    ['path + file', { path: 'a.ts', file: { mountId: 'space:abc', relPath: '/n.mdx' } }],
+    ['all three', { path: 'a.ts', file: { mountId: 'space:abc', relPath: '/n.mdx' }, bundleFile: '/x.mdx' }],
+  ])('%s is refused invalid-params BEFORE the wire', async (_name, target) => {
+    await expect(requestEdit(target)).rejects.toMatchObject({ code: 'invalid-params' });
+    expect(mockRequest).not.toHaveBeenCalled();
   });
 });
 

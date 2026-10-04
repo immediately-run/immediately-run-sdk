@@ -18,7 +18,7 @@ import { FilesMetadata } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
 import { TinkerableContext, TinkerableState } from './TinkerableContext';
 import { FILES_PREFIX } from './urlUtils';
-import { METADATA_UPDATE, URLCHANGE } from './generated/protocol';
+import { METADATA_UPDATE, URLCHANGE, type UrlchangePayload } from './generated/protocol';
 import { receiveNavigation } from './entryState';
 
 /** A map of MDX component overrides, or a function that receives the platform
@@ -75,7 +75,7 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
 export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingSpec; children?: ReactNode }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
-    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }) => {
+    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }: UrlchangePayload) => {
       // R3-627: record what the host says about this arrival BEFORE the route state
       // updates, so a consumer reacting to the new route already sees the scratch
       // and the direction that produced it.
