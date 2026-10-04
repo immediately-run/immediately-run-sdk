@@ -1,6 +1,7 @@
 // routing.tsx — the `navigate` wire payload. R3-876 typed the `urlchange` send
-// (UrlChangeMessage) so the protocol gate fingerprints the DECLARED contract
-// shape; these tests pin the runtime message that type describes.
+// (the contract's own `UrlchangePayload`, imported from './generated/protocol') so
+// the protocol gate fingerprints the DECLARED shape; these tests pin the runtime
+// message that type describes.
 
 jest.mock('./sandboxUtils', () => ({
   sendMessage: jest.fn(),
