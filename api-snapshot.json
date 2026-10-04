@@ -798,7 +798,6 @@
     "ToolResultBlock": "object(content, is_error?, tool_use_id, type)",
     "ToolUseBlock": "object(id, input, name, type)",
     "UNATTENDED_TIMEOUT_MS": "const(30000)",
-    "UrlChangeMessage": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
     "VcsActionError": "interface(code)",
     "VcsAgentSession": "interface(conversationId, messageCount, repo, running, updatedAt?)",
     "VcsBranch": "interface(name, parentCommitSha, parentRef, parentRepo, upstreamPushable)",
@@ -1351,7 +1350,6 @@
   "routing": {
     "AppliedRoutingRule": "object(pathParameters?, routingRule)",
     "Router": "fn(0..0)",
-    "UrlChangeMessage": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
     "applyRoutingRule": "fn(2..2)",
     "navigate": "fn(1..2)",
     "renderRoute": "fn(2..2)",
