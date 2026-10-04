@@ -9,48 +9,22 @@
 // `bundleChrooted: true` a `$fs:` link resolves bundle-anchored — identical to
 // the ordinary spelling (the R3-319 invariant) — and the default
 // (`false`/absent) keeps the mount-absolute reading.
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
-
-import { LinkSpaceContext } from '../linkSpace';
+//
+// No filesMetadata is provided: an unloaded store is optimistic, so a resolved
+// target renders as a link (never flashes "broken") — existence is not what
+// these tests pin.
 import type { LinkSpace } from '../linkSpace';
-import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
-import { parseHref } from '../urlUtils';
+import { renderWithLinkSpace } from '../../test/renderLinkSpace';
 import { WikiLink } from './WikiLink';
 
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-const outerHref = 'https://local.immediately.run/edit/github/neumark/book/main/';
-const state = {
-  outerHref,
-  navigationState: parseHref(outerHref),
-  // No filesMetadata: an unloaded store is optimistic, so a resolved target
-  // renders as a link (never flashes "broken") — existence is not what these
-  // tests pin.
-} as TinkerableState;
+const BUNDLE_ROOT = '/repo/content';
 
 const renderHref = (space: LinkSpace, target: string): string | null | undefined => {
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  act(() => {
-    root.render(
-      <TinkerableContext value={state}>
-        <LinkSpaceContext value={space}>
-          <WikiLink target={target} />
-        </LinkSpaceContext>
-      </TinkerableContext>,
-    );
-  });
-  const href = container.querySelector('a')?.getAttribute('href');
-  act(() => {
-    root.unmount();
-    container.remove();
-  });
+  const r = renderWithLinkSpace(<WikiLink target={target} />, { space });
+  const href = r.href();
+  r.unmount();
   return href;
 };
-
-const BUNDLE_ROOT = '/repo/content';
 
 describe('WikiLink — bundleChrooted forwarding (R3-783)', () => {
   it('under `bundleChrooted: true` a `$fs:` link resolves bundle-anchored', () => {

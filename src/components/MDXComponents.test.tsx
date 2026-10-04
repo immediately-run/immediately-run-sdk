@@ -8,47 +8,20 @@
 // grant still resolved mount-absolute. Both directions pinned: chrooted
 // collapses `$fs:` to the scoped root (identical to the ordinary spelling); the
 // default keeps the mount-absolute reading.
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
-
-import { LinkSpaceContext } from '../linkSpace';
 import type { LinkSpace } from '../linkSpace';
-import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
-import { parseHref } from '../urlUtils';
+import { renderWithLinkSpace } from '../../test/renderLinkSpace';
 import { DEFAULT_MDX_COMPONENTS } from './MDXComponents';
-
-(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-
-const outerHref = 'https://local.immediately.run/edit/github/neumark/book/main/';
-const state = {
-  outerHref,
-  navigationState: parseHref(outerHref),
-} as TinkerableState;
 
 const Anchor = DEFAULT_MDX_COMPONENTS.a;
 
+const BUNDLE_ROOT = '/repo/content';
+
 const renderHref = (space: LinkSpace, href: string): string | null | undefined => {
-  const container = document.createElement('div');
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  act(() => {
-    root.render(
-      <TinkerableContext value={state}>
-        <LinkSpaceContext value={space}>
-          <Anchor href={href}>a note</Anchor>
-        </LinkSpaceContext>
-      </TinkerableContext>,
-    );
-  });
-  const rendered = container.querySelector('a')?.getAttribute('href');
-  act(() => {
-    root.unmount();
-    container.remove();
-  });
+  const r = renderWithLinkSpace(<Anchor href={href}>a note</Anchor>, { space });
+  const rendered = r.href();
+  r.unmount();
   return rendered;
 };
-
-const BUNDLE_ROOT = '/repo/content';
 
 describe('MDXComponents `a` — bundleChrooted forwarding (R3-783)', () => {
   it('under `bundleChrooted: true` a `$fs:` href resolves bundle-anchored', () => {

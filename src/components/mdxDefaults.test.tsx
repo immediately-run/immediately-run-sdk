@@ -11,6 +11,7 @@ import { TinkerableContext, type TinkerableState } from '../TinkerableContext';
 import { RenderExportedComponentContext } from './Include';
 import { Admonition, DEFAULT_MDX_COMPONENTS, HeadingAnchor, WikiLink } from './MDXComponents';
 import { LinkSpaceContext } from '../linkSpace';
+import { renderWithLinkSpace } from '../../test/renderLinkSpace';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -324,6 +325,9 @@ describe('link spaces (R3-273)', () => {
     '/app/content/sub/other.mdx': { title: 'Nested sibling' },
   } as TinkerableState['filesMetadata'];
 
+  // R3-783: the mount-under-LinkSpaceContext plumbing is the shared harness
+  // (test/renderLinkSpace.tsx) — one copy, shared with the WikiLink /
+  // MDXComponents bundleChrooted suites, so they cannot drift.
   const renderSpaced = (
     ui: ReactNode,
     {
@@ -338,22 +342,11 @@ describe('link spaces (R3-273)', () => {
       files?: TinkerableState['filesMetadata'];
     } = {},
   ) => {
-    const tctx: TinkerableState = { ...ctx, filesMetadata: files };
-    const rctx = currentFile
-      ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ({ evaluationContext: { evaluation: { module: { filepath: currentFile, source: '' } } } } as any)
-      : null;
     // `bundleRoot` is stated only when the caller states it: an absent key is what
     // makes the deprecated-spelling fallback read `corpusRoot` at all (R3-482).
     const space: { corpusRoot: string | null; bundleRoot?: string | null } = { corpusRoot };
     if (bundleRoot !== undefined) space.bundleRoot = bundleRoot;
-    return render(
-      <TinkerableContext value={tctx}>
-        <LinkSpaceContext value={space}>
-          <RenderExportedComponentContext value={rctx}>{ui}</RenderExportedComponentContext>
-        </LinkSpaceContext>
-      </TinkerableContext>,
-    );
+    return renderWithLinkSpace(ui, { space, currentFile, files });
   };
 
   it('a `$fs:` wikilink resolves mount-absolute even under a corpusRoot', () => {
