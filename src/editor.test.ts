@@ -120,3 +120,12 @@ describe('uploadFile — the too-large refusal carries limitBytes (R3-853)', () 
     expect((err as { limitBytes?: unknown }).limitBytes).toBeUndefined();
   });
 });
+
+describe('editorRequest — a malformed reply is a coded refusal, never a TypeError (R3-817, R3-853 review)', () => {
+  it('a null reply rejects coded — the limitBytes read never masks it', async () => {
+    mockRequest.mockResolvedValue(null as never);
+    const err = await uploadFile('/big.png', new Uint8Array(4)).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(Error);
+    expect((err as { code?: string }).code).toBe('unknown');
+  });
+});
