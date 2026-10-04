@@ -69,6 +69,10 @@ export const WikiLink = ({
   // presence rule as mdx-plugins' statedBundleRoot; twin read in MDXComponents.tsx.
   const space = use(LinkSpaceContext);
   const bundleRoot = space.bundleRoot !== undefined ? space.bundleRoot : space.corpusRoot ?? null;
+  // R3-783: forward the chroot flag too (BUNDLE_LAYERS_SPEC §9) — under a
+  // bundle-chroot'd grant `$fs:` collapses to the scoped root. Without this the
+  // provider's `bundleChrooted` was decided-but-not-consumed on the generic path.
+  const bundleChrooted = space.bundleChrooted ?? false;
   const renderContext = use(RenderExportedComponentContext);
   const currentFile = renderContext?.evaluationContext?.evaluation?.module?.filepath;
 
@@ -100,7 +104,7 @@ export const WikiLink = ({
   // default space (bundle-rooted absolute targets when an enclosing provider
   // declares a bundleRoot; fs-rooted otherwise) or the explicit `$fs:` prefix.
   // A malformed `$fs:` target renders BROKEN, never an anchor.
-  const resolution = resolveLinkTarget(pathPart, { currentFile, bundleRoot });
+  const resolution = resolveLinkTarget(pathPart, { currentFile, bundleRoot, bundleChrooted });
   if (resolution.state === 'invalid') {
     return (
       <span

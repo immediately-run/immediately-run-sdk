@@ -38,10 +38,13 @@ export const DEFAULT_MDX_COMPONENTS = {
     // mdx-plugins' statedBundleRoot (explicit `bundleRoot: null` is a VALUE).
     const space = use(LinkSpaceContext);
     const bundleRoot = space.bundleRoot !== undefined ? space.bundleRoot : space.corpusRoot ?? null;
+    // R3-783: forward the chroot flag too (twin of WikiLink's read) — under a
+    // bundle-chroot'd grant `$fs:` collapses to the scoped root.
+    const bundleChrooted = space.bundleChrooted ?? false;
     let mapped = href;
     if (href && (href.startsWith(FS_PREFIX) || (bundleRoot !== null && href.startsWith('/')))) {
       const [pathPart, frag] = splitHash(href);
-      const resolution = resolveLinkTarget(pathPart, { bundleRoot });
+      const resolution = resolveLinkTarget(pathPart, { bundleRoot, bundleChrooted });
       if (resolution.state !== 'resolved') {
         // Malformed `$fs:` (incl. scheme smuggling) — broken text, never an anchor.
         return (
