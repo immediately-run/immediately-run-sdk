@@ -45,6 +45,7 @@ export * from './secrets';
 export * from './recents'; // R3-485: the gated recent-projects read (page.home)
 export * from './openRepository'; // R3-476: host-mediated open-in-a-new-tab (route:read)
 export * from './openExternal'; // R3-619: host-brokered outward-link open (link:open)
+export * from './openBundle'; // host-mediated open of a bundle in its own tab
 export * from './llm';
 export * from './diagnostics';
 export * from './vcs';
