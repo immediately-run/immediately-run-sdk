@@ -37,7 +37,11 @@ import { underAppRoot } from './urlUtils';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const host = createMockHost();
+// One mock host PER TEST: `uninstall()` drops the discovery global but the
+// transport's handler set lives on, and `boot()` returns no unmount handle —
+// a shared instance would leak test 1's URLCHANGE/metadata listeners (and
+// their orphaned React root) into test 2's emits.
+let host: ReturnType<typeof createMockHost>;
 
 // Captured BEFORE any spying so the spy can delegate to the real implementation
 // (the identity under test is what the REAL cache returns per render).
@@ -150,7 +154,10 @@ describe('R3-940 — the app-frame Suspense replay', () => {
       });
   };
 
-  beforeEach(() => host.install());
+  beforeEach(() => {
+    host = createMockHost();
+    host.install();
+  });
   afterEach(() => {
     spy?.mockRestore();
     document.body.innerHTML = '';
