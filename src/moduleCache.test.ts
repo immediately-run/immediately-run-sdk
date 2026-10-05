@@ -9,8 +9,14 @@ import type { EvaluationContext } from './sandboxTypes';
 
 // The constructor registers a COMPILE listener on the host transport, so the
 // class cannot be instantiated outside a host realm; the mock stands in.
-const host = createMockHost();
-beforeEach(() => host.install());
+// One host PER TEST — `uninstall()` drops the discovery global but the
+// handler set lives on, and each `new ModuleCache()` adds a COMPILE listener:
+// a shared instance would fan a later test's emit out to every earlier cache.
+let host: ReturnType<typeof createMockHost>;
+beforeEach(() => {
+  host = createMockHost();
+  host.install();
+});
 afterEach(() => host.uninstall());
 
 /** The EvaluationContext-shaped base a caller (FileRouter, an app module) passes. */
