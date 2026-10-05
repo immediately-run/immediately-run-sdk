@@ -214,19 +214,61 @@ describe('registration polls for the input (request-task-input)', () => {
     expect(polls(host)).toBe(1);
   });
 
-  it('a poll the transport refuses leaves the listener registered', () => {
+  it('a poll the transport refuses is reported once, leaves the listener registered, and is retried on the next read', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      let realSend!: MockHost['transport']['sendMessage'];
+      jest.isolateModules(() => {
+        const { createMockHost } = require('./testing') as typeof import('./testing');
+        host = createMockHost();
+        realSend = host.transport.sendMessage;
+        host.transport.sendMessage = () => {
+          throw new Error('port closed');
+        };
+        host.install();
+        tasks = require('./tasks');
+      });
+      expect(polls(host)).toBe(0);
+      // The listener is up despite the failed poll: a host push still lands.
+      host.emit({ type: 'task-input', task: 'pick-file', params: {} });
+      expect(tasks.getTaskInput()).toEqual({ task: 'pick-file', params: {} });
+      // That read retried the poll and failed again — still one warning, not two.
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0][0])).toMatch(/task-input poll could not be sent/);
+      // The transport recovers: the next read sends the poll, and later reads do not repeat it.
+      host.transport.sendMessage = realSend;
+      tasks.getTaskInput();
+      tasks.getTaskInput();
+      expect(polls(host)).toBe(1);
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('a repeated delivery of the same input keeps the same object and does not re-notify; a changed one does', () => {
     let tasks!: TasksMod;
     let host!: MockHost;
     jest.isolateModules(() => {
       const { createMockHost } = require('./testing') as typeof import('./testing');
       host = createMockHost();
-      host.transport.sendMessage = () => {
-        throw new Error('port closed');
-      };
       host.install();
       tasks = require('./tasks');
     });
-    host.emit({ type: 'task-input', task: 'pick-file', params: {} });
-    expect(tasks.getTaskInput()).toEqual({ task: 'pick-file', params: {} });
+    const send = (params: Record<string, unknown>) => host.emit({ type: 'task-input', task: 'open-declared', params });
+    send({ dir: 'content', view: { name: 'board' } });
+    const first = tasks.getTaskInput();
+    // The host's later sends of the same input: past the compile edges, and the poll's answer.
+    send({ dir: 'content', view: { name: 'board' } });
+    send({ dir: 'content', view: { name: 'board' } });
+    expect(tasks.getTaskInput()).toBe(first);
+    send({ dir: 'content', view: { name: 'wiki' } });
+    expect(tasks.getTaskInput()).not.toBe(first);
+    expect(tasks.getTaskInput()).toEqual({ task: 'open-declared', params: { dir: 'content', view: { name: 'wiki' } } });
+    // A different task with the same params is a different input.
+    const second = tasks.getTaskInput();
+    host.emit({ type: 'task-input', task: 'pick-file', params: { dir: 'content', view: { name: 'wiki' } } });
+    expect(tasks.getTaskInput()).not.toBe(second);
   });
 });

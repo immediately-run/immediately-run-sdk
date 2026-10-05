@@ -1,6 +1,7 @@
 // HOST_THEMING_SPEC §9 (R3-500 wire slice) — the widened theme surface over the
 // REAL §4 transport (TESTING_AUTOMATION_SPEC §3), through the mock host:
-//   - the `theme` push now carries the full selection {theme, themeKey, modeId}
+//   - the `theme` push now carries the full selection {theme, themeKey, modeId,
+//     modeSelection}
 //     and the polarity-only surface derives from it (backwards-compatible);
 //   - the `theme-catalog` push carries the loaded-theme catalogue;
 //   - `theme:set`/`theme:sources` verbs round-trip through the protocol.

@@ -116,8 +116,8 @@ let createsInFlight = 0;
 // buffer it for a handle that has not landed yet (above).
 //
 // Registered LAZILY, on the first `launch()` call, not at module evaluation
-// (R3-421 — no subpath may throw at import time off-host). Unlike `task-input`
-// (tasks.ts), first-use registration loses nothing here: a `launch-ended` can only
+// (R3-421 — no subpath may throw at import time off-host). First-use registration
+// loses nothing here: a `launch-ended` can only
 // ever follow a launch THIS module created, and `launch()` registers the listener
 // before it sends the create request — so the listener always exists before any
 // launchId it must match. That is a claim about the LISTENER only; the handle it

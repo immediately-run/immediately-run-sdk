@@ -238,28 +238,58 @@ let inputListenerRegistered = false;
 // pulls with `request-mounts`: the host answers a callee frame with its current
 // `task-input` and answers nothing to any other frame. So the input arrives whenever
 // this listener comes to exist, and a host send that landed before it is not lost.
-const ensureInputListener = (): void => {
-  if (inputListenerRegistered) return;
+//
+// The poll has its own latch, set only once a send returns. The listener registering
+// proves there is a host, so a send that then throws is a real failure, not the off-host
+// case: it is reported once and tried again on the next read, because a poll that never
+// goes out leaves a callee looking exactly like an app that is not one.
+/** Whether two deliveries carry the same input. Params crossed a frame boundary, so they
+ *  are plain data; a value JSON cannot serialise is treated as a change. */
+const sameTaskInput = (a: TaskInput, b: TaskInput): boolean => {
+  if (a.task !== b.task) return false;
   try {
-    addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> }) => {
-      latestInput = { task: m.task, params: m.params ?? {} };
-      inputListeners.forEach((l) => l(latestInput!));
-    });
+    return JSON.stringify(a.params) === JSON.stringify(b.params);
   } catch {
-    return; // off-host: the transport resolver threw — no host to listen on
+    return false;
   }
-  inputListenerRegistered = true;
+};
+
+let inputPolled = false;
+let inputPollFailureReported = false;
+const ensureInputListener = (): void => {
+  if (!inputListenerRegistered) {
+    try {
+      addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> }) => {
+        const next: TaskInput = { task: m.task, params: m.params ?? {} };
+        // The host sends the same input several times (at mount, past each compile, and
+        // in answer to the poll). A repeat keeps the object the app already has, so an
+        // effect keyed on the input does not run again for a value that did not change.
+        if (latestInput && sameTaskInput(latestInput, next)) return;
+        latestInput = next;
+        inputListeners.forEach((l) => l(next));
+      });
+    } catch {
+      return; // off-host: the transport resolver threw — no host to listen on
+    }
+    inputListenerRegistered = true;
+  }
+  if (inputPolled) return;
   try {
     sendMessage(REQUEST_TASK_INPUT);
-  } catch {
-    // The listener is registered, so a host push still lands; only the replay is lost.
+    inputPolled = true;
+  } catch (err) {
+    if (!inputPollFailureReported) {
+      inputPollFailureReported = true;
+      console.warn('[immediately.run] the task-input poll could not be sent; it is retried on the next read.', err);
+    }
   }
 };
 
 // Register eagerly when a host transport is already present at module evaluation, and
 // lazily on first use otherwise, so importing this module off-host (plain `vite dev`)
-// never throws. Either way the registration polls, so its timing no longer decides
-// whether the input is seen.
+// never throws. Either way the registration polls, so against a host that answers the
+// poll its timing no longer decides whether the input is seen; against an older host the
+// eager registration is still what catches the send made at mount.
 ensureInputListener();
 
 /** The task params this app was invoked with, or null if it isn't a task callee.

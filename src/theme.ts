@@ -95,8 +95,8 @@ export const onHostThemeChange = (listener: (theme: HostTheme) => void): (() => 
 export const useHostTheme = (): HostTheme => channel.use().theme;
 
 /**
- * Returns the current full host theme selection — polarity, active theme key, and
- * resolved mode, and the mode selection. Use {@link useHostThemeSelection} to react to changes.
+ * Returns the current full host theme selection — polarity, active theme key,
+ * resolved mode and mode selection. Use {@link useHostThemeSelection} to react to changes.
  */
 export const getHostThemeSelection = (): HostThemeSelection => channel.get();
 
