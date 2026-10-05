@@ -84,6 +84,7 @@ jobs:
       # rewrites the tree and exits 0, which is how the sandbox repo drifted 106 files
       # behind a step that looked like a gate.
       - run: npm run format:check
+      - run: npm run check:format-staged
       # Fail fast on a circular import — the sandbox bundler infinite-loops on one
       # at app boot ("Maximum call stack size exceeded"). Caught the 0.2.7 cycle.
       - run: npm run check:circular
