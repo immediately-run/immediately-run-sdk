@@ -120,6 +120,7 @@ jobs:
           npm run check:dist-specifiers:selftest
           npm run test:subpath-imports
           npm run test:metadata-e2e
+          npm run test:netfetch-bytes-e2e
           npm run test:safe-content
       # Fail if the public surface SHRANK vs api-snapshot.json — pinned forks depend
       # on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after build because

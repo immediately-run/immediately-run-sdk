@@ -391,7 +391,7 @@
     "ProtocolContributeRunParams": "interface(branchName?, commitMessage, mode?, transcriptRequested?)",
     "ProtocolDndStartDragParams": "interface(bytes?, kind, mountId, name, relPath)",
     "ProtocolFeedFetchParams": "interface(instanceId, params)",
-    "ProtocolFetchFetchParams": "interface(body, headers, method, url)",
+    "ProtocolFetchFetchParams": "interface(body, headers, method, responseType?, url)",
     "ProtocolFetchFetchStreamParams": "interface(body, headers, method, url)",
     "ProtocolIpcPostParams": "interface(msg, to)",
     "ProtocolIpcRevealParams": "interface(to)",
@@ -631,8 +631,8 @@
     "HeadingSummary": "interface(depth, id, text)",
     "HostAttention": "interface(awaiting, kind, since)",
     "HostAttentionKind": "union('confirmation'|'consent'|'passkey'|'picker')",
-    "HostFetchInit": "interface(body?, headers?, method?)",
-    "HostFetchResponse": "interface(body, headers, status, statusText, truncated)",
+    "HostFetchInit": "interface(body?, headers?, method?, responseType?)",
+    "HostFetchResponse": "interface(body, bodyBytes?, headers, status, statusText, truncated)",
     "HostFetchStreamEvent": "interface(chunk)",
     "HostFetchStreamResult": "interface(bytes, headers, status, statusText, truncated)",
     "HostTheme": "union('dark'|'light')",
@@ -736,7 +736,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.81.0\")",
+    "SDK_VERSION": "const(\"0.82.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1245,8 +1245,8 @@
     "waitForMount": "fn(1..2)"
   },
   "netFetch": {
-    "HostFetchInit": "interface(body?, headers?, method?)",
-    "HostFetchResponse": "interface(body, headers, status, statusText, truncated)",
+    "HostFetchInit": "interface(body?, headers?, method?, responseType?)",
+    "HostFetchResponse": "interface(body, bodyBytes?, headers, status, statusText, truncated)",
     "HostFetchStreamEvent": "interface(chunk)",
     "HostFetchStreamResult": "interface(bytes, headers, status, statusText, truncated)",
     "hostFetch": "fn(1..2)",
@@ -1361,7 +1361,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.81.0\")",
+    "SDK_VERSION": "const(\"0.82.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1556,7 +1556,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.81.0\")"
+    "SDK_VERSION": "const(\"0.82.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
