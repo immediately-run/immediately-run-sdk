@@ -32,7 +32,7 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
-          package-manager-cache: false  # never use caching in release builds
+          package-manager-cache: false # never use caching in release builds
       # Trusted publishing requires npm >= 11.5.1. Pin to the 11.x line: npm@latest
       # went to 12.0.0 (2026-07), whose provenance path throws `Cannot find module
       # 'sigstore'` under `npm publish` (a .0 major regression that broke the 0.29.0
@@ -120,6 +120,7 @@ jobs:
           npm run check:dist-specifiers:selftest
           npm run test:subpath-imports
           npm run test:metadata-e2e
+          npm run test:netfetch-bytes-e2e
           npm run test:safe-content
       # Fail if the public surface SHRANK vs api-snapshot.json — pinned forks depend
       # on the API never shrinking (SDK_PACKAGING_SPEC §9). Runs after build because
@@ -217,9 +218,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     permissions:
-      contents: write   # gh-pages deploy + integrity trust-root commit/tag
-      id-token: write   # npm trusted publishing (OIDC)
-      actions: read     # read THIS run's approval history (the assertion below)
+      contents: write # gh-pages deploy + integrity trust-root commit/tag
+      id-token: write # npm trusted publishing (OIDC)
+      actions: read # read THIS run's approval history (the assertion below)
     steps:
       # Fail-closed authority gate (ways_of_working §2 "authority gates fail
       # closed"): a run that reached here without a recorded `production`
@@ -242,7 +243,7 @@ jobs:
         with:
           node-version: '24'
           registry-url: 'https://registry.npmjs.org'
-          package-manager-cache: false  # never use caching in release builds
+          package-manager-cache: false # never use caching in release builds
       - run: npm install -g npm@11
       - run: npm ci
       # A fresh build in the release job: jobs share no filesystem, and the
@@ -348,7 +349,7 @@ jobs:
           # setup-node's registry-url writes an .npmrc that binds npm to NODE_AUTH_TOKEN.
           # Clearing it forces npm to use OIDC trusted publishing instead of (empty) token
           # auth, which otherwise fails with ENEEDAUTH.
-          NODE_AUTH_TOKEN: ""
+          NODE_AUTH_TOKEN: ''
         run: |
           PKG_NAME=$(node -p "require('./package.json').name")
           PKG_VER=$(node -p "require('./package.json').version")
@@ -575,7 +576,7 @@ jobs:
       - name: Publish to npm via trusted publishing (skip if version already published)
         working-directory: safe-content
         env:
-          NODE_AUTH_TOKEN: ""
+          NODE_AUTH_TOKEN: ''
         run: |
           set -uo pipefail
           PKG_NAME=$(node -p "require('./package.json').name")

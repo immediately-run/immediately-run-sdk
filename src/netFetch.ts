@@ -18,6 +18,10 @@ export interface HostFetchInit {
   headers?: Record<string, string>;
   /** Request body for non-GET/HEAD methods (string). */
   body?: string;
+  /** R3-861: `'bytes'` returns the exact response bytes in `bodyBytes` (an image,
+   *  a PDF — never text-decoded). Default `'text'`, unchanged. A bytes response
+   *  over the host's size cap is REFUSED `too-large`, never truncated. */
+  responseType?: 'text' | 'bytes';
 }
 
 /** The serialized response from {@link hostFetch} (no live stream crosses the boundary). */
@@ -25,9 +29,14 @@ export interface HostFetchResponse {
   status: number;
   statusText: string;
   headers: Record<string, string>;
+  /** The text body — `''` when the request asked for bytes. */
   body: string;
-  /** True if the body hit the host's size cap and was truncated. */
+  /** True if the body hit the host's size cap and was truncated (text mode only —
+   *  bytes mode refuses `too-large` instead). */
   truncated: boolean;
+  /** R3-861: the exact response bytes when the request said `responseType: 'bytes'`
+   *  (transferred, zero-copy). */
+  bodyBytes?: Uint8Array;
 }
 
 /**
@@ -43,7 +52,13 @@ export interface HostFetchResponse {
  */
 export const hostFetch = async (url: string, init: HostFetchInit = {}): Promise<HostFetchResponse> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_FETCH], 'fetch', [
-    { url, method: init.method, headers: init.headers, body: init.body },
+    {
+      url,
+      method: init.method,
+      headers: init.headers,
+      body: init.body,
+      ...(init.responseType ? { responseType: init.responseType } : {}),
+    },
   ])) as { ok: true; data: HostFetchResponse } | { ok: false; code?: string; message?: string } | undefined;
   throwOnRefusal(res, 'hostFetch failed');
   return res.data;
