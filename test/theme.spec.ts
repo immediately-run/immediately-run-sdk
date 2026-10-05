@@ -33,14 +33,52 @@ describe('theme surface over the mock host transport (R3-500)', () => {
       theme: 'dark',
       themeKey: 'immediately-run-default',
       modeId: 'dark',
+      modeSelection: 'dark',
     });
+  });
+
+  it('modeSelection carries what was chosen: `system` while modeId stays the resolved mode', () => {
+    const { getHostThemeSelection } = load();
+    getHostThemeSelection();
+    host.emit({ type: 'theme', theme: 'dark', themeKey: 'key:nord', modeId: 'night', modeSelection: 'system' });
+    expect(getHostThemeSelection()).toEqual({
+      theme: 'dark',
+      themeKey: 'key:nord',
+      modeId: 'night',
+      modeSelection: 'system',
+    });
+  });
+
+  it('a selection-only change (same resolved mode) reaches subscribers', () => {
+    const { onHostThemeSelectionChange } = load();
+    const seen: string[] = [];
+    onHostThemeSelectionChange((s) => seen.push(s.modeSelection));
+    host.emit({ type: 'theme', theme: 'light', themeKey: 'k', modeId: 'light', modeSelection: 'light' });
+    host.emit({ type: 'theme', theme: 'light', themeKey: 'k', modeId: 'light', modeSelection: 'system' });
+    expect(seen).toEqual(['dark', 'light', 'system']);
+  });
+
+  it('a push without modeSelection (an older host) keeps its polarity; the selection falls back to modeId', () => {
+    const { getHostTheme, getHostThemeSelection } = load();
+    getHostThemeSelection();
+    host.emit({ type: 'theme', theme: 'light', themeKey: 'k', modeId: 'day' });
+    expect(getHostTheme()).toBe('light');
+    expect(getHostThemeSelection().modeSelection).toBe('day');
+    // A non-string value is treated the same way rather than dropping the message.
+    host.emit({ type: 'theme', theme: 'dark', themeKey: 'k', modeId: 'night', modeSelection: 7 });
+    expect(getHostThemeSelection()).toEqual({ theme: 'dark', themeKey: 'k', modeId: 'night', modeSelection: 'night' });
   });
 
   it('the widened push carries themeKey/modeId; polarity derives from it', () => {
     const { getHostTheme, getHostThemeSelection } = load();
     getHostThemeSelection(); // start the channel (lazy) so the push is received
     host.emit({ type: 'theme', theme: 'dark', themeKey: 'key:nord', modeId: 'night' });
-    expect(getHostThemeSelection()).toEqual({ theme: 'dark', themeKey: 'key:nord', modeId: 'night' });
+    expect(getHostThemeSelection()).toEqual({
+      theme: 'dark',
+      themeKey: 'key:nord',
+      modeId: 'night',
+      modeSelection: 'night',
+    });
     expect(getHostTheme()).toBe('dark');
   });
 

@@ -8,9 +8,10 @@
 //    degrades (null input, no-op complete/cancel, invokeTask rejects);
 //  - with a host present at import, the listener is registered EAGERLY at module
 //    eval — a `task-input` delivered before the app touches any task API is not
-//    missed (there is no replay/poll for `task-input` on the wire, so first-use
-//    registration would lose it);
-//  - with no host at import but one appearing later, the first use registers.
+//    missed;
+//  - with no host at import but one appearing later, the first use registers;
+//  - registering PULLS the input once (`request-task-input`), so a host send that
+//    landed before the listener existed is replayed rather than lost.
 export {}; // module scope — keep local names out of the shared-tsc global scope
 import type { MockHost } from './testing';
 
@@ -71,6 +72,7 @@ describe('on-host (transport present at module eval)', () => {
     tasks.completeTask({ done: true });
     tasks.cancelTask();
     expect(host.sent).toEqual([
+      { type: 'request-task-input', data: {} },
       { type: 'task-complete', data: { result: { done: true } } },
       { type: 'task-cancel', data: {} },
     ]);
@@ -135,7 +137,10 @@ describe('on-host, a failed send surfaces (it is not the off-host no-op)', () =>
   it('a cloneable result still just sends (no behaviour change on the happy path)', () => {
     const { tasks, host } = onHost();
     tasks.completeTask({ ok: 1 });
-    expect(host.sent).toEqual([{ type: 'task-complete', data: { result: { ok: 1 } } }]);
+    expect(host.sent).toEqual([
+      { type: 'request-task-input', data: {} },
+      { type: 'task-complete', data: { result: { ok: 1 } } },
+    ]);
   });
 });
 
@@ -152,5 +157,76 @@ describe('host appears after import (dev-server-injected substrate, late boot)',
     expect(tasks.getTaskInput()).toBeNull(); // first use — registers on the new host
     host.emit({ type: 'task-input', task: 'edit-file', params: {} });
     expect(tasks.getTaskInput()).toEqual({ task: 'edit-file', params: {} });
+  });
+});
+
+// The input is pulled, not raced. Before the poll existed, `task-input` was the one
+// host→callee message with no replay: a production callee lost every host send of it
+// while its delegated mount, which the app pulls, arrived.
+describe('registration polls for the input (request-task-input)', () => {
+  const polls = (host: MockHost): number => host.sent.filter((m) => m.type === 'request-task-input').length;
+
+  it('a host present at import is polled exactly once, and repeated reads do not poll again', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      host.install();
+      tasks = require('./tasks');
+    });
+    expect(host.sent).toEqual([{ type: 'request-task-input', data: {} }]);
+    tasks.getTaskInput();
+    tasks.getTaskInput();
+    expect(polls(host)).toBe(1);
+  });
+
+  it('the reply to the poll sets the input — a send that preceded the listener is not lost', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      // The host's first send happens before the SDK exists: nothing hears it.
+      host.emit({ type: 'task-input', task: 'open-declared', params: { dir: 'content' } });
+      host.install();
+      tasks = require('./tasks');
+    });
+    expect(tasks.getTaskInput()).toBeNull();
+    // The host answers the poll the way it answers any other: by sending the message again.
+    expect(polls(host)).toBe(1);
+    host.emit({ type: 'task-input', task: 'open-declared', params: { dir: 'content' } });
+    expect(tasks.getTaskInput()).toEqual({ task: 'open-declared', params: { dir: 'content' } });
+  });
+
+  it('a host that appears after import is polled on first use, once', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      tasks = require('./tasks');
+    });
+    expect(polls(host)).toBe(0);
+    host.install();
+    tasks.getTaskInput();
+    tasks.getTaskInput();
+    expect(polls(host)).toBe(1);
+  });
+
+  it('a poll the transport refuses leaves the listener registered', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      host.transport.sendMessage = () => {
+        throw new Error('port closed');
+      };
+      host.install();
+      tasks = require('./tasks');
+    });
+    host.emit({ type: 'task-input', task: 'pick-file', params: {} });
+    expect(tasks.getTaskInput()).toEqual({ task: 'pick-file', params: {} });
   });
 });

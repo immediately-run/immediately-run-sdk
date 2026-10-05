@@ -22,7 +22,7 @@
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { transport } from './hostTransport';
-import { PROTOCOL_TASK, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
+import { PROTOCOL_TASK, REQUEST_TASK_INPUT, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
 // ── caller side ─────────────────────────────────────────────────────────────
@@ -233,6 +233,11 @@ let inputListenerRegistered = false;
 // nothing (and let the next call retry — the same pattern as pushChannel's `start`).
 // Split out so both the module-eval attempt below and the first-use call sites share
 // one idempotent path.
+//
+// Registration then pulls the input once with `request-task-input`, the way `mounts`
+// pulls with `request-mounts`: the host answers a callee frame with its current
+// `task-input` and answers nothing to any other frame. So the input arrives whenever
+// this listener comes to exist, and a host send that landed before it is not lost.
 const ensureInputListener = (): void => {
   if (inputListenerRegistered) return;
   try {
@@ -244,18 +249,17 @@ const ensureInputListener = (): void => {
     return; // off-host: the transport resolver threw — no host to listen on
   }
   inputListenerRegistered = true;
+  try {
+    sendMessage(REQUEST_TASK_INPUT);
+  } catch {
+    // The listener is registered, so a host push still lands; only the replay is lost.
+  }
 };
 
-// The host delivers a `task-input` message to the callee's iframe right after it
-// mounts the overlay (the §5.7 "params via the region's mount event"). That wire
-// message is a plain one-shot host→app message with NO replay/poll counterpart —
-// the contract (`@immediately-run/sandbox-protocol/sdk`) marks replayable state as
-// "push … polled with request-*" (mounts, theme, auth-state, …) and `task-input`
-// is not one of them — so a listener registered only on first use could miss an
-// input delivered between module evaluation and the app's first render. Hence:
-// register EAGERLY when a host transport is already present at module eval
-// (on-host, byte-for-byte the pre-R3-421 behaviour), and lazily-on-first-use
-// otherwise, so importing this module off-host (plain `vite dev`) never throws.
+// Register eagerly when a host transport is already present at module evaluation, and
+// lazily on first use otherwise, so importing this module off-host (plain `vite dev`)
+// never throws. Either way the registration polls, so its timing no longer decides
+// whether the input is seen.
 ensureInputListener();
 
 /** The task params this app was invoked with, or null if it isn't a task callee.
