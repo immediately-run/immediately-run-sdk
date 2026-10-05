@@ -8,11 +8,11 @@
 // then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
 // that. The count is:
 //
-//   **seventeen CALL SITES across twelve FILES** — `grep -n 'throwOnRefusal(' src/*.ts`,
+//   **eighteen CALL SITES across thirteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`,
 //   minus the declaration here and minus `*.test.*`:
 //
 //   dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
-//   openExternal.ts · openRepository.ts · secrets.ts · spacesMode.ts · theme.ts (×3) ·
+//   openBundle.ts · openExternal.ts · openRepository.ts · secrets.ts · spacesMode.ts · theme.ts (×3) ·
 //   vcs.ts
 //
 // Every miscount came from the same two mistakes: reading files instead of counting the
@@ -40,18 +40,19 @@
 // normalisation, so blocks differing only in type names read as distinct.
 //
 // ---------------------------------------------------------------------------
-// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL SEVENTEEN SITES
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL EIGHTEEN SITES
 // ---------------------------------------------------------------------------
 //
 // Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
-// seventeen SITES** green — seven of the twelve files: `dnd`, `editor`, `ipc`, `mounts`,
+// eighteen SITES** green — seven of the thirteen files: `dnd`, `editor`, `ipc`, `mounts`,
 // `secrets`, `spacesMode` and `vcs`. Every one of them stubs an explicit `{ ok: false }`,
 // so they pin "throws on a refusal envelope" and nothing about a malformed or absent
-// reply. The catchers: `openExternal`, `openRepository`, the five R3-817 sites (whose
+// reply. The catchers: `openBundle`, `openExternal`, `openRepository`, the five R3-817 sites (whose
 // string-reply tests reject on a non-envelope — the mutation never throws), plus
 // `protocolRefusal.test.ts`. (Re-run 2026-09-30 on the post-fold tree: suites red —
 // feed, netFetch, theme, openExternal, openRepository, protocolRefusal; the seven
-// families green.)
+// families green. `openBundle`, the eighteenth site, was added 2026-10-05 and re-run alone
+// under the same mutation: red.)
 //
 // (An earlier version of this paragraph said "nine of the twelve sites' suites", which
 // mixes sites with suites — the exact mistake the census block above is headed about —
@@ -59,7 +60,7 @@
 //
 // Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
 // That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
-// grounds that "the consumers cover it" — they do not, and seventeen near-duplicate malformed
+// grounds that "the consumers cover it" — they do not, and eighteen near-duplicate malformed
 // -reply tests would be the duplication this extraction exists to remove.
 //
 // ---------------------------------------------------------------------------

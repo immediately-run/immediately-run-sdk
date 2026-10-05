@@ -696,9 +696,10 @@
     "NavigateSpacesError": "interface(code)",
     "NavigateSpacesErrorCode": "union('forbidden'|'invalid'|'unknown'|'unsupported')",
     "NavigationDirection": "union('back'|'forward'|'push')",
+    "OPEN_BUNDLE_REPLY_TIMEOUT_MS": "const(2000)",
     "ObjectUrlState": "interface(error, loading, url)",
     "OpenBundleError": "interface(code)",
-    "OpenBundleErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unaddressable'|'unknown'|'unsupported')",
+    "OpenBundleErrorCode": "union('forbidden'|'invalid'|'invalid-params'|'no-activation'|'timeout'|'unaddressable'|'unknown'|'unsupported')",
     "OpenBundleTarget": "interface(dir, view?)",
     "OpenExternalError": "interface(code)",
     "OpenExternalErrorCode": "union('declined'|'forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
@@ -1267,8 +1268,9 @@
     "useFsChange": "fn(0..0)"
   },
   "openBundle": {
+    "OPEN_BUNDLE_REPLY_TIMEOUT_MS": "const(2000)",
     "OpenBundleError": "interface(code)",
-    "OpenBundleErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unaddressable'|'unknown'|'unsupported')",
+    "OpenBundleErrorCode": "union('forbidden'|'invalid'|'invalid-params'|'no-activation'|'timeout'|'unaddressable'|'unknown'|'unsupported')",
     "OpenBundleTarget": "interface(dir, view?)",
     "openBundle": "fn(1..1)"
   },
