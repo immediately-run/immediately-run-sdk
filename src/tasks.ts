@@ -229,6 +229,21 @@ let latestInput: TaskInput | null = null;
 const inputListeners = new Set<(i: TaskInput) => void>();
 let inputListenerRegistered = false;
 
+/**
+ * Whether two deliveries carry the same input, compared by their JSON image. Task params are
+ * JSON: the host validates them against the contract's JSON Schema before it sends them. A
+ * value JSON cannot serialise at all (it throws) is treated as a change; a value JSON writes
+ * lossily (a `Map`, a `Blob`) is outside what a host sends, and two such inputs compare equal.
+ */
+const sameTaskInput = (a: TaskInput, b: TaskInput): boolean => {
+  if (a.task !== b.task) return false;
+  try {
+    return JSON.stringify(a.params) === JSON.stringify(b.params);
+  } catch {
+    return false;
+  }
+};
+
 // Register the `task-input` listener IF a host transport is reachable; otherwise do
 // nothing (and let the next call retry — the same pattern as pushChannel's `start`).
 // Split out so both the module-eval attempt below and the first-use call sites share
@@ -243,17 +258,6 @@ let inputListenerRegistered = false;
 // proves there is a host, so a send that then throws is a real failure, not the off-host
 // case: it is reported once and tried again on the next read, because a poll that never
 // goes out leaves a callee looking exactly like an app that is not one.
-/** Whether two deliveries carry the same input. Params crossed a frame boundary, so they
- *  are plain data; a value JSON cannot serialise is treated as a change. */
-const sameTaskInput = (a: TaskInput, b: TaskInput): boolean => {
-  if (a.task !== b.task) return false;
-  try {
-    return JSON.stringify(a.params) === JSON.stringify(b.params);
-  } catch {
-    return false;
-  }
-};
-
 let inputPolled = false;
 let inputPollFailureReported = false;
 const ensureInputListener = (): void => {
@@ -294,7 +298,9 @@ ensureInputListener();
 
 /** The task params this app was invoked with, or null if it isn't a task callee.
  *  Off-host (plain `vite dev`) this is always `null` — there is no host to invoke
- *  this app as a callee. */
+ *  this app as a callee. The object changes only when the task or its params change:
+ *  the host may deliver the same input more than once, and a repeat returns the same
+ *  object. */
 export const getTaskInput = (): TaskInput | null => {
   ensureInputListener();
   return latestInput;
@@ -349,7 +355,8 @@ export const cancelTask = (): void => {
 
 /** React hook: the task input for this callee, re-rendering when it arrives.
  *  Off-host (plain `vite dev`) it stays `null` forever — render the non-callee
- *  state rather than waiting on it. */
+ *  state rather than waiting on it. A repeated delivery of the same input is not
+ *  announced: the value's identity changes only when the task or its params do. */
 export const useTaskInput = (): TaskInput | null => {
   const [input, setInput] = useState<TaskInput | null>(getTaskInput);
   useEffect(() => {

@@ -271,4 +271,26 @@ describe('registration polls for the input (request-task-input)', () => {
     host.emit({ type: 'task-input', task: 'pick-file', params: { dir: 'content', view: { name: 'wiki' } } });
     expect(tasks.getTaskInput()).not.toBe(second);
   });
+
+  it('params JSON cannot serialise are treated as a change; params JSON writes lossily compare equal', () => {
+    let tasks!: TasksMod;
+    let host!: MockHost;
+    jest.isolateModules(() => {
+      const { createMockHost } = require('./testing') as typeof import('./testing');
+      host = createMockHost();
+      host.install();
+      tasks = require('./tasks');
+    });
+    // A BigInt makes JSON.stringify throw: every such delivery counts as new.
+    host.emit({ type: 'task-input', task: 't', params: { n: BigInt(1) } });
+    const first = tasks.getTaskInput();
+    host.emit({ type: 'task-input', task: 't', params: { n: BigInt(1) } });
+    expect(tasks.getTaskInput()).not.toBe(first);
+    // A Map is written as {} — outside what a host sends (params are schema-validated JSON),
+    // and the documented limit of the comparison: two different Maps read as the same input.
+    host.emit({ type: 'task-input', task: 'u', params: { m: new Map([['a', 1]]) } });
+    const withMap = tasks.getTaskInput();
+    host.emit({ type: 'task-input', task: 'u', params: { m: new Map([['b', 2]]) } });
+    expect(tasks.getTaskInput()).toBe(withMap);
+  });
 });
