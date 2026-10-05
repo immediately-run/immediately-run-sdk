@@ -22,7 +22,7 @@
 import { useEffect, useState } from 'react';
 import { protocolRequest, sendMessage, addListener } from './sandboxUtils';
 import { transport } from './hostTransport';
-import { PROTOCOL_TASK, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
+import { PROTOCOL_TASK, REQUEST_TASK_INPUT, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
 // ── caller side ─────────────────────────────────────────────────────────────
@@ -229,38 +229,79 @@ let latestInput: TaskInput | null = null;
 const inputListeners = new Set<(i: TaskInput) => void>();
 let inputListenerRegistered = false;
 
+/**
+ * Whether two deliveries carry the same input, compared by their JSON image. The host does
+ * not check that params are JSON; the hosts' senders build them from strings and plain
+ * objects, for which the image is faithful. A value JSON cannot serialise at all (it
+ * throws) is treated as a change; a value JSON writes lossily (a `Map`, a `Blob`) is not
+ * told apart, so two inputs differing only there compare equal.
+ */
+const sameTaskInput = (a: TaskInput, b: TaskInput): boolean => {
+  if (a.task !== b.task) return false;
+  try {
+    return JSON.stringify(a.params) === JSON.stringify(b.params);
+  } catch {
+    return false;
+  }
+};
+
 // Register the `task-input` listener IF a host transport is reachable; otherwise do
 // nothing (and let the next call retry — the same pattern as pushChannel's `start`).
 // Split out so both the module-eval attempt below and the first-use call sites share
 // one idempotent path.
+//
+// Registration then pulls the input once with `request-task-input`, the way `mounts`
+// pulls with `request-mounts`: the host answers a callee frame with its current
+// `task-input` and answers nothing to any other frame. So the input arrives whenever
+// this listener comes to exist, and a host send that landed before it is not lost.
+//
+// The poll has its own latch, set only once a send returns. The listener registering
+// proves there is a host, so a send that then throws is a real failure, not the off-host
+// case: it is reported once and tried again on the next read, because a poll that never
+// goes out leaves a callee looking exactly like an app that is not one.
+let inputPolled = false;
+let inputPollFailureReported = false;
 const ensureInputListener = (): void => {
-  if (inputListenerRegistered) return;
-  try {
-    addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> }) => {
-      latestInput = { task: m.task, params: m.params ?? {} };
-      inputListeners.forEach((l) => l(latestInput!));
-    });
-  } catch {
-    return; // off-host: the transport resolver threw — no host to listen on
+  if (!inputListenerRegistered) {
+    try {
+      addListener(TASK_INPUT, (m: { task: string; params?: Record<string, unknown> }) => {
+        const next: TaskInput = { task: m.task, params: m.params ?? {} };
+        // The host sends the same input several times (at mount, past each compile, and
+        // in answer to the poll). A repeat keeps the object the app already has, so an
+        // effect keyed on the input does not run again for a value that did not change.
+        if (latestInput && sameTaskInput(latestInput, next)) return;
+        latestInput = next;
+        inputListeners.forEach((l) => l(next));
+      });
+    } catch {
+      return; // off-host: the transport resolver threw — no host to listen on
+    }
+    inputListenerRegistered = true;
   }
-  inputListenerRegistered = true;
+  if (inputPolled) return;
+  try {
+    sendMessage(REQUEST_TASK_INPUT);
+    inputPolled = true;
+  } catch (err) {
+    if (!inputPollFailureReported) {
+      inputPollFailureReported = true;
+      console.warn('[immediately.run] the task-input poll could not be sent; it is retried on the next read.', err);
+    }
+  }
 };
 
-// The host delivers a `task-input` message to the callee's iframe right after it
-// mounts the overlay (the §5.7 "params via the region's mount event"). That wire
-// message is a plain one-shot host→app message with NO replay/poll counterpart —
-// the contract (`@immediately-run/sandbox-protocol/sdk`) marks replayable state as
-// "push … polled with request-*" (mounts, theme, auth-state, …) and `task-input`
-// is not one of them — so a listener registered only on first use could miss an
-// input delivered between module evaluation and the app's first render. Hence:
-// register EAGERLY when a host transport is already present at module eval
-// (on-host, byte-for-byte the pre-R3-421 behaviour), and lazily-on-first-use
-// otherwise, so importing this module off-host (plain `vite dev`) never throws.
+// Register eagerly when a host transport is already present at module evaluation, and
+// lazily on first use otherwise, so importing this module off-host (plain `vite dev`)
+// never throws. Either way the registration polls, so against a host that answers the
+// poll its timing no longer decides whether the input is seen; against an older host the
+// eager registration is still what catches the send made at mount.
 ensureInputListener();
 
 /** The task params this app was invoked with, or null if it isn't a task callee.
  *  Off-host (plain `vite dev`) this is always `null` — there is no host to invoke
- *  this app as a callee. */
+ *  this app as a callee. The object changes only when the task or its params change:
+ *  the host may deliver the same input more than once, and a repeat returns the same
+ *  object. */
 export const getTaskInput = (): TaskInput | null => {
   ensureInputListener();
   return latestInput;
@@ -315,7 +356,8 @@ export const cancelTask = (): void => {
 
 /** React hook: the task input for this callee, re-rendering when it arrives.
  *  Off-host (plain `vite dev`) it stays `null` forever — render the non-callee
- *  state rather than waiting on it. */
+ *  state rather than waiting on it. A repeated delivery of the same input is not
+ *  announced: the value's identity changes only when the task or its params do. */
 export const useTaskInput = (): TaskInput | null => {
   const [input, setInput] = useState<TaskInput | null>(getTaskInput);
   useEffect(() => {

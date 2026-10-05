@@ -22,7 +22,7 @@ export type HostTheme = 'light' | 'dark';
  * The full host theme selection (HOST_THEMING_SPEC §2/§9.1): the resolved polarity
  * plus the active theme's registry key and resolved mode. Carried on the widened
  * `theme` push. `modeId` is always the RESOLVED mode (never the literal `system` —
- * an app wants to know what is on screen).
+ * an app wants to know what is on screen); `modeSelection` is what was chosen.
  */
 export interface HostThemeSelection {
   /** Resolved polarity — the same value the legacy `theme` field carried. */
@@ -31,6 +31,13 @@ export interface HostThemeSelection {
   themeKey: string;
   /** The resolved active mode id of the active theme. */
   modeId: string;
+  /**
+   * What the user selected on the mode axis (HOST_THEMING_SPEC §2): a mode id of the
+   * active theme, or the literal `'system'` when the host follows the OS preference.
+   * A theme switcher highlights this; `modeId` stays what is on screen. Against a
+   * host that predates the field it equals `modeId`.
+   */
+  modeSelection: string;
 }
 
 /**
@@ -42,12 +49,15 @@ const DEFAULT_SELECTION: HostThemeSelection = {
   theme: 'dark',
   themeKey: 'immediately-run-default',
   modeId: 'dark',
+  modeSelection: 'dark',
 };
 
 // Read over the transport (SDK_PACKAGING_SPEC §4): the host pushes `theme` and
 // answers `request-theme` (wire format: site-main channelBridge.ts). The parse
-// reads ALL THREE fields so the full selection survives the transport; the
-// polarity-only surface derives from it.
+// reads every field so the full selection survives the transport; the
+// polarity-only surface derives from it. `modeSelection` is the one tolerant
+// field: a host that predates it still sends a usable polarity, so its absence
+// falls back to the resolved mode instead of dropping the message.
 const channel = createPushChannel<HostThemeSelection>({
   pushType: THEME,
   requestType: REQUEST_THEME,
@@ -55,7 +65,12 @@ const channel = createPushChannel<HostThemeSelection>({
   parse: (msg) => {
     if (msg.theme !== 'light' && msg.theme !== 'dark') return undefined;
     if (typeof msg.themeKey !== 'string' || typeof msg.modeId !== 'string') return undefined;
-    return { theme: msg.theme, themeKey: msg.themeKey, modeId: msg.modeId };
+    return {
+      theme: msg.theme,
+      themeKey: msg.themeKey,
+      modeId: msg.modeId,
+      modeSelection: typeof msg.modeSelection === 'string' ? msg.modeSelection : msg.modeId,
+    };
   },
 });
 
@@ -80,8 +95,8 @@ export const onHostThemeChange = (listener: (theme: HostTheme) => void): (() => 
 export const useHostTheme = (): HostTheme => channel.use().theme;
 
 /**
- * Returns the current full host theme selection — polarity, active theme key, and
- * resolved mode. Use {@link useHostThemeSelection} to react to changes.
+ * Returns the current full host theme selection — polarity, active theme key,
+ * resolved mode and mode selection. Use {@link useHostThemeSelection} to react to changes.
  */
 export const getHostThemeSelection = (): HostThemeSelection => channel.get();
 

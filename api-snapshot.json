@@ -438,6 +438,7 @@
     "REQUEST_SECRETS_METADATA": "const(\"request-secrets-metadata\")",
     "REQUEST_SESSION_MOUNTS": "const(\"request-session-mounts\")",
     "REQUEST_SPACES_MODE": "const(\"request-spaces-mode\")",
+    "REQUEST_TASK_INPUT": "const(\"request-task-input\")",
     "REQUEST_THEME": "const(\"request-theme\")",
     "REQUEST_THEME_CATALOG": "const(\"request-theme-catalog\")",
     "REQUEST_VCS_STATE": "const(\"request-vcs-state\")",
@@ -458,9 +459,9 @@
     "URLCHANGE": "const(\"urlchange\")",
     "UrlchangePayload": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_TASK_INPUT, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-spaces-mode'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-spaces-mode'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'spaces-mode'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
+    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-spaces-mode'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-spaces-mode'|'request-task-input'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'spaces-mode'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
   },
   "generated/spaces": {
     "AcceptInviteError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -636,7 +637,7 @@
     "HostFetchStreamEvent": "interface(chunk)",
     "HostFetchStreamResult": "interface(bytes, headers, status, statusText, truncated)",
     "HostTheme": "union('dark'|'light')",
-    "HostThemeSelection": "interface(modeId, theme, themeKey)",
+    "HostThemeSelection": "interface(modeId, modeSelection, theme, themeKey)",
     "INTERRUPTED_TURN_TEXT": "const(\"(turn interrupted by the user)\")",
     "IR_MARKERS": "const({'ir.deps', 'ir.eval', 'ir.fetch', 'ir.fmp', 'ir.interactive', 'ir.mount', 'ir.open', 'ir.refresh', 'ir.sandbox.boot', 'ir.transpile', 'ir.verify'})",
     "ImageBlock": "object(data, mimeType, type)",
@@ -736,7 +737,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.82.0\")",
+    "SDK_VERSION": "const(\"0.83.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1361,7 +1362,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.82.0\")",
+    "SDK_VERSION": "const(\"0.83.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1499,7 +1500,7 @@
   },
   "theme": {
     "HostTheme": "union('dark'|'light')",
-    "HostThemeSelection": "interface(modeId, theme, themeKey)",
+    "HostThemeSelection": "interface(modeId, modeSelection, theme, themeKey)",
     "SetHostThemeSelectionParams": "interface(mode?, theme)",
     "ThemeBundleLocation": "union({kind, path, ref?, repo}|{kind, path, spaceId})",
     "ThemeCatalog": "interface(themes)",
@@ -1556,7 +1557,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.82.0\")"
+    "SDK_VERSION": "const(\"0.83.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
