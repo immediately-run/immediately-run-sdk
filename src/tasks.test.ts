@@ -286,8 +286,8 @@ describe('registration polls for the input (request-task-input)', () => {
     const first = tasks.getTaskInput();
     host.emit({ type: 'task-input', task: 't', params: { n: BigInt(1) } });
     expect(tasks.getTaskInput()).not.toBe(first);
-    // A Map is written as {} — outside what a host sends (params are schema-validated JSON),
-    // and the documented limit of the comparison: two different Maps read as the same input.
+    // A Map is written as {}. Today's hosts send plain objects, though nothing enforces it;
+    // this is the documented limit of the comparison: two different Maps read as the same input.
     host.emit({ type: 'task-input', task: 'u', params: { m: new Map([['a', 1]]) } });
     const withMap = tasks.getTaskInput();
     host.emit({ type: 'task-input', task: 'u', params: { m: new Map([['b', 2]]) } });

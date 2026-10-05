@@ -230,10 +230,11 @@ const inputListeners = new Set<(i: TaskInput) => void>();
 let inputListenerRegistered = false;
 
 /**
- * Whether two deliveries carry the same input, compared by their JSON image. Task params are
- * JSON: the host validates them against the contract's JSON Schema before it sends them. A
- * value JSON cannot serialise at all (it throws) is treated as a change; a value JSON writes
- * lossily (a `Map`, a `Blob`) is outside what a host sends, and two such inputs compare equal.
+ * Whether two deliveries carry the same input, compared by their JSON image. The host does
+ * not check that params are JSON; the hosts' senders build them from strings and plain
+ * objects, for which the image is faithful. A value JSON cannot serialise at all (it
+ * throws) is treated as a change; a value JSON writes lossily (a `Map`, a `Blob`) is not
+ * told apart, so two inputs differing only there compare equal.
  */
 const sameTaskInput = (a: TaskInput, b: TaskInput): boolean => {
   if (a.task !== b.task) return false;
