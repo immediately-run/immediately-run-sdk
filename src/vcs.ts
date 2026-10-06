@@ -96,24 +96,27 @@ export interface VcsState {
   /** The open pull request whose head is the loaded branch, projected host-side. On the
    *  snapshot, not on `branch`, because `branch` is `null` when no sidecar names the
    *  branch (another device), which is exactly when this is needed. `null` means known:
-   *  none open; absent means an older host that does not say. */
+   *  none open; absent means an older host that does not say. `prs` lists every PR the
+   *  host polled; this names the one whose head is the working branch. */
   openPR?: { number: number; url: string } | null | undefined;
   /** The save mode a contribute form opens on (CONTRIBUTE_SPEC §15.0 rule 4). The host
    *  says `direct` only on a branch that is the user's; absent means `pr`. A default,
    *  never a permission: `direct` still needs `contribute:direct`. */
   defaultSaveMode?: 'pr' | 'direct' | undefined;
-  /** Whether the user can push to the target repository; `null` while probing. */
+  /** Whether the user can push to the target repository; `null` while probing. The same
+   *  fact as `branch.upstreamPushable`, but present when `branch` is `null`; prefer this
+   *  one when both are set. */
   canPushUpstream?: boolean | null | undefined;
   /** True when the load has no manifest, so contributions are unavailable. */
   manifestMissing?: boolean | undefined;
   /** The last diff refresh's failure; `null` after a good refresh. */
   diffError?: string | null | undefined;
   /** The diff's warnings, as text. */
-  warnings?: string[] | undefined;
+  diffWarnings?: string[] | undefined;
   /** Scaffolding paths the diff left out (repo-relative). */
   excludedPhantoms?: string[] | undefined;
   /** The manifest is truncated: saving is locked out (CONTRIBUTE_SPEC §7). */
-  truncated?: boolean | undefined;
+  manifestTruncated?: boolean | undefined;
 }
 
 /** Value before the host answers — also the value when the app may not read the
@@ -207,9 +210,9 @@ const parseVcsFacts = (msg: Record<string, unknown>): Partial<VcsState> => {
     out.canPushUpstream = msg.canPushUpstream;
   if (typeof msg.manifestMissing === 'boolean') out.manifestMissing = msg.manifestMissing;
   if (msg.diffError === null || typeof msg.diffError === 'string') out.diffError = msg.diffError;
-  if (isStringArray(msg.warnings)) out.warnings = msg.warnings;
+  if (isStringArray(msg.diffWarnings)) out.diffWarnings = msg.diffWarnings;
   if (isStringArray(msg.excludedPhantoms)) out.excludedPhantoms = msg.excludedPhantoms;
-  if (typeof msg.truncated === 'boolean') out.truncated = msg.truncated;
+  if (typeof msg.manifestTruncated === 'boolean') out.manifestTruncated = msg.manifestTruncated;
   return out;
 };
 
@@ -230,7 +233,19 @@ const channel = createPushChannel<VcsState>({
       prs,
       diffLoading: msg.diffLoading === true,
       ...(agentSession ? { agentSession } : {}),
-      ...parseVcsFacts(msg),
+      // Each key is named here, not inside the helper, so the protocol snapshot's
+      // `reads` records every field this parser consumes.
+      ...parseVcsFacts({
+        target: msg.target,
+        openPR: msg.openPR,
+        defaultSaveMode: msg.defaultSaveMode,
+        canPushUpstream: msg.canPushUpstream,
+        manifestMissing: msg.manifestMissing,
+        diffError: msg.diffError,
+        diffWarnings: msg.diffWarnings,
+        excludedPhantoms: msg.excludedPhantoms,
+        manifestTruncated: msg.manifestTruncated,
+      }),
     };
   },
 });

@@ -165,9 +165,9 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     canPushUpstream: false,
     manifestMissing: false,
     diffError: 'diff failed: timeout',
-    warnings: ['3 files over 1 MB'],
+    diffWarnings: ['3 files over 1 MB'],
     excludedPhantoms: ['.immediately-run/state.json'],
-    truncated: true,
+    manifestTruncated: true,
   };
 
   it('passes every well-typed fact through, openPR and defaultSaveMode included', () => {
@@ -202,9 +202,9 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
       'canPushUpstream',
       'manifestMissing',
       'diffError',
-      'warnings',
+      'diffWarnings',
       'excludedPhantoms',
-      'truncated',
+      'manifestTruncated',
     ]) {
       expect(got).not.toHaveProperty(k);
     }
@@ -218,9 +218,9 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     ['canPushUpstream as a string', { canPushUpstream: 'yes' }, 'canPushUpstream'],
     ['manifestMissing as 1', { manifestMissing: 1 }, 'manifestMissing'],
     ['diffError as an object', { diffError: { message: 'x' } }, 'diffError'],
-    ['warnings with a number', { warnings: ['ok', 3] }, 'warnings'],
+    ['diffWarnings with a number', { diffWarnings: ['ok', 3] }, 'diffWarnings'],
     ['excludedPhantoms not an array', { excludedPhantoms: 'a.json' }, 'excludedPhantoms'],
-    ['truncated as "true"', { truncated: 'true' }, 'truncated'],
+    ['manifestTruncated as "true"', { manifestTruncated: 'true' }, 'manifestTruncated'],
   ])('drops %s, and the snapshot still lands', (_label, bad, key) => {
     let got: VcsState | undefined;
     mod.onVcsStateChange((s) => (got = s));
