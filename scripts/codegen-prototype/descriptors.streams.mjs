@@ -7,6 +7,11 @@
 // Both bottom out at consumeStream over the same transport; the catalog name
 // `scheme:method` maps to `protocol-${scheme}` + method, so a generated
 // invokeStream() wrapper is byte-equivalent to each hand-written generator.
+//
+// One exception, temporary: contribute:run's recovery inputs (forceUpdateBranch,
+// resume) and its error's recovery/openPR describe the host wire AHEAD of
+// src/contribute.ts, which gains them with SDK #210 (roadmap R3-994) once the
+// sandbox-protocol 0.22.0 wire freeze publishes. #210 removes this note.
 
 export const types = {
   // ── contribute ──────────────────────────────────────────────────────────────
@@ -153,6 +158,10 @@ export const methods = [
           description:
             'CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript" hint (a boolean request, never bytes).',
         },
+        // Ahead of the typed wrapper on purpose (R3-984): the host's lockstep needs the
+        // descriptor to carry every host-declared param, and src/contribute.ts gains
+        // forceUpdateBranch/resume (and the error's recovery/openPR) only once the
+        // sandbox-protocol 0.22.0 wire freeze is published — SDK #210, roadmap R3-994.
         forceUpdateBranch: {
           type: 'boolean',
           description:
