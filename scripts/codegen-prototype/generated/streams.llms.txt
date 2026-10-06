@@ -2,5 +2,5 @@
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested | `ContributionEvent → ContributionResult` |
+| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested, forceUpdateBranch, resume | `ContributionEvent → ContributionResult` |
 | `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |

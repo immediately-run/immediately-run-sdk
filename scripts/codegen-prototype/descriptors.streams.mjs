@@ -7,12 +7,25 @@
 // Both bottom out at consumeStream over the same transport; the catalog name
 // `scheme:method` maps to `protocol-${scheme}` + method, so a generated
 // invokeStream() wrapper is byte-equivalent to each hand-written generator.
+//
+// One exception, temporary: contribute:run's recovery inputs (forceUpdateBranch,
+// resume) and its error's recovery/openPR describe the host wire AHEAD of
+// src/contribute.ts, which gains them with SDK #210 (roadmap R3-994) once the
+// sandbox-protocol 0.22.0 wire freeze publishes. #210 removes this note.
 
 export const types = {
   // ── contribute ──────────────────────────────────────────────────────────────
   ContributeMode: {
     description: 'The save strategy. `direct` requires the first-party `contribute:direct` capability.',
     schema: { type: 'string', enum: ['pr', 'direct'] },
+  },
+  RecoveryAction: {
+    description: 'The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12).',
+    schema: { type: 'string', enum: ['retry', 'use-different-name', 'open-pr', 'switch-to-pr'] },
+  },
+  OpenPRResumeContext: {
+    description: 'Identifiers for the open-pr resume (CT-6): the pushed branch whose PR is missing.',
+    schema: obj({ pushOwner: str(), repository: str(), branchName: str(), base: str(), head: str() }),
   },
   ContributionResult: {
     description: 'The settled outcome (the stream’s return value).',
@@ -47,7 +60,13 @@ export const types = {
         obj({ stage: konst('pr-updated'), prNumber: num(), prUrl: str(), commitSha: str() }),
         obj({ stage: konst('commit-pushed'), ref: str(), commitSha: str() }),
         obj({ stage: konst('done'), commitSha: str(), prUrl: opt(str()), prNumber: opt(num()) }),
-        obj({ stage: konst('error'), message: str(), recoverable: bool() }),
+        obj({
+          stage: konst('error'),
+          message: str(),
+          recoverable: bool(),
+          recovery: opt(ref('RecoveryAction')),
+          openPR: opt(ref('OpenPRResumeContext')),
+        }),
       ],
     },
   },
@@ -139,6 +158,16 @@ export const methods = [
           description:
             'CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript" hint (a boolean request, never bytes).',
         },
+        // Ahead of the typed wrapper on purpose (R3-984): the host's lockstep needs the
+        // descriptor to carry every host-declared param, and src/contribute.ts gains
+        // forceUpdateBranch/resume (and the error's recovery/openPR) only once the
+        // sandbox-protocol 0.22.0 wire freeze is published — SDK #210, roadmap R3-994.
+        forceUpdateBranch: {
+          type: 'boolean',
+          description:
+            'CONTRIBUTE_SPEC §8.8: update an existing caller-supplied branch; the host lineage gate still decides.',
+        },
+        resume: obj({ kind: konst('open-pr'), context: ref('OpenPRResumeContext') }),
       },
     },
     event: ref('ContributionEvent'),
