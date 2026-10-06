@@ -41,6 +41,19 @@ export interface VcsBranch {
   upstreamPushable: boolean | null;
 }
 
+/** What the working tree was loaded from (the host manifest), so a form can name and
+ *  link the target and apply §15.0 rule 2 on a tag or commit load. */
+export interface VcsTarget {
+  namespace: string;
+  repository: string;
+  ref: string;
+  refKind: 'branch' | 'tag' | 'commit';
+  /** The loaded commit. */
+  commitSha: string;
+  /** The repository's live default branch; `null` while the host does not know it. */
+  defaultBranch: string | null;
+}
+
 /** One pull request open from the current branch (host `BranchPR`). */
 export interface VcsPR {
   number: number;
@@ -78,6 +91,29 @@ export interface VcsState {
    *  the wire contract exactly (the wire-shape extractor reads union members
    *  literally). */
   agentSession?: VcsAgentSession | null | undefined;
+  /** What the working tree was loaded from; `null` when there is no manifest. */
+  target?: VcsTarget | null | undefined;
+  /** The open pull request whose head is the loaded branch, projected host-side. On the
+   *  snapshot, not on `branch`, because `branch` is `null` when no sidecar names the
+   *  branch (another device), which is exactly when this is needed. `null` means known:
+   *  none open; absent means an older host that does not say. */
+  openPR?: { number: number; url: string } | null | undefined;
+  /** The save mode a contribute form opens on (CONTRIBUTE_SPEC §15.0 rule 4). The host
+   *  says `direct` only on a branch that is the user's; absent means `pr`. A default,
+   *  never a permission: `direct` still needs `contribute:direct`. */
+  defaultSaveMode?: 'pr' | 'direct' | undefined;
+  /** Whether the user can push to the target repository; `null` while probing. */
+  canPushUpstream?: boolean | null | undefined;
+  /** True when the load has no manifest, so contributions are unavailable. */
+  manifestMissing?: boolean | undefined;
+  /** The last diff refresh's failure; `null` after a good refresh. */
+  diffError?: string | null | undefined;
+  /** The diff's warnings, as text. */
+  warnings?: string[] | undefined;
+  /** Scaffolding paths the diff left out (repo-relative). */
+  excludedPhantoms?: string[] | undefined;
+  /** The manifest is truncated: saving is locked out (CONTRIBUTE_SPEC §7). */
+  truncated?: boolean | undefined;
 }
 
 /** Value before the host answers — also the value when the app may not read the
@@ -119,6 +155,64 @@ const parseAgentSession = (v: unknown): VcsAgentSession | undefined => {
   };
 };
 
+// The R3-964/986/987 facts are optional and fail to ABSENT, field by field: a
+// malformed value is dropped so the app falls back to its old-host behaviour, and the
+// rest of the snapshot still lands. Nothing is coerced into a value the host did not send.
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+const REF_KINDS = new Set(['branch', 'tag', 'commit']);
+
+const parseTarget = (v: unknown): VcsTarget | null | undefined => {
+  if (v === null) return null;
+  if (!v || typeof v !== 'object') return undefined;
+  const t = v as Record<string, unknown>;
+  if (
+    typeof t.namespace !== 'string' ||
+    typeof t.repository !== 'string' ||
+    typeof t.ref !== 'string' ||
+    typeof t.refKind !== 'string' ||
+    !REF_KINDS.has(t.refKind) ||
+    typeof t.commitSha !== 'string' ||
+    !(t.defaultBranch === null || typeof t.defaultBranch === 'string')
+  ) {
+    return undefined;
+  }
+  return {
+    namespace: t.namespace,
+    repository: t.repository,
+    ref: t.ref,
+    refKind: t.refKind as VcsTarget['refKind'],
+    commitSha: t.commitSha,
+    defaultBranch: t.defaultBranch,
+  };
+};
+
+/** The optional R3-964/986/987 facts of a push, each present only when well-typed. */
+const parseVcsFacts = (msg: Record<string, unknown>): Partial<VcsState> => {
+  const out: Partial<VcsState> = {};
+  const target = parseTarget(msg.target);
+  if (target !== undefined) out.target = target;
+  const openPR = msg.openPR as { number?: unknown; url?: unknown } | null | undefined;
+  if (openPR === null) out.openPR = null;
+  else if (
+    openPR &&
+    typeof openPR === 'object' &&
+    typeof openPR.number === 'number' &&
+    Number.isFinite(openPR.number) &&
+    typeof openPR.url === 'string'
+  ) {
+    out.openPR = { number: openPR.number, url: openPR.url };
+  }
+  if (msg.defaultSaveMode === 'pr' || msg.defaultSaveMode === 'direct') out.defaultSaveMode = msg.defaultSaveMode;
+  if (msg.canPushUpstream === null || typeof msg.canPushUpstream === 'boolean')
+    out.canPushUpstream = msg.canPushUpstream;
+  if (typeof msg.manifestMissing === 'boolean') out.manifestMissing = msg.manifestMissing;
+  if (msg.diffError === null || typeof msg.diffError === 'string') out.diffError = msg.diffError;
+  if (isStringArray(msg.warnings)) out.warnings = msg.warnings;
+  if (isStringArray(msg.excludedPhantoms)) out.excludedPhantoms = msg.excludedPhantoms;
+  if (typeof msg.truncated === 'boolean') out.truncated = msg.truncated;
+  return out;
+};
+
 const channel = createPushChannel<VcsState>({
   pushType: VCS_STATE,
   requestType: REQUEST_VCS_STATE,
@@ -136,6 +230,7 @@ const channel = createPushChannel<VcsState>({
       prs,
       diffLoading: msg.diffLoading === true,
       ...(agentSession ? { agentSession } : {}),
+      ...parseVcsFacts(msg),
     };
   },
 });
