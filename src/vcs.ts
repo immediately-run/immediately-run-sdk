@@ -15,6 +15,7 @@
 // (site-main `channelBridge`); an app without `vcs:read` simply sees the empty
 // initial. Action side: `protocol-vcs` requests gated host-side — `refreshDiff` /
 // `refreshPRs` by `vcs:read`, `resetWorkingTree` by first-party-only `vcs:reset`.
+import { invoke } from './catalog';
 import { createPushChannel } from './pushChannel';
 import { throwOnRefusal } from './protocolRefusal';
 import { protocolRequest } from './sandboxUtils';
@@ -199,3 +200,97 @@ export const refreshPRs = (): Promise<void> => vcsRequest('refreshPRs');
  *  gate. Requires `confirm: true` (host belt-and-braces). Rejects with a
  *  {@link VcsActionError} (`.code`). */
 export const resetWorkingTree = (): Promise<void> => vcsRequest('reset', { confirm: true });
+
+// ---------------------------------------------------------------------------------------
+// R3-954 — bundle history (COLLABORATION_SESSIONS §16). Read-only history of a
+// GitHub-backed bundle mount THIS app holds (the URL-dispatched corpus, or the editor's
+// working tree): the head of its ref, the first-parent log, ancestry, files at a past
+// commit, changed paths, and the user's write permission. Gated `vcs:read`; the host
+// refuses a mount the app does not hold `forbidden`. Paths are bundle-relative (relative
+// to the mount's content directory). Each call is a literal `invoke('vcs:…')` so the
+// wire-shape gate (`protocol:check`) records its fields against the published protocol.
+
+/** One first-parent commit of a bundle's history. */
+export interface BundleCommit {
+  sha: string;
+  /** The first parent, or null for a root commit. */
+  parent: string | null;
+  message: string;
+}
+
+/**
+ * A refused bundle-history call. `code` is one of: `forbidden` (the app lacks `vcs:read`,
+ * or does not hold the mount), `unsupported` (the mount has no repository history — a
+ * space, a local tree — or the tree is too large to compare), `invalid-params` (a
+ * malformed sha or path, more than 100 paths or 5 MiB in one read, or a log longer than
+ * `max` — the message then starts `history-too-long`), `not-found` (no such commit),
+ * `budget` (the provider's rate limit is exhausted; `retryAfter` carries its wait in
+ * seconds when it sent one), `unknown`. Nothing enforces the union at runtime — treat an
+ * unlisted code as possible.
+ */
+export interface BundleHistoryError extends Error {
+  code: 'forbidden' | 'unsupported' | 'invalid-params' | 'not-found' | 'budget' | 'unknown';
+  retryAfter?: number;
+}
+
+const fromBase64 = (s: string): Uint8Array => {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+/** The commit the bundle's ref points at now. Cheap to poll: the host asks GitHub
+ *  conditionally, so an unchanged head costs no rate limit. */
+export const bundleHead = async (mountId: string): Promise<string> => {
+  const params: { mountId: string } = { mountId };
+  return (await invoke<{ sha: string }>('vcs:bundleHead', params)).sha;
+};
+
+/** First-parent commits, oldest first, from `until` (default: the head) back to — not
+ *  including — `since` (default: the root). A merge's second-parent commits never
+ *  appear. Refused (`invalid-params`, `history-too-long`) beyond `max` (default 200,
+ *  at most 1000) — never silently truncated. */
+export const bundleLog = async (
+  mountId: string,
+  opts: { since?: string; until?: string; max?: number } = {},
+): Promise<BundleCommit[]> => {
+  const params: { mountId: string; since?: string; until?: string; max?: number } = { mountId };
+  if (opts.since !== undefined) params.since = opts.since;
+  if (opts.until !== undefined) params.until = opts.until;
+  if (opts.max !== undefined) params.max = opts.max;
+  return (await invoke<{ commits: BundleCommit[] }>('vcs:bundleLog', params)).commits;
+};
+
+/** Whether commit `a` is an ancestor of commit `b` (reflexive: a commit is its own). */
+export const bundleIsAncestor = async (mountId: string, a: string, b: string): Promise<boolean> => {
+  const params: { mountId: string; a: string; b: string } = { mountId, a, b };
+  return (await invoke<{ ancestor: boolean }>('vcs:bundleIsAncestor', params)).ancestor;
+};
+
+/** Files at commit `sha`, by bundle-relative path; `null` where there is no file. At
+ *  most 100 paths and 5 MiB per call. */
+export const bundleRead = async (
+  mountId: string,
+  sha: string,
+  paths: string[],
+): Promise<Record<string, Uint8Array | null>> => {
+  const params: { mountId: string; sha: string; paths: string[] } = { mountId, sha, paths };
+  const { files } = await invoke<{ files: Record<string, string | null> }>('vcs:bundleRead', params);
+  const out: Record<string, Uint8Array | null> = {};
+  for (const [path, b64] of Object.entries(files)) out[path] = b64 === null ? null : fromBase64(b64);
+  return out;
+};
+
+/** The bundle-relative paths that differ between two commits (added, removed or changed). */
+export const bundleDiffPaths = async (mountId: string, from: string, to: string): Promise<string[]> => {
+  const params: { mountId: string; from: string; to: string } = { mountId, from, to };
+  return (await invoke<{ paths: string[] }>('vcs:bundleDiffPaths', params)).paths;
+};
+
+/** Whether the signed-in user may push to the bundle's repository (false signed out).
+ *  Use it to hide a publish affordance the user could not complete. */
+export const bundleCanWrite = async (mountId: string): Promise<boolean> => {
+  const params: { mountId: string } = { mountId };
+  return (await invoke<{ canWrite: boolean }>('vcs:bundleCanWrite', params)).canWrite;
+};

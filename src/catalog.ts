@@ -47,11 +47,13 @@ export const invoke = async <T = unknown>(name: string, params: Record<string, u
   // so callers — and any agent driving `invoke` — see the gate's verdict.
   const res = (await protocolRequest(scheme, method, [params])) as
     | { ok: true; data: unknown }
-    | { ok: false; code?: string; message?: string }
+    | { ok: false; code?: string; message?: string; retryAfter?: unknown }
     | undefined;
   if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? `${name} failed`) as Error & { code?: string };
+    const err = new Error(res?.message ?? `${name} failed`) as Error & { code?: string; retryAfter?: number };
     err.code = res?.code ?? 'unknown';
+    // R3-954: a provider rate-limit refusal (`budget`) carries the wait in seconds.
+    if (typeof res?.retryAfter === 'number') err.retryAfter = res.retryAfter;
     throw err;
   }
   return res.data as T;

@@ -177,3 +177,74 @@ describe('vcs actions — typed errors', () => {
     expect(err.code).toBe('unknown');
   });
 });
+
+describe('bundle history (R3-954)', () => {
+  const MOUNT = 'content:immediately-run/trololo';
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+
+  it.each([
+    ['bundleHead', () => mod.bundleHead(MOUNT), { mountId: MOUNT }, { sha: A }, A],
+    [
+      'bundleLog',
+      () => mod.bundleLog(MOUNT, { since: A, max: 50 }),
+      { mountId: MOUNT, since: A, max: 50 },
+      { commits: [{ sha: B, parent: A, message: 'm' }] },
+      [{ sha: B, parent: A, message: 'm' }],
+    ],
+    [
+      'bundleIsAncestor',
+      () => mod.bundleIsAncestor(MOUNT, A, B),
+      { mountId: MOUNT, a: A, b: B },
+      { ancestor: true },
+      true,
+    ],
+    [
+      'bundleDiffPaths',
+      () => mod.bundleDiffPaths(MOUNT, A, B),
+      { mountId: MOUNT, from: A, to: B },
+      { paths: ['board.json'] },
+      ['board.json'],
+    ],
+    ['bundleCanWrite', () => mod.bundleCanWrite(MOUNT), { mountId: MOUNT }, { canWrite: false }, false],
+  ])('%s drives the protocol-vcs request and unwraps the result', async (method, call, params, data, expected) => {
+    protocolRequest.mockResolvedValue({ ok: true, data });
+    await expect((call as () => Promise<unknown>)()).resolves.toEqual(expected);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', method, [params]);
+  });
+
+  it('bundleLog sends only the options given', async () => {
+    protocolRequest.mockResolvedValue({ ok: true, data: { commits: [] } });
+    await mod.bundleLog(MOUNT);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', 'bundleLog', [{ mountId: MOUNT }]);
+  });
+
+  it('bundleRead decodes base64 to bytes and keeps null for a missing file', async () => {
+    protocolRequest.mockResolvedValue({
+      ok: true,
+      data: { files: { 'board.json': btoa('{"name":"x"}'), 'gone.json': null } },
+    });
+    const files = await mod.bundleRead(MOUNT, A, ['board.json', 'gone.json']);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', 'bundleRead', [
+      { mountId: MOUNT, sha: A, paths: ['board.json', 'gone.json'] },
+    ]);
+    expect(new TextDecoder().decode(files['board.json']!)).toBe('{"name":"x"}');
+    expect(files['gone.json']).toBeNull();
+  });
+
+  it('a host refusal rejects with its typed code, and a rate limit with retryAfter', async () => {
+    protocolRequest.mockResolvedValue({ ok: false, code: 'forbidden', message: 'not held' });
+    await expect(mod.bundleHead(MOUNT)).rejects.toMatchObject({ code: 'forbidden' });
+    protocolRequest.mockResolvedValue({ ok: false, code: 'budget', message: 'rate limited', retryAfter: 30 });
+    await expect(mod.bundleLog(MOUNT)).rejects.toMatchObject({ code: 'budget', retryAfter: 30 });
+    protocolRequest.mockResolvedValue({
+      ok: false,
+      code: 'invalid-params',
+      message: 'history-too-long: more than 200',
+    });
+    await expect(mod.bundleLog(MOUNT)).rejects.toMatchObject({
+      code: 'invalid-params',
+      message: expect.stringMatching(/^history-too-long/),
+    });
+  });
+});
