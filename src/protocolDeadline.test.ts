@@ -353,8 +353,10 @@ describe('the host-attention signal makes the attended bound a fact, not a guess
     // The covered schemes DO drop — that is the whole point.
     expect(boundsFor('spaces', 'mount').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
     expect(boundsFor('secrets', 'requestSecret').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
-    // R3-1011 — the lazy-consent schemes: the announced presenter
-    // (`presentCapabilityConsent`, kind 'consent') covers every prompt they can raise.
+    // R3-1011 — the one lazy-consent scheme this package emits: the announced presenter
+    // (`presentCapabilityConsent`, kind 'consent') covers the only prompt it can raise.
+    // (The host's two other lazy-consent schemes, device and diagnostics, have no SDK
+    // call to classify — the source's ATTENDED table carries the survey note.)
     expect(boundsFor('recents', 'list')).toEqual({
       idleMs: UNATTENDED_TIMEOUT_MS,
       ceilingMs: ATTENDED_TIMEOUT_MS,
