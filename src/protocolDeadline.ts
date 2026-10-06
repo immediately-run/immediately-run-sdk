@@ -125,19 +125,11 @@ const ATTENDED: Record<string, AttendedEntry> = {
     reason: 'the lazy recents:read consent (R3-786) is drawn inside the request, via presentCapabilityConsent',
     idleMs: UNATTENDED_TIMEOUT_MS,
   },
-  // R3-1011's table survey — the two other schemes whose methods can reach the same lazy
-  // offer (`offerCapabilityConsent` fires for any gate refusal naming an app-scoped,
-  // non-parameterized capability the app declared): `device:getPosition`/`watchPosition`
-  // on `device:geolocation`, and `diagnostics` reads on `diagnostics:read`. Same announced
-  // presenter, same shape.
-  device: {
-    reason: 'the lazy device:geolocation consent (R3-786) is drawn inside the request, via presentCapabilityConsent',
-    idleMs: UNATTENDED_TIMEOUT_MS,
-  },
-  diagnostics: {
-    reason: 'the lazy diagnostics:read consent (R3-786) is drawn inside the request, via presentCapabilityConsent',
-    idleMs: UNATTENDED_TIMEOUT_MS,
-  },
+  // R3-1011's table survey found two more HOST schemes that can raise the lazy offer
+  // (device:geolocation, diagnostics:read) — but this package emits no
+  // protocol-device/protocol-diagnostics call (the wire vocabulary has neither, and
+  // diagnostics reads ride the push channel), so an entry here would classify a call
+  // nothing makes. It lands with the wrapper that adds one.
   // The contribute flow shows the full diff for approval before anything is written
   // (TRUST_AND_SAFETY TS-19b: the approval MUST show the real diff, so a human reads it).
   // NOT a wrapped presenter — no `idleMs`.

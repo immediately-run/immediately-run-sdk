@@ -359,8 +359,6 @@ describe('the host-attention signal makes the attended bound a fact, not a guess
       idleMs: UNATTENDED_TIMEOUT_MS,
       ceilingMs: ATTENDED_TIMEOUT_MS,
     });
-    expect(boundsFor('device', 'getPosition').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
-    expect(boundsFor('diagnostics', 'read').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
     // …except llm, whose idle case is an upstream model call, not a channel round-trip.
     expect(boundsFor('llm', 'chat').idleMs).toBe(NETWORK_TIMEOUT_MS);
     // An unattended call has one bound, not two — nothing to suspend.
