@@ -38,6 +38,8 @@ export interface VcsBranch {
   parentRepo: string;
   parentRef: string;
   parentCommitSha: string;
+  /** Prefer {@link VcsState.canPushUpstream}: the same fact, present even when
+   *  `branch` is `null`. */
   upstreamPushable: boolean | null;
 }
 
@@ -118,7 +120,8 @@ export interface VcsState {
    *  fact as `branch.upstreamPushable`, but present when `branch` is `null`; prefer this
    *  one when both are set. */
   canPushUpstream?: boolean | null | undefined;
-  /** True when the load has no manifest, so contributions are unavailable. */
+  /** True when the load has no manifest, so contributions are unavailable. The
+   *  authoritative "no manifest" signal: `target` is `null` exactly when this is true. */
   manifestMissing?: boolean | undefined;
   /** The last diff refresh's failure; `null` after a good refresh. */
   diffError?: string | null | undefined;
