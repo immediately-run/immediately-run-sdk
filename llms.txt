@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.82.1)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.83.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -166,7 +166,7 @@ Import: `@immediately-run/sdk/theme`
 
 - `addThemeSource` (function) — Add a theme source — the ELEVATED `theme:sources` `add-source` verb (HOST_THEMING_SPEC §9.3).
 - `getHostTheme` (function) — Returns the current host theme polarity.
-- `getHostThemeSelection` (function) — Returns the current full host theme selection — polarity, active theme key, and resolved mode.
+- `getHostThemeSelection` (function) — Returns the current full host theme selection — polarity, active theme key, resolved mode and mode selection.
 - `getThemeCatalog` (function) — Returns the current theme catalogue (themes + their modes).
 - `HostTheme` (type) — The host UI theme polarity, mirrored from the immediately.run host window into the sandbox.
 - `HostThemeSelection` (interface) — The full host theme selection (HOST_THEMING_SPEC §2/§9.1): the resolved polarity plus the active theme's registry key and resolved mode.
@@ -943,7 +943,7 @@ Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: tru
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested | `ContributionEvent → ContributionResult` |
+| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested, forceUpdateBranch, resume | `ContributionEvent → ContributionResult` |
 | `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |
 
 ---
