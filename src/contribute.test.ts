@@ -9,6 +9,7 @@ jest.mock('./protocolStream', () => ({
 }));
 
 import { contribute } from './contribute';
+import type { ContributeOptions, ContributionEvent, OpenPRResumeContext, RecoveryAction } from './contribute';
 
 describe('contribute() — the transcript hint (R3-659)', () => {
   it('passes transcriptRequested through to the run params, and nothing else transcript-shaped', () => {
@@ -28,5 +29,43 @@ describe('contribute() — the transcript hint (R3-659)', () => {
     const calls = protocolStreamMock.mock.calls;
     const params = calls[calls.length - 1][2][0] as Record<string, unknown>;
     expect(params).not.toHaveProperty('transcriptRequested');
+  });
+});
+
+// R3-984 (CONTRIBUTE_SPEC §8.8, CT-3/CT-6): the recovery an error names, and the two
+// inputs an app sends back to act on it, reach the wire unchanged.
+describe('contribute() — recovery inputs (R3-984)', () => {
+  it('passes forceUpdateBranch and the open-pr resume through to the run params', () => {
+    protocolStreamMock.mockReturnValue((function* () {})());
+    const context: OpenPRResumeContext = {
+      pushOwner: 'alice',
+      repository: 'site',
+      branchName: 'fix-typo',
+      base: 'main',
+      head: 'alice:fix-typo',
+    };
+    const opts: ContributeOptions = {
+      commitMessage: 'Fix typo',
+      branchName: 'fix-typo',
+      forceUpdateBranch: true,
+      resume: { kind: 'open-pr', context },
+    };
+    contribute(opts);
+    const calls = protocolStreamMock.mock.calls;
+    expect(calls[calls.length - 1]).toEqual(['protocol-contribute', 'run', [opts]]);
+  });
+
+  it('types the error variant with the recovery and its open-pr context', () => {
+    const recoveries: RecoveryAction[] = ['retry', 'use-different-name', 'open-pr', 'switch-to-pr'];
+    const events: ContributionEvent[] = recoveries.map((recovery) => ({
+      stage: 'error',
+      message: 'failed',
+      recoverable: true,
+      recovery,
+      ...(recovery === 'open-pr'
+        ? { openPR: { pushOwner: 'a', repository: 'r', branchName: 'b', base: 'main', head: 'a:b' } }
+        : {}),
+    }));
+    expect(events.map((e) => (e.stage === 'error' ? e.recovery : null))).toEqual(recoveries);
   });
 });
