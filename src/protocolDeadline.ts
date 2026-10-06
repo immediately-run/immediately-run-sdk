@@ -115,6 +115,21 @@ const ATTENDED: Record<string, AttendedEntry> = {
     reason: 'settings verbs reach the same consent and picker surfaces as spaces',
     idleMs: UNATTENDED_TIMEOUT_MS,
   },
+  // R3-1011 — `recents:list` can raise the R3-786 lazy `recents:read` consent INSIDE the
+  // request, through `presentCapabilityConsent` — a presenter site-main's SandboxListener
+  // wraps (announcingPresenters, kind 'consent'), so the idle bound is safe to shorten.
+  // Until this entry the call was classified unattended: a user who took longer than 30 s
+  // to answer the dialog got `timeout` while it was still on screen, and a later Allow
+  // replied to a call the SDK had already abandoned.
+  recents: {
+    reason: 'the lazy recents:read consent (R3-786) is drawn inside the request, via presentCapabilityConsent',
+    idleMs: UNATTENDED_TIMEOUT_MS,
+  },
+  // R3-1011's table survey found two more HOST schemes that can raise the lazy offer
+  // (device:geolocation, diagnostics:read) — but this package emits no
+  // protocol-device/protocol-diagnostics call (the wire vocabulary has neither, and
+  // diagnostics reads ride the push channel), so an entry here would classify a call
+  // nothing makes. It lands with the wrapper that adds one.
   // The contribute flow shows the full diff for approval before anything is written
   // (TRUST_AND_SAFETY TS-19b: the approval MUST show the real diff, so a human reads it).
   // NOT a wrapped presenter — no `idleMs`.

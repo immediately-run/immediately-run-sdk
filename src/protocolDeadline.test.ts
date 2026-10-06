@@ -260,6 +260,29 @@ describe('the host-attention signal makes the attended bound a fact, not a guess
     await expect(p).resolves.toBe('the user allowed it');
   });
 
+  it('R3-1011: a recents:list still deciding past 30 s under the consent dialog does NOT time out', async () => {
+    // The failure itself: the lazy `recents:read` consent is drawn inside the request
+    // (presentCapabilityConsent, announced as kind 'consent'), and before this entry the
+    // call ran unattended — the 30 s bound fired while the dialog was still on screen.
+    let settle: (v: string) => void = () => {};
+    const p = withDeadline('recents', 'list', () => new Promise<string>((r) => (settle = r)));
+    host.prompt('consent');
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS * 8); // deciding — no fault
+    host.clear();
+    settle(['proj-a'] as unknown as string);
+    await expect(p).resolves.toBeDefined();
+    // And with NO prompt announced, the same call faults on the short bound as ever.
+    const q = withDeadline('recents', 'list', never);
+    const assertion = expect(q).rejects.toMatchObject({
+      code: 'timeout',
+      attendance: 'attended',
+      bound: 'idle',
+      timeoutMs: UNATTENDED_TIMEOUT_MS,
+    });
+    await jest.advanceTimersByTimeAsync(UNATTENDED_TIMEOUT_MS + 1);
+    await assertion;
+  });
+
   it('restarts the idle bound when the prompt clears — so a post-consent hang is still caught', async () => {
     const p = withDeadline('spaces', 'mount', never);
     const assertion = expect(p).rejects.toMatchObject({ bound: 'idle' });
@@ -330,6 +353,14 @@ describe('the host-attention signal makes the attended bound a fact, not a guess
     // The covered schemes DO drop — that is the whole point.
     expect(boundsFor('spaces', 'mount').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
     expect(boundsFor('secrets', 'requestSecret').idleMs).toBe(UNATTENDED_TIMEOUT_MS);
+    // R3-1011 — the one lazy-consent scheme this package emits: the announced presenter
+    // (`presentCapabilityConsent`, kind 'consent') covers the only prompt it can raise.
+    // (The host's two other lazy-consent schemes, device and diagnostics, have no SDK
+    // call to classify — the source's ATTENDED table carries the survey note.)
+    expect(boundsFor('recents', 'list')).toEqual({
+      idleMs: UNATTENDED_TIMEOUT_MS,
+      ceilingMs: ATTENDED_TIMEOUT_MS,
+    });
     // …except llm, whose idle case is an upstream model call, not a channel round-trip.
     expect(boundsFor('llm', 'chat').idleMs).toBe(NETWORK_TIMEOUT_MS);
     // An unattended call has one bound, not two — nothing to suspend.
