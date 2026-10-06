@@ -41,6 +41,17 @@ export interface VcsBranch {
   upstreamPushable: boolean | null;
 }
 
+/** One warning from the host's diff. `kind` is open: today `'large-file'` or
+ *  `'truncated-manifest-blind-spot'`, and a newer host may send others, so branch on
+ *  the kinds you know and show `message` for the rest. */
+export interface VcsDiffWarning {
+  kind: string;
+  /** The repo-relative path the warning is about. */
+  path: string;
+  /** Human-readable text, ready to show. */
+  message: string;
+}
+
 /** What the working tree was loaded from (the host manifest), so a form can name and
  *  link the target and apply §15.0 rule 2 on a tag or commit load. */
 export interface VcsTarget {
@@ -111,9 +122,10 @@ export interface VcsState {
   manifestMissing?: boolean | undefined;
   /** The last diff refresh's failure; `null` after a good refresh. */
   diffError?: string | null | undefined;
-  /** The diff's warnings, as text. */
-  diffWarnings?: string[] | undefined;
-  /** Scaffolding paths the diff left out (repo-relative). */
+  /** The diff's warnings. */
+  diffWarnings?: VcsDiffWarning[] | undefined;
+  /** Repo-relative paths walked but left out of the changeset: today only the
+   *  `.immediately.run/` platform sidecar files, never the user's own work. */
   excludedPhantoms?: string[] | undefined;
   /** The manifest is truncated: saving is locked out (CONTRIBUTE_SPEC §7). */
   manifestTruncated?: boolean | undefined;
@@ -162,6 +174,17 @@ const parseAgentSession = (v: unknown): VcsAgentSession | undefined => {
 // malformed value is dropped so the app falls back to its old-host behaviour, and the
 // rest of the snapshot still lands. Nothing is coerced into a value the host did not send.
 const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+
+const isDiffWarningArray = (v: unknown): v is VcsDiffWarning[] =>
+  Array.isArray(v) &&
+  v.every(
+    (w) =>
+      !!w &&
+      typeof w === 'object' &&
+      typeof (w as VcsDiffWarning).kind === 'string' &&
+      typeof (w as VcsDiffWarning).path === 'string' &&
+      typeof (w as VcsDiffWarning).message === 'string',
+  );
 const REF_KINDS = new Set(['branch', 'tag', 'commit']);
 
 const parseTarget = (v: unknown): VcsTarget | null | undefined => {
@@ -210,7 +233,8 @@ const parseVcsFacts = (msg: Record<string, unknown>): Partial<VcsState> => {
     out.canPushUpstream = msg.canPushUpstream;
   if (typeof msg.manifestMissing === 'boolean') out.manifestMissing = msg.manifestMissing;
   if (msg.diffError === null || typeof msg.diffError === 'string') out.diffError = msg.diffError;
-  if (isStringArray(msg.diffWarnings)) out.diffWarnings = msg.diffWarnings;
+  if (isDiffWarningArray(msg.diffWarnings))
+    out.diffWarnings = msg.diffWarnings.map(({ kind, path, message }) => ({ kind, path, message }));
   if (isStringArray(msg.excludedPhantoms)) out.excludedPhantoms = msg.excludedPhantoms;
   if (typeof msg.manifestTruncated === 'boolean') out.manifestTruncated = msg.manifestTruncated;
   return out;

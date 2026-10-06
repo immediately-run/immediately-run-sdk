@@ -165,7 +165,7 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     canPushUpstream: false,
     manifestMissing: false,
     diffError: 'diff failed: timeout',
-    diffWarnings: ['3 files over 1 MB'],
+    diffWarnings: [{ kind: 'large-file', path: 'big.bin', message: 'big.bin is over 1 MB' }],
     excludedPhantoms: ['.immediately-run/state.json'],
     manifestTruncated: true,
   };
@@ -218,7 +218,8 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     ['canPushUpstream as a string', { canPushUpstream: 'yes' }, 'canPushUpstream'],
     ['manifestMissing as 1', { manifestMissing: 1 }, 'manifestMissing'],
     ['diffError as an object', { diffError: { message: 'x' } }, 'diffError'],
-    ['diffWarnings with a number', { diffWarnings: ['ok', 3] }, 'diffWarnings'],
+    ['diffWarnings as plain strings', { diffWarnings: ['3 files over 1 MB'] }, 'diffWarnings'],
+    ['a diffWarning without a path', { diffWarnings: [{ kind: 'large-file', message: 'm' }] }, 'diffWarnings'],
     ['excludedPhantoms not an array', { excludedPhantoms: 'a.json' }, 'excludedPhantoms'],
     ['manifestTruncated as "true"', { manifestTruncated: 'true' }, 'manifestTruncated'],
   ])('drops %s, and the snapshot still lands', (_label, bad, key) => {
