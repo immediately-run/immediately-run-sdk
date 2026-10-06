@@ -61,8 +61,9 @@ export interface VcsTarget {
   repository: string;
   ref: string;
   refKind: 'branch' | 'tag' | 'commit';
-  /** The loaded commit. */
-  commitSha: string;
+  /** The loaded commit; `null` when the manifest records none (a REST-built manifest
+   *  can carry no based-on commit), so a form shows no commit link. */
+  commitSha: string | null;
   /** The repository's live default branch; `null` while the host does not know it. */
   defaultBranch: string | null;
 }
@@ -200,7 +201,7 @@ const parseTarget = (v: unknown): VcsTarget | null | undefined => {
     typeof t.ref !== 'string' ||
     typeof t.refKind !== 'string' ||
     !REF_KINDS.has(t.refKind) ||
-    typeof t.commitSha !== 'string' ||
+    !(t.commitSha === null || (typeof t.commitSha === 'string' && t.commitSha !== '')) ||
     !(t.defaultBranch === null || typeof t.defaultBranch === 'string')
   ) {
     return undefined;

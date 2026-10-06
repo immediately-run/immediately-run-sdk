@@ -193,6 +193,13 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     expect(got!.openPR).toBeNull();
   });
 
+  it('keeps a target whose manifest records no commit, with commitSha null', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, target: { ...facts.target, commitSha: null } });
+    expect(got!.target).toEqual({ ...facts.target, commitSha: null });
+  });
+
   it('an old-host push carries none of the new keys', () => {
     let got: VcsState | undefined;
     mod.onVcsStateChange((s) => (got = s));
@@ -215,6 +222,7 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
   it.each([
     ['target with an unknown refKind', { target: { ...facts.target, refKind: 'pr' } }, 'target'],
     ['target missing commitSha', { target: { ...facts.target, commitSha: undefined } }, 'target'],
+    ['target with an empty commitSha', { target: { ...facts.target, commitSha: '' } }, 'target'],
     ['canPushUpstream as a string', { canPushUpstream: 'yes' }, 'canPushUpstream'],
     ['manifestMissing as 1', { manifestMissing: 1 }, 'manifestMissing'],
     ['diffError as an object', { diffError: { message: 'x' } }, 'diffError'],
