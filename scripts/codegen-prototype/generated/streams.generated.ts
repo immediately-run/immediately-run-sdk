@@ -10,6 +10,22 @@ export type ContributeMode =
   | 'pr'
   | 'direct';
 
+/** The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12). */
+export type RecoveryAction =
+  | 'retry'
+  | 'use-different-name'
+  | 'open-pr'
+  | 'switch-to-pr';
+
+/** Identifiers for the open-pr resume (CT-6): the pushed branch whose PR is missing. */
+export interface OpenPRResumeContext {
+  pushOwner: string;
+  repository: string;
+  branchName: string;
+  base: string;
+  head: string;
+}
+
 /** The settled outcome (the stream’s return value). */
 export interface ContributionResult {
   prUrl?: string;
@@ -36,7 +52,7 @@ export type ContributionEvent =
   | { stage: 'pr-updated'; prNumber: number; prUrl: string; commitSha: string }
   | { stage: 'commit-pushed'; ref: string; commitSha: string }
   | { stage: 'done'; commitSha: string; prUrl?: string; prNumber?: number }
-  | { stage: 'error'; message: string; recoverable: boolean };
+  | { stage: 'error'; message: string; recoverable: boolean; recovery?: RecoveryAction; openPR?: OpenPRResumeContext };
 
 /** Who authored a message. */
 export type ChatRole =
@@ -86,7 +102,7 @@ export type ContributeError =
  * Capability: `contribute:any`. Catalog name: `contribute:run`.
  * @throws `StreamError & { code: ContributeError }` if the host rejects the stream.
  */
-export function contribute(req: { commitMessage: string; mode?: ContributeMode; branchName?: string; transcriptRequested?: boolean }): AsyncGenerator<ContributionEvent, ContributionResult, void> {
+export function contribute(req: { commitMessage: string; mode?: ContributeMode; branchName?: string; transcriptRequested?: boolean; forceUpdateBranch?: boolean; resume?: { kind: 'open-pr'; context: OpenPRResumeContext } }): AsyncGenerator<ContributionEvent, ContributionResult, void> {
   return invokeStream<ContributionEvent, ContributionResult>("contribute:run", req);
 }
 

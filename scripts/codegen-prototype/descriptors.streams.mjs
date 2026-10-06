@@ -14,6 +14,14 @@ export const types = {
     description: 'The save strategy. `direct` requires the first-party `contribute:direct` capability.',
     schema: { type: 'string', enum: ['pr', 'direct'] },
   },
+  RecoveryAction: {
+    description: 'The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12).',
+    schema: { type: 'string', enum: ['retry', 'use-different-name', 'open-pr', 'switch-to-pr'] },
+  },
+  OpenPRResumeContext: {
+    description: 'Identifiers for the open-pr resume (CT-6): the pushed branch whose PR is missing.',
+    schema: obj({ pushOwner: str(), repository: str(), branchName: str(), base: str(), head: str() }),
+  },
   ContributionResult: {
     description: 'The settled outcome (the stream’s return value).',
     schema: {
@@ -47,7 +55,13 @@ export const types = {
         obj({ stage: konst('pr-updated'), prNumber: num(), prUrl: str(), commitSha: str() }),
         obj({ stage: konst('commit-pushed'), ref: str(), commitSha: str() }),
         obj({ stage: konst('done'), commitSha: str(), prUrl: opt(str()), prNumber: opt(num()) }),
-        obj({ stage: konst('error'), message: str(), recoverable: bool() }),
+        obj({
+          stage: konst('error'),
+          message: str(),
+          recoverable: bool(),
+          recovery: opt(ref('RecoveryAction')),
+          openPR: opt(ref('OpenPRResumeContext')),
+        }),
       ],
     },
   },
@@ -139,6 +153,12 @@ export const methods = [
           description:
             'CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript" hint (a boolean request, never bytes).',
         },
+        forceUpdateBranch: {
+          type: 'boolean',
+          description:
+            'CONTRIBUTE_SPEC §8.8: update an existing caller-supplied branch; the host lineage gate still decides.',
+        },
+        resume: obj({ kind: konst('open-pr'), context: ref('OpenPRResumeContext') }),
       },
     },
     event: ref('ContributionEvent'),
