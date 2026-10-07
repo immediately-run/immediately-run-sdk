@@ -144,7 +144,12 @@ const MAX_DEPTH = 2;
  * recursion bottoms out even on recursive types.
  */
 const namedObjectAtCap = (checker, type, node, text) => {
-  const name = type.symbol?.name;
+  // A type ALIAS to an object literal carries the name on `aliasSymbol` — `symbol` is
+  // the anonymous '__type' — so read the alias first or `type T = { … }` stays a bare
+  // name at the cap, the exact disease this expansion exists to cure (review round 1,
+  // sdk#213). Aliases to unions still fall out below: a union has no Object flag.
+  const sym = type.aliasSymbol ?? type.symbol;
+  const name = sym?.name;
   if (!name || name === '__type' || name === 'anonymous') return undefined;
   if (!(type.flags & ts.TypeFlags.Object)) return undefined;
   if (checker.isArrayType?.(type) || checker.isTupleType?.(type)) return undefined;
@@ -153,7 +158,8 @@ const namedObjectAtCap = (checker, type, node, text) => {
   // built-in (`Uint8Array`, `ArrayBufferLike`'s members) stays text — its name is a
   // frozen spelling, and its method-signature texts belong to the toolchain, not to
   // the wire: fingerprinting them would fail the gate on a TypeScript bump.
-  const declFile = type.symbol.declarations?.[0]?.getSourceFile().fileName.split('\\').join('/');
+  const decl = type.aliasSymbol?.declarations?.[0] ?? type.symbol?.declarations?.[0];
+  const declFile = decl?.getSourceFile().fileName.split('\\').join('/');
   const srcPrefix = srcDir.split('\\').join('/') + '/';
   if (!declFile || !declFile.startsWith(srcPrefix)) return undefined;
   const props = checker.getPropertiesOfType(type).filter((p) => !p.name.startsWith('__@'));
