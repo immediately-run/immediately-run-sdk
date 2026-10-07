@@ -742,6 +742,7 @@
     "RenderFileContextType": "object(evaluationContext)",
     "RenderMdastOptions": "interface(components?, resolveWikiLink?(1..1))",
     "RepositoryCoordinates": "interface(namespace, provider, repository)",
+    "RepositoryReveal": "interface(panel)",
     "RequestEditError": "interface(code)",
     "ResolvedLinkTarget": "union({path, state}|{state})",
     "ResolvedUser": "interface(avatarUrl?, login, uid)",
@@ -977,7 +978,7 @@
     "openFs": "fn(1..1)",
     "openInEditor": "fn(1..3)",
     "openLocalStore": "fn(0..0)",
-    "openRepository": "fn(1..1)",
+    "openRepository": "fn(1..2)",
     "openSettings": "fn(0..0)",
     "openSettingsOf": "fn(1..1)",
     "parseSafeMdast": "fn(1..2)",
@@ -1301,7 +1302,8 @@
     "OpenRepositoryError": "interface(code)",
     "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
     "RepositoryCoordinates": "interface(namespace, provider, repository)",
-    "openRepository": "fn(1..1)"
+    "RepositoryReveal": "interface(panel)",
+    "openRepository": "fn(1..2)"
   },
   "pathUtils": {
     "absPath": "fn(1..1)",
