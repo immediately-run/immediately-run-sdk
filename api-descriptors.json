@@ -870,48 +870,6 @@
             ]
           }
         },
-        "RecoveryAction": {
-          "description": "The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12).",
-          "schema": {
-            "type": "string",
-            "enum": [
-              "retry",
-              "use-different-name",
-              "open-pr",
-              "switch-to-pr"
-            ]
-          }
-        },
-        "OpenPRResumeContext": {
-          "description": "Identifiers for the open-pr resume (CT-6): the pushed branch whose PR is missing.",
-          "schema": {
-            "type": "object",
-            "required": [
-              "pushOwner",
-              "repository",
-              "branchName",
-              "base",
-              "head"
-            ],
-            "properties": {
-              "pushOwner": {
-                "type": "string"
-              },
-              "repository": {
-                "type": "string"
-              },
-              "branchName": {
-                "type": "string"
-              },
-              "base": {
-                "type": "string"
-              },
-              "head": {
-                "type": "string"
-              }
-            }
-          }
-        },
         "ContributionResult": {
           "description": "The settled outcome (the stream’s return value).",
           "schema": {
@@ -1204,12 +1162,6 @@
                   },
                   "recoverable": {
                     "type": "boolean"
-                  },
-                  "recovery": {
-                    "$ref": "RecoveryAction"
-                  },
-                  "openPR": {
-                    "$ref": "OpenPRResumeContext"
                   }
                 }
               }
@@ -1425,26 +1377,6 @@
               "transcriptRequested": {
                 "type": "boolean",
                 "description": "CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the \"Commit session transcript\" hint (a boolean request, never bytes)."
-              },
-              "forceUpdateBranch": {
-                "type": "boolean",
-                "description": "CONTRIBUTE_SPEC §8.8: update an existing caller-supplied branch; the host lineage gate still decides."
-              },
-              "resume": {
-                "type": "object",
-                "required": [
-                  "kind",
-                  "context"
-                ],
-                "properties": {
-                  "kind": {
-                    "type": "string",
-                    "const": "open-pr"
-                  },
-                  "context": {
-                    "$ref": "OpenPRResumeContext"
-                  }
-                }
               }
             }
           },
