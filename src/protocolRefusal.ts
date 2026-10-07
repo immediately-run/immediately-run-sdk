@@ -6,53 +6,62 @@
 //
 // R3-708's review said three copies, then five, then "ten across eight files". This file
 // then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
-// that. The count is:
+// that. After R3-816 folded the pure copies, the count is:
 //
-//   **eighteen CALL SITES across thirteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`,
-//   minus the declaration here and minus `*.test.*`:
+//   **twenty CALL SITES across fifteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
+//   the declaration here, minus `*.test.*`, and minus this census's own mention of the
+//   pattern (the recipe's literal matches it):
 //
 //   dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
-//   openBundle.ts · openExternal.ts · openRepository.ts · secrets.ts · spacesMode.ts · theme.ts (×3) ·
-//   vcs.ts
+//   openBundle.ts · openExternal.ts · openRepository.ts · recents.ts · secrets.ts ·
+//   spacesMode.ts · tasks.ts · theme.ts (×3) · vcs.ts
+//
+//   `catalog.ts` is the one named NOT-folded site: its refusal copy is no longer pure —
+//   R3-954 gave `invoke`'s error a `retryAfter` field this helper does not build, so the
+//   fold's premise (a byte-identical copy) stopped holding for it between this branch's
+//   review and its landing. `recents` and `tasks` folded as prescribed.
 //
 // Every miscount came from the same two mistakes: reading files instead of counting the
 // grep, and never saying which unit was being counted. `mounts.ts` has three separate
 // request helpers, each with its own copy; R3-780 touched five FILES and seven SITES.
 // "Ten" was neither.
 //
-// Not folded, deliberately, and the reason is NOT that they are all unalike — that was the
-// previous excuse and it was false for three of them:
+// R3-816 folded the pure copies of the shape `ipc.ts` had until R3-780 — `recents` and
+// `tasks` here (two of the three the item named; the third, `catalog`, is the exemption
+// above) — and the fold changed nothing observable. R3-817 (merged as #192, 0.74.3) then
+// folded the `res && 'code' in res` family — `openExternal`, `openRepository`, `feed`,
+// `netFetch` and `theme` (×3) — fixing the `TypeError: Cannot use 'in' operator` a string
+// reply used to throw there. That form is gone from main; nothing remains to fold in
+// either family.
 //
-//   · `catalog.ts`, `recents.ts`, `tasks.ts` are pure copies of the shape `ipc.ts` had
-//     until R3-780 folded it — untyped `Error & { code?: string }`, `res?.code ??
-//     'unknown'`. (`recents.ts` casts `code` as required rather than optional; immaterial,
-//     the cast erases.) They are foldable and nothing here argues otherwise;
-//   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
-//     THREW `TypeError: Cannot use 'in' operator` on a string reply — FOLDED in R3-817
-//     (0.74.3), a behaviour change reviewed as its own item, exactly as this bullet
-//     prescribed;
-//   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
+// Still deliberately NOT folded:
+//
+//   · `catalog.ts` — the exemption above (R3-954's `retryAfter`, a field this helper
+//     does not build);
+//   · `launch.ts` — it folds `!res.data?.launchId` into the same condition and RETURNS
 //     `{ ok: false, code }` instead of throwing. Different control flow entirely.
-//
-// So the remaining work is two items, not one, and they are not the same size.
 //
 // `check:clones` cannot help with any of this: minLines 6, minTokens 50, and no identifier
 // normalisation, so blocks differing only in type names read as distinct.
 //
 // ---------------------------------------------------------------------------
-// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL EIGHTEEN SITES
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWENTY SITES
 // ---------------------------------------------------------------------------
 //
-// Measured: changing the guard to `r.ok !== false` compiles clean and leaves **ten of the
-// eighteen SITES** green — seven of the thirteen files: `dnd`, `editor`, `ipc`, `mounts`,
-// `secrets`, `spacesMode` and `vcs`. Every one of them stubs an explicit `{ ok: false }`,
-// so they pin "throws on a refusal envelope" and nothing about a malformed or absent
-// reply. The catchers: `openBundle`, `openExternal`, `openRepository`, the five R3-817 sites (whose
-// string-reply tests reject on a non-envelope — the mutation never throws), plus
-// `protocolRefusal.test.ts`. (Re-run 2026-09-30 on the post-fold tree: suites red —
-// feed, netFetch, theme, openExternal, openRepository, protocolRefusal; the seven
-// families green. `openBundle`, the eighteenth site, was added 2026-10-05 and re-run alone
-// under the same mutation: red.)
+// Measured on this tree (2026-10-07, the take-over's re-run — the recipe, not the
+// history: apply the injection in a scratch copy and run the suite):
+//
+//   - guard weakened to `r.ok === false` (a REFUSAL stops throwing and a success starts
+//     throwing; an absent reply still throws through the `r &&` short-circuit):
+//     **120 of 1002** tests redden, across **17 suites**;
+//   - the FULL no-op neuter (the helper's body replaced by a bare return): **90 tests**
+//     redden across **17 failed suites** — the sharper probe, and the one the
+//     absent-reply cases redden under (they stay green under the guard-weakening,
+//     which is the reason they exist).
+//
+// (An earlier take-over draft recorded 86 across 42 — a broken probe whose import
+// errors failed suites before their tests ran; the 90/17 pair is the stable re-run,
+// twice.)
 //
 // (An earlier version of this paragraph said "nine of the twelve sites' suites", which
 // mixes sites with suites — the exact mistake the census block above is headed about —
@@ -60,8 +69,8 @@
 //
 // Each inline form this replaced carried its own `!res ||` guard, visible at the call site.
 // That guarantee now lives here alone. Do not weaken `protocolRefusal.test.ts` on the
-// grounds that "the consumers cover it" — they do not, and eighteen near-duplicate malformed
-// -reply tests would be the duplication this extraction exists to remove.
+// grounds that "the consumers cover it" — they do not, and fifteen near-duplicate
+// malformed-reply tests would be the duplication this extraction exists to remove.
 //
 // ---------------------------------------------------------------------------
 // WHICH `ok` THIS READS, AND WHY IT MATTERS
@@ -117,18 +126,19 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Eighteen sites call this;
- * **sixteen** had an inline copy it replaced (`spacesMode.ts` was written against the
- * helper in R3-708 and replaced nothing). All sixteen tested for PRESENCE, in **three**
- * shapes:
+ * `code` and `message` must be STRINGS to be used. Twenty sites call this; **eighteen**
+ * had an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708
+ * and `openBundle.ts` against it in R3-808, so neither replaced anything; `catalog.ts`'s
+ * copy returned inline in R3-954 — its error carries a `retryAfter` this helper does not
+ * build, the one named not-folded site). They tested for PRESENCE, in **three** shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
- * - **seven** used the `in` operator — `openExternal`, `openRepository` (with the cast;
- *   folded in R3-708) and `feed`, `netFetch`, `theme` ×3 (without it; folded in R3-817,
- *   the TypeError fix disclosed above);
- * - **two** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
- *   `ipc.ts`.
+ * - **seven** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
+ *   Code) ?? 'unknown'` — `openExternal` and `openRepository` (folded in R3-708) and
+ *   `feed`, `netFetch` and `theme` (×3) (folded in R3-817, #192);
+ * - **four** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
+ *   `ipc` (×2), `recents`, `tasks` (folded in R3-816).
  *
  * Every one of them let a host sending `code: 42` surface `err.code === 42` on a field
  * declared `string`, and turned `message: 42` into the string `"42"`. Both now fall back,
@@ -155,11 +165,11 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * `openExternal` and `openRepository` did.
  *
  * The mechanism is worth more than the correction, because it is repeatable. `'code' in
- * res` is **gone from `main`** since R3-817 (0.74.3) folded the last five — a reviewer who
- * greps `main` finds nothing, and this paragraph is the record of where it lived and why
- * it misread twice before. What a grep of `main` cannot show is that the
- * form was ALSO at two sites R3-708 folded. The tree that answers the question is the one
- * before the fold, `d4b07cc1^`. Read that before rewriting this paragraph again.
+ * res` is GONE from `main` — R3-817 (merged as #192, 0.74.3) folded the five sites that
+ * carried it (`feed`, `netFetch`, `theme` ×3), beside R3-708's two (`openExternal`,
+ * `openRepository`). A grep of `main` today finds the form only in this file's comments
+ * and in test files. The tree that shows the form at the sites is the one before the
+ * folds, `d4b07cc1^`. Read that before rewriting this paragraph again.
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read
@@ -167,13 +177,6 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the throw can ignore the narrowing; one that reads the payload gets it for free. (TS
  * requires the call target to be an explicitly-typed declared name — this is why it is a
  * `function` declaration and not an arrow const.)
- *
- * R3-817 (0.74.3): the five remaining inline copies (`feed.ts`, `netFetch.ts`,
- * `theme.ts` ×3) folded onto this — removing a latent defect with them: their
- * `res && 'code' in res` guard threw `TypeError: Cannot use 'in' operator` on a
- * bare-STRING reply (a proxy error page, a relay), escaping past every `err.code`
- * branch an app wrote. This function reads `typeof r?.code === 'string'` and
- * cannot throw on any input; the TypeError path no longer exists.
  */
 export function throwOnRefusal(res: unknown, fallbackMessage: string): asserts res is { ok: true; data?: unknown } {
   const r = res as { ok?: unknown; code?: unknown; message?: unknown } | null | undefined;

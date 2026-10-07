@@ -13,6 +13,7 @@
 // in-repo path. Opening one runs the ordinary load path with the ordinary
 // consent: the record confers nothing (R-OSO-22).
 import { protocolRequest } from './sandboxUtils';
+import { throwOnRefusal } from './protocolRefusal';
 import { PROTOCOL_RECENTS } from './generated/protocol';
 import { SCHEMES } from './protocolSchemes';
 
@@ -49,11 +50,9 @@ type RecentsResult = { ok: true; data: RecentsReply } | { ok: false; code: strin
  */
 const recentsRequest = async (params: { clear?: boolean }): Promise<RecentsReply> => {
   const res = (await protocolRequest(SCHEMES[PROTOCOL_RECENTS], 'list', [params])) as RecentsResult;
-  if (!res || res.ok !== true) {
-    const err = new Error(res?.message ?? 'recents request failed') as Error & { code: string };
-    err.code = res?.code ?? 'unknown';
-    throw err;
-  }
+  // The one refusal unwrap (R6, R3-816) — same observable behaviour: the coded
+  // refusal throws with its code; an absent reply throws as 'unknown'.
+  throwOnRefusal(res, 'recents request failed');
   return res.data;
 };
 
