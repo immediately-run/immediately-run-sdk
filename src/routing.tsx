@@ -109,6 +109,13 @@ export const useRoute = () => {
  * existence — a wrong path degrades to "no highlight", never an error. The
  * host remembers declarations per URL, so back/forward reproduces them
  * without re-announcement.
+ *
+ * `opts.replace` (R3-874, APP_CUSTOMIZATION_SPEC §5): `true` asks the host to
+ * REPLACE the current history entry instead of pushing — for an app whose URL
+ * encodes view state, so re-renders don't flood the reader's Back chain.
+ * In-prefix targets only: the host ignores it for a navigation that leaves the
+ * app (an app must not erase the entry the user would press Back to reach,
+ * G-CUST-6). Absent or `false` keeps the field off the wire entirely.
  */
 // R3-268: an app-registered rule mapping a navigation TARGET to its viewed
 // document, consulted by `navigate()` whenever the caller did not declare one
@@ -126,7 +133,7 @@ export const setViewedDocumentResolver = (
   viewedDocumentResolver = resolver;
 };
 
-export const navigate = (target: string, opts?: { viewedDocument?: string | null }) => {
+export const navigate = (target: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
   console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
   // wire (the host derives from the URL convention). A resolver throw is
@@ -146,6 +153,13 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
   // this call is the one moment the app knows a navigation is happening (R3-627).
   // The host stamps it on the current entry before pushing the target, and hands it
   // back if the reader ever returns; it never parses it.
+  //
+  // R3-874: `replace: true` asks the host to REPLACE the current entry instead of
+  // pushing (an app whose URL encodes view state would otherwise flood history).
+  // The host ignores it for out-of-prefix targets (an app must not erase the entry
+  // the user would press Back to reach — G-CUST-6). The message is built as ONE
+  // typed value — the wire-shape gate fingerprints the declared UrlchangePayload,
+  // and a spread-built union would extract as 'any' and never match (protocol#38).
   const entryState = takeQueuedEntryState();
   const message: UrlchangePayload = {
     url: target,
@@ -153,6 +167,7 @@ export const navigate = (target: string, opts?: { viewedDocument?: string | null
     forward: false,
     ...(entryState ? { entryState } : {}),
     ...declared,
+    ...(opts?.replace === true ? { replace: true as const } : {}),
   };
   sendMessage(URLCHANGE, message);
 };
