@@ -629,6 +629,36 @@ const checkGeneratedModule = () => {
   return [];
 };
 
+// ── the failure detail ────────────────────────────────────────────────────────
+/**
+ * The detail for changed channels: `stable()` of the SAME two entries `compare()`
+ * found unequal — whole entries, never a slice (R3-1037). The old printer printed
+ * only `payload`, so a change confined to a push channel's `value` or a request/
+ * stream channel's `methods` was caught but invisible: byte-identical was/now
+ * lines, or literal undefined/undefined (sdk#213's red run 37655833573 printed
+ * eight "identical" diffs whose real changes sat in value/methods). Printing the
+ * identical data under the identical serializer guarantees the printed lines
+ * differ whenever the channel is flagged. The long lines stay — truncating a
+ * fingerprint is the same disease one level down.
+ */
+const changedDetailLines = (changed, snapshot, merged) => {
+  const lines = [];
+  for (const c of changed) {
+    lines.push(`  ~ ${c}`);
+    const [was, now] =
+      c === '(dynamic families)'
+        ? [snapshot.dynamicFamilies ?? {}, merged.dynamicFamilies]
+        : c === '(stream envelope)'
+        ? [snapshot.envelopes ?? {}, merged.envelopes]
+        : [snapshot.channels?.[c], merged.channels?.[c]];
+    if (was !== undefined && now !== undefined) {
+      lines.push(`      was: ${stable(was)}`);
+      lines.push(`      now: ${stable(now)}`);
+    }
+  }
+  return lines;
+};
+
 // ── main ──────────────────────────────────────────────────────────────────────
 const NON_VACUOUS_MIN = 10;
 
@@ -652,7 +682,8 @@ const main = () => {
     process.exit(1);
   }
 
-  const { removed, added, changed } = compare(mergeHandKeys(current, snapshot), snapshot);
+  const merged = mergeHandKeys(current, snapshot);
+  const { removed, added, changed } = compare(merged, snapshot);
   if (!removed.length && !added.length && !changed.length) {
     console.log(
       `PASS  this repo's source matches @immediately-run/sandbox-protocol@${contractVersion} ` +
@@ -677,16 +708,8 @@ const main = () => {
     for (const r of removed) console.error(`  - ${r}`);
   }
   if (changed.length) {
-    console.error('\n✗ BREAKING: wire payload shapes changed since the snapshot:\n');
-    for (const c of changed) {
-      console.error(`  ~ ${c}`);
-      const was = snapshot.channels?.[c];
-      const now = extract().channels[c];
-      if (was && now) {
-        console.error(`      was: ${stable(was.payload)}`);
-        console.error(`      now: ${stable(now.payload)}`);
-      }
-    }
+    console.error('\n✗ BREAKING: wire shapes changed since the snapshot:\n');
+    for (const line of changedDetailLines(changed, snapshot, merged)) console.error(line);
   }
   if (added.length) {
     console.error('\n✗ New wire names are not in the snapshot:\n');
@@ -814,10 +837,50 @@ const selfTest = () => {
         ],
       ]),
     ],
+    [
+      // R3-1037: compare() always caught this, but the printer printed only
+      // `payload` — so a change confined to a push channel's `value` printed
+      // byte-identical was/now lines and the red run could not be read (sdk#213's
+      // run 37655833573). Detection alone is not enough: the DETAIL must differ.
+      "a push channel's VALUE reshaped (payload identical)",
+      new Map([
+        [
+          resolve(srcDir, 'diagnostics.ts'),
+          readFileSync(join(srcDir, 'diagnostics.ts'), 'utf8').replace(
+            '  provenance: DiagnosticsProvenance | null;\n}',
+            '  provenance: DiagnosticsProvenance | null;\n  notes: string;\n}',
+          ),
+        ],
+      ]),
+      (diff, poisoned, real) => {
+        // The channel must be flagged in `value` ALONE — payload identical, which is
+        // exactly the change the old printer rendered invisible. (eq over the two
+        // payloads is an EQUALITY assertion, not a printed slice — no part of this
+        // file prints a subset of an entry; the printer prints whole entries.)
+        const eq = (a, b) => stable(a) === stable(b);
+        const name = diff.changed.find(
+          (n) =>
+            poisoned.channels[n]?.value !== undefined &&
+            !eq(poisoned.channels[n].value, real.channels[n]?.value) &&
+            eq(poisoned.channels[n].payload, real.channels[n]?.payload),
+        );
+        if (!name) return 'no channel changed in `value` alone (payload identical)';
+        const lines = changedDetailLines(diff.changed, real, poisoned);
+        const at = lines.indexOf(`  ~ ${name}`);
+        const was = lines[at + 1];
+        const now = lines[at + 2];
+        if (!was?.startsWith('      was: ') || !now?.startsWith('      now: '))
+          return `no was/now detail printed for ${name}`;
+        if (was === now) return `the detail for ${name} prints identical was/now lines — the printer lies again`;
+        if (!now.includes('notes') || !was.includes('"value"'))
+          return `the detail for ${name} does not carry the value text — was/now must print the whole entries`;
+        return null;
+      },
+    ],
   ];
 
   let ok = 0;
-  for (const [label, patch] of cases) {
+  for (const [label, patch, extra] of cases) {
     // A patch that silently stopped matching (source moved on) would make its case
     // pass vacuously — the poisoned tree would just be the clean one.
     for (const [file, text] of patch) {
@@ -829,8 +892,16 @@ const selfTest = () => {
     const poisoned = extract({ patch });
     const diff = compare(poisoned, real);
     const caught = diff.removed.length + diff.added.length + diff.changed.length > 0;
-    console.log(`${caught ? 'PASS' : 'FAIL'}  detects: ${label}`);
-    if (caught) ok++;
+    // An optional third element asserts MORE than detection — e.g. that the failure
+    // DETAIL is readable (R3-1037). It returns a problem string, or null when happy.
+    let detailOk = true;
+    if (caught && extra) {
+      const problem = extra(diff, poisoned, real);
+      detailOk = !problem;
+      if (problem) console.error(`      ${problem}`);
+    }
+    console.log(`${caught && detailOk ? 'PASS' : 'FAIL'}  detects: ${label}`);
+    if (caught && detailOk) ok++;
   }
 
   // Non-vacuity: an extractor pointed at nothing must FAIL, not report a clean tree.
