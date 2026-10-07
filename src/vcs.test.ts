@@ -149,6 +149,108 @@ describe('vcs read channel', () => {
   });
 });
 
+// R3-964 / R3-986 / R3-987: the facts the contribute forms render from. Each is
+// optional and fails to ABSENT field by field, so an old host or a malformed value
+// leaves the app on its old behaviour and never conjures a fact.
+describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
+  const facts = {
+    target: {
+      namespace: 'acme',
+      repository: 'site',
+      ref: 'v1.2',
+      refKind: 'tag',
+      commitSha: 'abc123',
+      defaultBranch: 'main',
+    },
+    canPushUpstream: false,
+    manifestMissing: false,
+    diffError: 'diff failed: timeout',
+    diffWarnings: [{ kind: 'large-file', path: 'big.bin', message: 'big.bin is over 1 MB' }],
+    excludedPhantoms: ['.immediately-run/state.json'],
+    manifestTruncated: true,
+  };
+
+  it('passes every well-typed fact through, openPR and defaultSaveMode included', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
+    expect(got).toMatchObject({ ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
+  });
+
+  it('keeps null where the host says "known: none" or "not known yet"', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({
+      ...sample,
+      target: null,
+      canPushUpstream: null,
+      diffError: null,
+      openPR: null,
+    });
+    expect(got!.target).toBeNull();
+    expect(got!.canPushUpstream).toBeNull();
+    expect(got!.diffError).toBeNull();
+    expect(got!.openPR).toBeNull();
+  });
+
+  it('keeps a target whose manifest records no commit, with commitSha null', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, target: { ...facts.target, commitSha: null } });
+    expect(got!.target).toEqual({ ...facts.target, commitSha: null });
+  });
+
+  it('an old-host push carries none of the new keys', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push(sample);
+    for (const k of [
+      'target',
+      'canPushUpstream',
+      'manifestMissing',
+      'diffError',
+      'diffWarnings',
+      'excludedPhantoms',
+      'manifestTruncated',
+    ]) {
+      expect(got).not.toHaveProperty(k);
+    }
+    expect(got!.branch).not.toHaveProperty('openPR');
+    expect(got!.branch).not.toHaveProperty('defaultSaveMode');
+  });
+
+  it.each([
+    ['target with an unknown refKind', { target: { ...facts.target, refKind: 'pr' } }, 'target'],
+    ['target missing commitSha', { target: { ...facts.target, commitSha: undefined } }, 'target'],
+    ['target with an empty commitSha', { target: { ...facts.target, commitSha: '' } }, 'target'],
+    ['canPushUpstream as a string', { canPushUpstream: 'yes' }, 'canPushUpstream'],
+    ['manifestMissing as 1', { manifestMissing: 1 }, 'manifestMissing'],
+    ['diffError as an object', { diffError: { message: 'x' } }, 'diffError'],
+    ['diffWarnings as plain strings', { diffWarnings: ['3 files over 1 MB'] }, 'diffWarnings'],
+    ['a diffWarning without a path', { diffWarnings: [{ kind: 'large-file', message: 'm' }] }, 'diffWarnings'],
+    ['excludedPhantoms not an array', { excludedPhantoms: 'a.json' }, 'excludedPhantoms'],
+    ['manifestTruncated as "true"', { manifestTruncated: 'true' }, 'manifestTruncated'],
+  ])('drops %s, and the snapshot still lands', (_label, bad, key) => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...bad });
+    expect(got).not.toHaveProperty(key);
+    expect(got!.changes).toHaveLength(2);
+  });
+
+  it.each([
+    ['openPR with a non-finite number', { openPR: { number: NaN, url: 'u' } }, 'openPR'],
+    ['openPR without a url', { openPR: { number: 7 } }, 'openPR'],
+    ['defaultSaveMode outside the two modes', { defaultSaveMode: 'force' }, 'defaultSaveMode'],
+  ])('drops %s', (_label, bad, key) => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...bad });
+    expect(got).not.toHaveProperty(key);
+    expect(got!.branch!.name).toBe('my-edit');
+  });
+});
+
 describe('vcs actions — request shape', () => {
   it.each([
     ['refreshDiff', () => mod.refreshDiff(), 'refreshDiff', {}],
