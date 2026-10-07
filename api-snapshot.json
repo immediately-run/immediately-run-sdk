@@ -728,6 +728,7 @@
     "ProtocolCancelledError": "class(code)",
     "ProtocolTimeoutError": "class(attendance, bound, call, code, timeoutMs)",
     "PublishedSpaceKey": "interface(addedAt, alg, kid, pub, uid)",
+    "REF_KINDS": "const(Set<string>)",
     "RESTORE_DEADLINE_MS": "const(900)",
     "RESTORE_EPSILON_PX": "const(2)",
     "ReadyState": "interface(reported, reportedAt?)",
@@ -1581,6 +1582,7 @@
   "vcs": {
     "BundleCommit": "interface(message, parent, sha)",
     "BundleHistoryError": "interface(code, retryAfter?)",
+    "REF_KINDS": "const(Set<string>)",
     "VcsActionError": "interface(code)",
     "VcsAgentSession": "interface(conversationId, messageCount, repo, running, updatedAt?)",
     "VcsBranch": "interface(name, parentCommitSha, parentRef, parentRepo, upstreamPushable)",

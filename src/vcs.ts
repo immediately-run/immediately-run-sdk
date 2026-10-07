@@ -190,7 +190,10 @@ const isDiffWarningArray = (v: unknown): v is VcsDiffWarning[] =>
       typeof (w as VcsDiffWarning).path === 'string' &&
       typeof (w as VcsDiffWarning).message === 'string',
   );
-const REF_KINDS = new Set(['branch', 'tag', 'commit']);
+/** The refKind values the parser keeps (exported so the suite derives its cases from the
+ *  producer rather than probing one favourite member — every member must pass through,
+ *  because a miss silently drops the whole target fact). */
+export const REF_KINDS = new Set(['branch', 'tag', 'commit']);
 
 const parseTarget = (v: unknown): VcsTarget | null | undefined => {
   if (v === null) return null;

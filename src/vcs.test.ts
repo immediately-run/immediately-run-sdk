@@ -33,7 +33,7 @@ jest.mock('./hostTransport', () => ({
   },
 }));
 
-import type { VcsState } from './vcs';
+import { REF_KINDS, type VcsState } from './vcs';
 
 type VcsMod = typeof import('./vcs');
 let mod: VcsMod;
@@ -175,6 +175,16 @@ describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
     mod.onVcsStateChange((s) => (got = s));
     push({ ...sample, ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
     expect(got).toMatchObject({ ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
+  });
+
+  it.each([...REF_KINDS])('keeps a target for every refKind the host records (%s)', (kind) => {
+    // The class, derived from its producer: REF_KINDS is the runtime set the
+    // parser drops on a miss, so every member must pass through — a favourite
+    // member would keep the unprobed loads silently dropping the target fact.
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...facts, target: { ...facts.target, refKind: kind } });
+    expect(got!.target).toEqual({ ...facts.target, refKind: kind });
   });
 
   it('keeps null where the host says "known: none" or "not known yet"', () => {

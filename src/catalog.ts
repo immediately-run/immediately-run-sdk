@@ -53,7 +53,10 @@ export const invoke = async <T = unknown>(name: string, params: Record<string, u
     const err = new Error(res?.message ?? `${name} failed`) as Error & { code?: string; retryAfter?: number };
     err.code = res?.code ?? 'unknown';
     // R3-954: a provider rate-limit refusal (`budget`) carries the wait in seconds.
-    if (typeof res?.retryAfter === 'number') err.retryAfter = res.retryAfter;
+    // Number.isFinite, not typeof: NaN and Infinity are numbers the structured-clone
+    // transport carries intact — the same reason the sibling guards (vcs.ts) use it.
+    const wait = res?.retryAfter;
+    if (Number.isFinite(wait)) err.retryAfter = wait as number;
     throw err;
   }
   return res.data as T;
