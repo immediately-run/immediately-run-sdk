@@ -39,6 +39,13 @@ export interface RepositoryReveal {
   panel: 'agent';
 }
 
+/** The `open` wire params — the coordinates plus the optional reveal. Typed as a named
+ *  interface (not an inline literal) so the protocol-snapshot extractor resolves the wire
+ *  shape from the type; see `openRepository` below. */
+interface OpenRepositoryOpenParams extends RepositoryCoordinates {
+  reveal?: RepositoryReveal;
+}
+
 /** Why the host refused to open a tab.
  *
  *  - `invalid` — the coordinates are not three clean path segments.
@@ -91,8 +98,11 @@ export async function openRepository(coordinates: RepositoryCoordinates, reveal?
   const { provider, namespace, repository } = coordinates;
   // The reveal rides the one wire arg when the caller asked for it; a caller omitting it
   // sends no field at all (never `undefined` on the wire — the host validates what arrives).
-  const params: Record<string, unknown> =
-    reveal === undefined ? { provider, namespace, repository } : { provider, namespace, repository, reveal };
+  // Typed as OpenRepositoryOpenParams (the named interface) so the protocol-snapshot
+  // extractor resolves the wire shape from the type — an intersection or a bare Record
+  // would read shapeless and the check would flag a reshape that is not one.
+  const params: OpenRepositoryOpenParams = { provider, namespace, repository };
+  if (reveal !== undefined) params.reveal = reveal;
   const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENREPO], 'open', [params])) as OpenRepositoryReply;
   throwOnRefusal(res, 'repository open refused');
 }
