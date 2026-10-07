@@ -391,7 +391,7 @@
     "PROTOCOL_VCS": "const(\"protocol-vcs\")",
     "ProtocolAnalyticsEmitParams": "interface(name, props?)",
     "ProtocolAnalyticsRouteParams": "interface(path)",
-    "ProtocolContributeRunParams": "interface(branchName?, commitMessage, mode?, transcriptRequested?)",
+    "ProtocolContributeRunParams": "interface(branchName?, commitMessage, forceUpdateBranch?, mode?, resume?, transcriptRequested?)",
     "ProtocolDndStartDragParams": "interface(bytes?, kind, mountId, name, relPath)",
     "ProtocolFeedFetchParams": "interface(instanceId, params)",
     "ProtocolFetchFetchParams": "interface(body, headers, method, responseType?, url)",
@@ -402,7 +402,7 @@
     "ProtocolLlmChatParams": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, tools?)",
     "ProtocolOpenbundleOpenParams": "interface(dir, view?)",
     "ProtocolOpenlinkOpenParams": "interface(url)",
-    "ProtocolOpenrepoOpenParams": "interface(namespace, provider, repository)",
+    "ProtocolOpenrepoOpenParams": "interface(namespace, provider, repository, reveal?)",
     "ProtocolRecentsListParams": "interface(clear?)",
     "ProtocolSpacesAcceptInviteParams": "interface(spaceId)",
     "ProtocolSpacesConvertToSharedParams": "interface(confirm, spaceId)",
@@ -755,7 +755,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.84.0\")",
+    "SDK_VERSION": "const(\"0.85.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1394,7 +1394,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.84.0\")",
+    "SDK_VERSION": "const(\"0.85.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1597,7 +1597,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.84.0\")"
+    "SDK_VERSION": "const(\"0.85.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
