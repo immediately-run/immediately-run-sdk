@@ -26,42 +26,42 @@
 // request helpers, each with its own copy; R3-780 touched five FILES and seven SITES.
 // "Ten" was neither.
 //
-// R3-816 folded the three pure copies of the shape `ipc.ts` had until R3-780 — the fold
-// changed nothing observable, and each site carries a test that reddens when THIS
-// function's body is neutered (the measurement is in R3-816's PR body, the injection
-// named beside the count).
+// R3-816 folded the pure copies of the shape `ipc.ts` had until R3-780 — `recents` and
+// `tasks` here (two of the three the item named; the third, `catalog`, is the exemption
+// above) — and the fold changed nothing observable. R3-817 (merged as #192, 0.74.3) then
+// folded the `res && 'code' in res` family — `openExternal`, `openRepository`, `feed`,
+// `netFetch` and `theme` (×3) — fixing the `TypeError: Cannot use 'in' operator` a string
+// reply used to throw there. That form is gone from main; nothing remains to fold in
+// either family.
 //
-// Still not folded:
+// Still deliberately NOT folded:
 //
-//   · `feed.ts`, `netFetch.ts` and `theme.ts` (×3) read `res && 'code' in res`, which
-//     THROWS `TypeError: Cannot use 'in' operator` on a string reply. Folding them fixes
-//     that, so it is a behaviour change — an improvement, but not an extraction. Note the
-//     precedent cuts both ways: R3-708 already folded two sites carrying this exact form
-//     (`openExternal`, `openRepository`), so "behaviour change" is a reason to review them
-//     as their own item, not a reason they cannot be folded. R3-817 owns these five;
-//   · `launch.ts` folds `!res.data?.launchId` into the same condition and RETURNS
+//   · `catalog.ts` — the exemption above (R3-954's `retryAfter`, a field this helper
+//     does not build);
+//   · `launch.ts` — it folds `!res.data?.launchId` into the same condition and RETURNS
 //     `{ ok: false, code }` instead of throwing. Different control flow entirely.
-//
-// So the remaining work is two items, not one, and they are not the same size.
 //
 // `check:clones` cannot help with any of this: minLines 6, minTokens 50, and no identifier
 // normalisation, so blocks differing only in type names read as distinct.
 //
 // ---------------------------------------------------------------------------
-// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL FIFTEEN SITES
+// THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL TWENTY SITES
 // ---------------------------------------------------------------------------
 //
 // Measured on this tree (2026-10-07, the take-over's re-run — the recipe, not the
-// history: weaken the guard in a scratch copy and run the suite):
+// history: apply the injection in a scratch copy and run the suite):
 //
-//   - guard weakened to `r.ok === false` (an absent reply stops throwing): **120 of 1002**
-//     tests redden, across **17 suites**;
-//   - the FULL no-op neuter (the helper's body replaced by a bare return): **86 tests**
-//     redden across **42 suites** — the sharper probe, and the one that catches every
-//     folded site's refusal case.
+//   - guard weakened to `r.ok === false` (a REFUSAL stops throwing and a success starts
+//     throwing; an absent reply still throws through the `r &&` short-circuit):
+//     **120 of 1002** tests redden, across **17 suites**;
+//   - the FULL no-op neuter (the helper's body replaced by a bare return): **90 tests**
+//     redden across **17 failed suites** — the sharper probe, and the one the
+//     absent-reply cases redden under (they stay green under the guard-weakening,
+//     which is the reason they exist).
 //
-// The full-no-op neuter is the injection the per-site claims cite; the guard-weakening
-// count is the reason the absent-reply tests exist where they do.
+// (An earlier take-over draft recorded 86 across 42 — a broken probe whose import
+// errors failed suites before their tests ran; the 90/17 pair is the stable re-run,
+// twice.)
 //
 // (An earlier version of this paragraph said "nine of the twelve sites' suites", which
 // mixes sites with suites — the exact mistake the census block above is headed about —
@@ -126,16 +126,17 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Twenty sites call this; **nineteen**
+ * `code` and `message` must be STRINGS to be used. Twenty sites call this; **eighteen**
  * had an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708
- * and replaced nothing; `catalog.ts`'s copy returned inline in R3-954 — its error carries a
- * `retryAfter` this helper does not build, the one named not-folded site). They tested for
- * PRESENCE, in **three** shapes:
+ * and `openBundle.ts` against it in R3-808, so neither replaced anything; `catalog.ts`'s
+ * copy returned inline in R3-954 — its error carries a `retryAfter` this helper does not
+ * build, the one named not-folded site). They tested for PRESENCE, in **three** shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
- * - **two** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
- *   Code) ?? 'unknown'` — `openExternal`, `openRepository`, both folded in R3-708;
+ * - **seven** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
+ *   Code) ?? 'unknown'` — `openExternal` and `openRepository` (folded in R3-708) and
+ *   `feed`, `netFetch` and `theme` (×3) (folded in R3-817, #192);
  * - **four** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
  *   `ipc` (×2), `recents`, `tasks` (folded in R3-816).
  *
@@ -164,12 +165,11 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * `openExternal` and `openRepository` did.
  *
  * The mechanism is worth more than the correction, because it is repeatable. `'code' in
- * res` is *still on `main`* at five unfolded sites (see the census above — R3-817 is filed
- * to fold exactly those, so this count is expected to reach zero), so a reviewer who greps
- * `main` finds the form alive and concludes — reasonably — that it belongs to the untyped
- * family this file declines to fold. What a grep of `main` cannot show is that the
- * form was ALSO at two sites R3-708 folded. The tree that answers the question is the one
- * before the fold, `d4b07cc1^`. Read that before rewriting this paragraph again.
+ * res` is GONE from `main` — R3-817 (merged as #192, 0.74.3) folded the five sites that
+ * carried it (`feed`, `netFetch`, `theme` ×3), beside R3-708's two (`openExternal`,
+ * `openRepository`). A grep of `main` today finds the form only in this file's comments
+ * and in test files. The tree that shows the form at the sites is the one before the
+ * folds, `d4b07cc1^`. Read that before rewriting this paragraph again.
  *
  * It is an ASSERTION function, not a `void` one, because the inline form it replaced
  * narrowed `res` as a side effect of its `if`/`throw`: `secrets.ts` and `mounts.ts` read
