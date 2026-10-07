@@ -137,6 +137,41 @@ const normalize = (s) => s.replace(/\s+/g, ' ').trim();
 const MAX_DEPTH = 2;
 
 /**
+ * The `{fields, type}` recording of a NAMED object type that reached the depth cap
+ * (R3-996) — undefined when `type` is not one (anonymous, not an object, callable,
+ * property-less, array/tuple, or declared outside this repo's `src/`). Fields carry
+ * their type TEXT and are never expanded further: exactly one level past the cap, so
+ * recursion bottoms out even on recursive types.
+ */
+const namedObjectAtCap = (checker, type, node, text) => {
+  const name = type.symbol?.name;
+  if (!name || name === '__type' || name === 'anonymous') return undefined;
+  if (!(type.flags & ts.TypeFlags.Object)) return undefined;
+  if (checker.isArrayType?.(type) || checker.isTupleType?.(type)) return undefined;
+  if (checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0) return undefined;
+  // Own-vocabulary boundary: only types declared in THIS repo's src/ expand. A lib
+  // built-in (`Uint8Array`, `ArrayBufferLike`'s members) stays text — its name is a
+  // frozen spelling, and its method-signature texts belong to the toolchain, not to
+  // the wire: fingerprinting them would fail the gate on a TypeScript bump.
+  const declFile = type.symbol.declarations?.[0]?.getSourceFile().fileName.split('\\').join('/');
+  const srcPrefix = srcDir.split('\\').join('/') + '/';
+  if (!declFile || !declFile.startsWith(srcPrefix)) return undefined;
+  const props = checker.getPropertiesOfType(type).filter((p) => !p.name.startsWith('__@'));
+  if (!props.length) return undefined;
+  const fields = props
+    .map((p) => {
+      const decl = p.valueDeclaration ?? p.declarations?.[0] ?? node;
+      return {
+        name: p.name,
+        optional: Boolean(p.flags & ts.SymbolFlags.Optional),
+        type: text(checker.getTypeOfSymbolAtLocation(p, decl)),
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+  return { fields, type: text(type) };
+};
+
+/**
  * Structural fingerprint of a type.
  *
  * Object types expand field by field; unions expand member by member; arrays and
@@ -147,11 +182,34 @@ const MAX_DEPTH = 2;
  * wire — changes nothing in the snapshot. The alias has to be resolved for the gate
  * to mean "the shape", not "the spelling". Depth is capped at MAX_DEPTH so a field
  * whose type reaches half the codebase does not drag it into the snapshot.
+ *
+ * THE CAP EXCEPTION (R3-996). A NAMED OBJECT type that reaches the cap is recorded
+ * name-plus-FIELDS (fields as type text, one level only), and an array OF such a
+ * type stays transparent so `VcsDiffWarning[] | undefined` reaches the expansion
+ * too. A bare name at the cap was the `HostTheme` disease one level down: review
+ * round 3 of sandbox-protocol#45 added `'pr'` to `VcsTarget.refKind` and renamed
+ * `VcsDiffWarning.path`, and the snapshot stayed byte-identical while the SDK's
+ * fail-closed `parseTarget` would have dropped the whole target on the host's next
+ * push. Anonymous shapes keep the cap's text behaviour — the text spells the whole
+ * shape, so it already freezes it; named unions (`Role`, `ChatRole`) stay text too,
+ * the alias being the frozen spelling of record for those.
  */
 const describeType = (checker, type, node, depth = 0) => {
   if (!type) return { type: 'unknown' };
   const text = (t = type) => normalize(checker.typeToString(t, undefined, ts.TypeFormatFlags.NoTruncation));
-  if (depth > MAX_DEPTH) return { type: text() };
+  if (depth > MAX_DEPTH) {
+    // Arrays and tuples are checked FIRST: an `Array<X>` reference is an object type
+    // whose symbol is the global `Array`, so the named-object test below would
+    // happily fingerprint `length`/`push`/`concat` instead of the element.
+    if (checker.isArrayType?.(type) || checker.isTupleType?.(type)) {
+      const [el] = checker.isArrayType?.(type) ? checker.getTypeArguments(type) : [undefined];
+      const namedEl = el && namedObjectAtCap(checker, el, node, text);
+      return namedEl ? { array: namedEl } : { type: text() };
+    }
+    const named = namedObjectAtCap(checker, type, node, text);
+    if (named) return named;
+    return { type: text() };
+  }
   if (checker.isArrayType?.(type)) {
     const [el] = checker.getTypeArguments(type);
     return { array: describeType(checker, el, node, depth + 1) };
@@ -711,6 +769,42 @@ const selfTest = () => {
         [
           resolve(srcDir, 'theme.ts'),
           readFileSync(join(srcDir, 'theme.ts'), 'utf8').replace('requestType: REQUEST_THEME,', ''),
+        ],
+      ]),
+    ],
+    [
+      // R3-996: the vcs-state value's named subtypes were recorded by NAME at the
+      // depth cap, so each of these mutations left the snapshot byte-identical —
+      // while `parseTarget` fail-closed on the new refKind and dropped the target.
+      'a UNION MEMBER added to a named value subtype (VcsTarget.refKind)',
+      new Map([
+        [
+          resolve(srcDir, 'vcs.ts'),
+          readFileSync(join(srcDir, 'vcs.ts'), 'utf8').replace(
+            "refKind: 'branch' | 'tag' | 'commit';",
+            "refKind: 'branch' | 'tag' | 'commit' | 'pr';",
+          ),
+        ],
+      ]),
+    ],
+    [
+      'a NULLABILITY change on a named value subtype (VcsTarget.commitSha)',
+      new Map([
+        [
+          resolve(srcDir, 'vcs.ts'),
+          readFileSync(join(srcDir, 'vcs.ts'), 'utf8').replace('commitSha: string | null;', 'commitSha: string;'),
+        ],
+      ]),
+    ],
+    [
+      'a RENAMED field on a named value subtype (VcsDiffWarning.path)',
+      new Map([
+        [
+          resolve(srcDir, 'vcs.ts'),
+          readFileSync(join(srcDir, 'vcs.ts'), 'utf8').replace(
+            'export interface VcsDiffWarning {\n  kind: string;\n  /** The repo-relative path the warning is about. */\n  path: string;',
+            'export interface VcsDiffWarning {\n  kind: string;\n  /** The repo-relative path the warning is about. */\n  filePath: string;',
+          ),
         ],
       ]),
     ],
