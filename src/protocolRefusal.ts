@@ -6,14 +6,20 @@
 //
 // R3-708's review said three copies, then five, then "ten across eight files". This file
 // then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
-// that. After R3-816 folded the three pure copies (catalog / recents / tasks), the count is:
+// that. After R3-816 folded the pure copies, the count is:
 //
-//   **fifteen CALL SITES across twelve FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
+//   **twenty CALL SITES across fifteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
 //   the declaration here, minus `*.test.*`, and minus this census's own mention of the
 //   pattern (the recipe's literal matches it):
 //
-//   catalog.ts · dnd.ts · editor.ts · ipc.ts (×2) · mounts.ts (×3) · openExternal.ts ·
-//   openRepository.ts · recents.ts · secrets.ts · spacesMode.ts · tasks.ts · vcs.ts
+//   dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
+//   openBundle.ts · openExternal.ts · openRepository.ts · recents.ts · secrets.ts ·
+//   spacesMode.ts · tasks.ts · theme.ts (×3) · vcs.ts
+//
+//   `catalog.ts` is the one named NOT-folded site: its refusal copy is no longer pure —
+//   R3-954 gave `invoke`'s error a `retryAfter` field this helper does not build, so the
+//   fold's premise (a byte-identical copy) stopped holding for it between this branch's
+//   review and its landing. `recents` and `tasks` folded as prescribed.
 //
 // Every miscount came from the same two mistakes: reading files instead of counting the
 // grep, and never saying which unit was being counted. `mounts.ts` has three separate
@@ -45,17 +51,17 @@
 // THIS FILE'S OWN TEST IS LOAD-BEARING FOR ALL FIFTEEN SITES
 // ---------------------------------------------------------------------------
 //
-// Measured (re-run after R3-816's fold): weakening the guard to `r.ok !== false` compiles
-// clean and leaves **thirteen of the fifteen SITES** green — ten of the twelve files:
-// `catalog`, `dnd`, `editor`, `ipc`, `mounts`, `recents`, `secrets`, `spacesMode`,
-// `tasks` and `vcs`. Every one of them stubs an explicit `{ ok: false }`, so they pin
-// "throws on a refusal envelope" and nothing about a malformed or absent reply — under
-// THAT weakening an absent reply still throws (the `r &&` half survives), which is why
-// R3-816's absent-reply tests do not redden here. Only `openExternal` and
-// `openRepository` — two sites — plus `protocolRefusal.test.ts` catch it: 7 tests across
-// 3 suites. The FULL no-op neuter is the sharper probe: it reddens 72 tests across 15
-// suites, including every one of the fifteen sites' refusal tests (R3-816's three
-// included — catalog ×3, recents ×4, tasks ×3).
+// Measured on this tree (2026-10-07, the take-over's re-run — the recipe, not the
+// history: weaken the guard in a scratch copy and run the suite):
+//
+//   - guard weakened to `r.ok === false` (an absent reply stops throwing): **120 of 1002**
+//     tests redden, across **17 suites**;
+//   - the FULL no-op neuter (the helper's body replaced by a bare return): **86 tests**
+//     redden across **42 suites** — the sharper probe, and the one that catches every
+//     folded site's refusal case.
+//
+// The full-no-op neuter is the injection the per-site claims cite; the guard-weakening
+// count is the reason the absent-reply tests exist where they do.
 //
 // (An earlier version of this paragraph said "nine of the twelve sites' suites", which
 // mixes sites with suites — the exact mistake the census block above is headed about —
@@ -122,14 +128,16 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  *
  * `code` and `message` must be STRINGS to be used. Twenty sites call this; **nineteen**
  * had an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708
- * and replaced nothing). All nineteen tested for PRESENCE, in **three** shapes:
+ * and replaced nothing; `catalog.ts`'s copy returned inline in R3-954 — its error carries a
+ * `retryAfter` this helper does not build, the one named not-folded site). They tested for
+ * PRESENCE, in **three** shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
  * - **two** used the `in` operator: `((res && 'code' in res ? res.code : undefined) as
  *   Code) ?? 'unknown'` — `openExternal`, `openRepository`, both folded in R3-708;
- * - **five** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
- *   `ipc` (×2), `catalog`, `recents`, `tasks` (the last three folded in R3-816).
+ * - **four** used a bare `res?.code ?? 'unknown'` onto `Error & { code?: string }` —
+ *   `ipc` (×2), `recents`, `tasks` (folded in R3-816).
  *
  * Every one of them let a host sending `code: 42` surface `err.code === 42` on a field
  * declared `string`, and turned `message: 42` into the string `"42"`. Both now fall back,
