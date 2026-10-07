@@ -10,6 +10,11 @@
 // ever reach one of the platform's own repository routes. That is the point of the shape —
 // an app that could spell the destination could open anything.
 //
+// R3-1033: an optional REVEAL rides the open — a closed chrome enum, never a destination.
+// The app still cannot pass a URL, a route prefix or a path; the host decides what the
+// reveal means (which surface of ITS chrome opens) and builds every URL itself. A future
+// panel joins the `RepositoryReveal` union deliberately, never by a free string.
+//
 // Two more conditions hold on the host side, and neither is something this call can assert
 // for itself: the open needs the HOST document's live transient user activation (a real
 // click, which the host samples rather than believes), and one gesture opens exactly one
@@ -25,6 +30,20 @@ export interface RepositoryCoordinates {
   provider: string;
   namespace: string;
   repository: string;
+}
+
+/** A chrome reveal that may ride an open (R3-1033) — the host's own surface to open at the
+ *  destination, never a destination the app names. `'agent'` is the conversations panel;
+ *  the value set is closed on purpose (see the header). */
+export interface RepositoryReveal {
+  panel: 'agent';
+}
+
+/** The `open` wire params — the coordinates plus the optional reveal. Typed as a named
+ *  interface (not an inline literal) so the protocol-snapshot extractor resolves the wire
+ *  shape from the type; see `openRepository` below. */
+interface OpenRepositoryOpenParams extends RepositoryCoordinates {
+  reveal?: RepositoryReveal;
 }
 
 /** Why the host refused to open a tab.
@@ -62,6 +81,10 @@ type OpenRepositoryReply = { ok: true; url?: string } | { ok: false; code?: stri
 /**
  * Ask the host to open a repository in a new browser tab.
  *
+ * `reveal` (R3-1033) optionally asks the host to open one of its own chrome surfaces at
+ * the destination — a closed enum (`RepositoryReveal`), never a destination. Omitted,
+ * the open lands exactly as before.
+ *
  * Resolves once the host has performed the open; it does not wait for — and cannot observe —
  * the opened tab loading. Rejects with a typed {@link OpenRepositoryError} carrying `code`
  * when the host refuses.
@@ -71,10 +94,15 @@ type OpenRepositoryReply = { ok: true; url?: string } | { ok: false; code?: stri
  * it, a `setTimeout`, a retry) will be refused `no-activation`. None of the refusals are
  * worth retrying: each names a condition a retry cannot change.
  */
-export async function openRepository(coordinates: RepositoryCoordinates): Promise<void> {
+export async function openRepository(coordinates: RepositoryCoordinates, reveal?: RepositoryReveal): Promise<void> {
   const { provider, namespace, repository } = coordinates;
-  const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENREPO], 'open', [
-    { provider, namespace, repository },
-  ])) as OpenRepositoryReply;
+  // The reveal rides the one wire arg when the caller asked for it; a caller omitting it
+  // sends no field at all (never `undefined` on the wire — the host validates what arrives).
+  // Typed as OpenRepositoryOpenParams (the named interface) so the protocol-snapshot
+  // extractor resolves the wire shape from the type — an intersection or a bare Record
+  // would read shapeless and the check would flag a reshape that is not one.
+  const params: OpenRepositoryOpenParams = { provider, namespace, repository };
+  if (reveal !== undefined) params.reveal = reveal;
+  const res = (await protocolRequest(SCHEMES[PROTOCOL_OPENREPO], 'open', [params])) as OpenRepositoryReply;
   throwOnRefusal(res, 'repository open refused');
 }

@@ -158,10 +158,6 @@ export const methods = [
           description:
             'CONTRIBUTE_TRANSCRIPT_SPEC §4 R-CT-5: the "Commit session transcript" hint (a boolean request, never bytes).',
         },
-        // Ahead of the typed wrapper on purpose (R3-984): the host's lockstep needs the
-        // descriptor to carry every host-declared param, and src/contribute.ts gains
-        // forceUpdateBranch/resume (and the error's recovery/openPR) only once the
-        // sandbox-protocol 0.22.0 wire freeze is published — SDK #210, roadmap R3-994.
         forceUpdateBranch: {
           type: 'boolean',
           description:

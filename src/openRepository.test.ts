@@ -51,13 +51,47 @@ describe('openRepository', () => {
   });
 
   it('sends ONLY the coordinates — never a caller-supplied url, path or ref', async () => {
-    await openRepository({ ...coordinates, url: 'https://evil.test', path: '/edit/a/b/c' } as never);
+    await openRepository({ ...coordinates, url: 'https://evil.test', path: '/edit/a/b/c', ref: 'main' } as never);
     expect(mockRequest).toHaveBeenCalledWith(SCHEMES[PROTOCOL_OPENREPO], 'open', [coordinates]);
     const [, , params] = mockRequest.mock.calls[0];
     expect(Object.keys((params as Record<string, unknown>[])[0]).sort()).toEqual([
       'namespace',
       'provider',
       'repository',
+    ]);
+  });
+
+  it('R3-1033: a reveal rides the open as a closed field on the one wire arg', async () => {
+    await openRepository(coordinates, { panel: 'agent' });
+    expect(mockRequest).toHaveBeenCalledWith(SCHEMES[PROTOCOL_OPENREPO], 'open', [
+      { ...coordinates, reveal: { panel: 'agent' } },
+    ]);
+    const [, , params] = mockRequest.mock.calls[0];
+    expect(Object.keys((params as Record<string, unknown>[])[0]).sort()).toEqual([
+      'namespace',
+      'provider',
+      'repository',
+      'reveal',
+    ]);
+  });
+
+  it('R3-1033: omitting the reveal sends no reveal field — never undefined on the wire', async () => {
+    await openRepository(coordinates);
+    const [, , params] = mockRequest.mock.calls[0];
+    expect(Object.keys((params as Record<string, unknown>[])[0])).not.toContain('reveal');
+    expect((params as Record<string, unknown>[])[0].reveal).toBeUndefined();
+  });
+
+  it('R3-1033: the reveal never widens the destination grammar — url, path and ref stay stripped', async () => {
+    await openRepository({ ...coordinates, url: 'https://evil.test', path: '/edit/a/b/c', ref: 'main' } as never, {
+      panel: 'agent',
+    });
+    const [, , params] = mockRequest.mock.calls[0];
+    expect(Object.keys((params as Record<string, unknown>[])[0]).sort()).toEqual([
+      'namespace',
+      'provider',
+      'repository',
+      'reveal',
     ]);
   });
 

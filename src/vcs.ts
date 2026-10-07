@@ -15,6 +15,7 @@
 // (site-main `channelBridge`); an app without `vcs:read` simply sees the empty
 // initial. Action side: `protocol-vcs` requests gated host-side — `refreshDiff` /
 // `refreshPRs` by `vcs:read`, `resetWorkingTree` by first-party-only `vcs:reset`.
+import { invoke } from './catalog';
 import { createPushChannel } from './pushChannel';
 import { throwOnRefusal } from './protocolRefusal';
 import { protocolRequest } from './sandboxUtils';
@@ -38,7 +39,34 @@ export interface VcsBranch {
   parentRepo: string;
   parentRef: string;
   parentCommitSha: string;
+  /** Prefer {@link VcsState.canPushUpstream}: the same fact, present even when
+   *  `branch` is `null`. */
   upstreamPushable: boolean | null;
+}
+
+/** One warning from the host's diff. `kind` is open: today `'large-file'` or
+ *  `'truncated-manifest-blind-spot'`, and a newer host may send others, so branch on
+ *  the kinds you know and show `message` for the rest. */
+export interface VcsDiffWarning {
+  kind: string;
+  /** The repo-relative path the warning is about. */
+  path: string;
+  /** Human-readable text, ready to show. */
+  message: string;
+}
+
+/** What the working tree was loaded from (the host manifest), so a form can name and
+ *  link the target and apply §15.0 rule 2 on a tag or commit load. */
+export interface VcsTarget {
+  namespace: string;
+  repository: string;
+  ref: string;
+  refKind: 'branch' | 'tag' | 'commit';
+  /** The loaded commit; `null` when the manifest records none (a REST-built manifest
+   *  can carry no based-on commit), so a form shows no commit link. */
+  commitSha: string | null;
+  /** The repository's live default branch; `null` while the host does not know it. */
+  defaultBranch: string | null;
 }
 
 /** One pull request open from the current branch (host `BranchPR`). */
@@ -78,6 +106,34 @@ export interface VcsState {
    *  the wire contract exactly (the wire-shape extractor reads union members
    *  literally). */
   agentSession?: VcsAgentSession | null | undefined;
+  /** What the working tree was loaded from; `null` when there is no manifest. */
+  target?: VcsTarget | null | undefined;
+  /** The open pull request whose head is the loaded branch, projected host-side. On the
+   *  snapshot, not on `branch`, because `branch` is `null` when no sidecar names the
+   *  branch (another device), which is exactly when this is needed. `null` means known:
+   *  none open; absent means an older host that does not say. `prs` lists every PR the
+   *  host polled; this names the one whose head is the working branch. */
+  openPR?: { number: number; url: string } | null | undefined;
+  /** The save mode a contribute form opens on (CONTRIBUTE_SPEC §15.0 rule 4). The host
+   *  says `direct` only on a branch that is the user's; absent means `pr`. A default,
+   *  never a permission: `direct` still needs `contribute:direct`. */
+  defaultSaveMode?: 'pr' | 'direct' | undefined;
+  /** Whether the user can push to the target repository; `null` while probing. The same
+   *  fact as `branch.upstreamPushable`, but present when `branch` is `null`; prefer this
+   *  one when both are set. */
+  canPushUpstream?: boolean | null | undefined;
+  /** True when the load has no manifest, so contributions are unavailable. The
+   *  authoritative "no manifest" signal: `target` is `null` exactly when this is true. */
+  manifestMissing?: boolean | undefined;
+  /** The last diff refresh's failure; `null` after a good refresh. */
+  diffError?: string | null | undefined;
+  /** The diff's warnings. */
+  diffWarnings?: VcsDiffWarning[] | undefined;
+  /** Repo-relative paths walked but left out of the changeset: today only the
+   *  `.immediately.run/` platform sidecar files, never the user's own work. */
+  excludedPhantoms?: string[] | undefined;
+  /** The manifest is truncated: saving is locked out (CONTRIBUTE_SPEC §7). */
+  manifestTruncated?: boolean | undefined;
 }
 
 /** Value before the host answers — also the value when the app may not read the
@@ -119,6 +175,79 @@ const parseAgentSession = (v: unknown): VcsAgentSession | undefined => {
   };
 };
 
+// The R3-964/986/987 facts are optional and fail to ABSENT, field by field: a
+// malformed value is dropped so the app falls back to its old-host behaviour, and the
+// rest of the snapshot still lands. Nothing is coerced into a value the host did not send.
+const isStringArray = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === 'string');
+
+const isDiffWarningArray = (v: unknown): v is VcsDiffWarning[] =>
+  Array.isArray(v) &&
+  v.every(
+    (w) =>
+      !!w &&
+      typeof w === 'object' &&
+      typeof (w as VcsDiffWarning).kind === 'string' &&
+      typeof (w as VcsDiffWarning).path === 'string' &&
+      typeof (w as VcsDiffWarning).message === 'string',
+  );
+/** The refKind values the parser keeps (exported so the suite derives its cases from the
+ *  producer rather than probing one favourite member — every member must pass through,
+ *  because a miss silently drops the whole target fact). */
+export const REF_KINDS = new Set(['branch', 'tag', 'commit']);
+
+const parseTarget = (v: unknown): VcsTarget | null | undefined => {
+  if (v === null) return null;
+  if (!v || typeof v !== 'object') return undefined;
+  const t = v as Record<string, unknown>;
+  if (
+    typeof t.namespace !== 'string' ||
+    typeof t.repository !== 'string' ||
+    typeof t.ref !== 'string' ||
+    typeof t.refKind !== 'string' ||
+    !REF_KINDS.has(t.refKind) ||
+    !(t.commitSha === null || (typeof t.commitSha === 'string' && t.commitSha !== '')) ||
+    !(t.defaultBranch === null || typeof t.defaultBranch === 'string')
+  ) {
+    return undefined;
+  }
+  return {
+    namespace: t.namespace,
+    repository: t.repository,
+    ref: t.ref,
+    refKind: t.refKind as VcsTarget['refKind'],
+    commitSha: t.commitSha,
+    defaultBranch: t.defaultBranch,
+  };
+};
+
+/** The optional R3-964/986/987 facts of a push, each present only when well-typed. */
+const parseVcsFacts = (msg: Record<string, unknown>): Partial<VcsState> => {
+  const out: Partial<VcsState> = {};
+  const target = parseTarget(msg.target);
+  if (target !== undefined) out.target = target;
+  const openPR = msg.openPR as { number?: unknown; url?: unknown } | null | undefined;
+  if (openPR === null) out.openPR = null;
+  else if (
+    openPR &&
+    typeof openPR === 'object' &&
+    typeof openPR.number === 'number' &&
+    Number.isFinite(openPR.number) &&
+    typeof openPR.url === 'string'
+  ) {
+    out.openPR = { number: openPR.number, url: openPR.url };
+  }
+  if (msg.defaultSaveMode === 'pr' || msg.defaultSaveMode === 'direct') out.defaultSaveMode = msg.defaultSaveMode;
+  if (msg.canPushUpstream === null || typeof msg.canPushUpstream === 'boolean')
+    out.canPushUpstream = msg.canPushUpstream;
+  if (typeof msg.manifestMissing === 'boolean') out.manifestMissing = msg.manifestMissing;
+  if (msg.diffError === null || typeof msg.diffError === 'string') out.diffError = msg.diffError;
+  if (isDiffWarningArray(msg.diffWarnings))
+    out.diffWarnings = msg.diffWarnings.map(({ kind, path, message }) => ({ kind, path, message }));
+  if (isStringArray(msg.excludedPhantoms)) out.excludedPhantoms = msg.excludedPhantoms;
+  if (typeof msg.manifestTruncated === 'boolean') out.manifestTruncated = msg.manifestTruncated;
+  return out;
+};
+
 const channel = createPushChannel<VcsState>({
   pushType: VCS_STATE,
   requestType: REQUEST_VCS_STATE,
@@ -136,6 +265,19 @@ const channel = createPushChannel<VcsState>({
       prs,
       diffLoading: msg.diffLoading === true,
       ...(agentSession ? { agentSession } : {}),
+      // Each key is named here, not inside the helper, so the protocol snapshot's
+      // `reads` records every field this parser consumes.
+      ...parseVcsFacts({
+        target: msg.target,
+        openPR: msg.openPR,
+        defaultSaveMode: msg.defaultSaveMode,
+        canPushUpstream: msg.canPushUpstream,
+        manifestMissing: msg.manifestMissing,
+        diffError: msg.diffError,
+        diffWarnings: msg.diffWarnings,
+        excludedPhantoms: msg.excludedPhantoms,
+        manifestTruncated: msg.manifestTruncated,
+      }),
     };
   },
 });
@@ -199,3 +341,97 @@ export const refreshPRs = (): Promise<void> => vcsRequest('refreshPRs');
  *  gate. Requires `confirm: true` (host belt-and-braces). Rejects with a
  *  {@link VcsActionError} (`.code`). */
 export const resetWorkingTree = (): Promise<void> => vcsRequest('reset', { confirm: true });
+
+// ---------------------------------------------------------------------------------------
+// R3-954 — bundle history (COLLABORATION_SESSIONS §16). Read-only history of a
+// GitHub-backed bundle mount THIS app holds (the URL-dispatched corpus, or the editor's
+// working tree): the head of its ref, the first-parent log, ancestry, files at a past
+// commit, changed paths, and the user's write permission. Gated `vcs:read`; the host
+// refuses a mount the app does not hold `forbidden`. Paths are bundle-relative (relative
+// to the mount's content directory). Each call is a literal `invoke('vcs:…')` so the
+// wire-shape gate (`protocol:check`) records its fields against the published protocol.
+
+/** One first-parent commit of a bundle's history. */
+export interface BundleCommit {
+  sha: string;
+  /** The first parent, or null for a root commit. */
+  parent: string | null;
+  message: string;
+}
+
+/**
+ * A refused bundle-history call. `code` is one of: `forbidden` (the app lacks `vcs:read`,
+ * or does not hold the mount), `unsupported` (the mount has no repository history — a
+ * space, a local tree — or the tree is too large to compare), `invalid-params` (a
+ * malformed sha or path, more than 100 paths or 5 MiB in one read, or a log longer than
+ * `max` — the message then starts `history-too-long`), `not-found` (no such commit),
+ * `budget` (the provider's rate limit is exhausted; `retryAfter` carries its wait in
+ * seconds when it sent one), `unknown`. Nothing enforces the union at runtime — treat an
+ * unlisted code as possible.
+ */
+export interface BundleHistoryError extends Error {
+  code: 'forbidden' | 'unsupported' | 'invalid-params' | 'not-found' | 'budget' | 'unknown';
+  retryAfter?: number;
+}
+
+const fromBase64 = (s: string): Uint8Array => {
+  const bin = atob(s);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+};
+
+/** The commit the bundle's ref points at now. Cheap to poll: the host asks GitHub
+ *  conditionally, so an unchanged head costs no rate limit. */
+export const bundleHead = async (mountId: string): Promise<string> => {
+  const params: { mountId: string } = { mountId };
+  return (await invoke<{ sha: string }>('vcs:bundleHead', params)).sha;
+};
+
+/** First-parent commits, oldest first, from `until` (default: the head) back to — not
+ *  including — `since` (default: the root). A merge's second-parent commits never
+ *  appear. Refused (`invalid-params`, `history-too-long`) beyond `max` (default 200,
+ *  at most 1000) — never silently truncated. */
+export const bundleLog = async (
+  mountId: string,
+  opts: { since?: string; until?: string; max?: number } = {},
+): Promise<BundleCommit[]> => {
+  const params: { mountId: string; since?: string; until?: string; max?: number } = { mountId };
+  if (opts.since !== undefined) params.since = opts.since;
+  if (opts.until !== undefined) params.until = opts.until;
+  if (opts.max !== undefined) params.max = opts.max;
+  return (await invoke<{ commits: BundleCommit[] }>('vcs:bundleLog', params)).commits;
+};
+
+/** Whether commit `a` is an ancestor of commit `b` (reflexive: a commit is its own). */
+export const bundleIsAncestor = async (mountId: string, a: string, b: string): Promise<boolean> => {
+  const params: { mountId: string; a: string; b: string } = { mountId, a, b };
+  return (await invoke<{ ancestor: boolean }>('vcs:bundleIsAncestor', params)).ancestor;
+};
+
+/** Files at commit `sha`, by bundle-relative path; `null` where there is no file. At
+ *  most 100 paths and 5 MiB per call. */
+export const bundleRead = async (
+  mountId: string,
+  sha: string,
+  paths: string[],
+): Promise<Record<string, Uint8Array | null>> => {
+  const params: { mountId: string; sha: string; paths: string[] } = { mountId, sha, paths };
+  const { files } = await invoke<{ files: Record<string, string | null> }>('vcs:bundleRead', params);
+  const out: Record<string, Uint8Array | null> = {};
+  for (const [path, b64] of Object.entries(files)) out[path] = b64 === null ? null : fromBase64(b64);
+  return out;
+};
+
+/** The bundle-relative paths that differ between two commits (added, removed or changed). */
+export const bundleDiffPaths = async (mountId: string, from: string, to: string): Promise<string[]> => {
+  const params: { mountId: string; from: string; to: string } = { mountId, from, to };
+  return (await invoke<{ paths: string[] }>('vcs:bundleDiffPaths', params)).paths;
+};
+
+/** Whether the signed-in user may push to the bundle's repository (false signed out).
+ *  Use it to hide a publish affordance the user could not complete. */
+export const bundleCanWrite = async (mountId: string): Promise<boolean> => {
+  const params: { mountId: string } = { mountId };
+  return (await invoke<{ canWrite: boolean }>('vcs:bundleCanWrite', params)).canWrite;
+};

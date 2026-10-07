@@ -33,7 +33,7 @@ jest.mock('./hostTransport', () => ({
   },
 }));
 
-import type { VcsState } from './vcs';
+import { REF_KINDS, type VcsState } from './vcs';
 
 type VcsMod = typeof import('./vcs');
 let mod: VcsMod;
@@ -149,6 +149,118 @@ describe('vcs read channel', () => {
   });
 });
 
+// R3-964 / R3-986 / R3-987: the facts the contribute forms render from. Each is
+// optional and fails to ABSENT field by field, so an old host or a malformed value
+// leaves the app on its old behaviour and never conjures a fact.
+describe('vcs read channel — the save-form facts (R3-964/986/987)', () => {
+  const facts = {
+    target: {
+      namespace: 'acme',
+      repository: 'site',
+      ref: 'v1.2',
+      refKind: 'tag',
+      commitSha: 'abc123',
+      defaultBranch: 'main',
+    },
+    canPushUpstream: false,
+    manifestMissing: false,
+    diffError: 'diff failed: timeout',
+    diffWarnings: [{ kind: 'large-file', path: 'big.bin', message: 'big.bin is over 1 MB' }],
+    excludedPhantoms: ['.immediately-run/state.json'],
+    manifestTruncated: true,
+  };
+
+  it('passes every well-typed fact through, openPR and defaultSaveMode included', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
+    expect(got).toMatchObject({ ...facts, openPR: { number: 7, url: 'https://x/pr/7' }, defaultSaveMode: 'direct' });
+  });
+
+  it.each([...REF_KINDS])('keeps a target for every refKind the host records (%s)', (kind) => {
+    // The class, derived from its producer: REF_KINDS is the runtime set the
+    // parser drops on a miss, so every member must pass through — a favourite
+    // member would keep the unprobed loads silently dropping the target fact.
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...facts, target: { ...facts.target, refKind: kind } });
+    expect(got!.target).toEqual({ ...facts.target, refKind: kind });
+  });
+
+  it('keeps null where the host says "known: none" or "not known yet"', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({
+      ...sample,
+      target: null,
+      canPushUpstream: null,
+      diffError: null,
+      openPR: null,
+    });
+    expect(got!.target).toBeNull();
+    expect(got!.canPushUpstream).toBeNull();
+    expect(got!.diffError).toBeNull();
+    expect(got!.openPR).toBeNull();
+  });
+
+  it('keeps a target whose manifest records no commit, with commitSha null', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, target: { ...facts.target, commitSha: null } });
+    expect(got!.target).toEqual({ ...facts.target, commitSha: null });
+  });
+
+  it('an old-host push carries none of the new keys', () => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push(sample);
+    for (const k of [
+      'target',
+      'canPushUpstream',
+      'manifestMissing',
+      'diffError',
+      'diffWarnings',
+      'excludedPhantoms',
+      'manifestTruncated',
+    ]) {
+      expect(got).not.toHaveProperty(k);
+    }
+    expect(got!.branch).not.toHaveProperty('openPR');
+    expect(got!.branch).not.toHaveProperty('defaultSaveMode');
+  });
+
+  it.each([
+    ['target with an unknown refKind', { target: { ...facts.target, refKind: 'pr' } }, 'target'],
+    ['target missing commitSha', { target: { ...facts.target, commitSha: undefined } }, 'target'],
+    ['target with an empty commitSha', { target: { ...facts.target, commitSha: '' } }, 'target'],
+    ['canPushUpstream as a string', { canPushUpstream: 'yes' }, 'canPushUpstream'],
+    ['manifestMissing as 1', { manifestMissing: 1 }, 'manifestMissing'],
+    ['diffError as an object', { diffError: { message: 'x' } }, 'diffError'],
+    ['diffWarnings as plain strings', { diffWarnings: ['3 files over 1 MB'] }, 'diffWarnings'],
+    ['a diffWarning without a path', { diffWarnings: [{ kind: 'large-file', message: 'm' }] }, 'diffWarnings'],
+    ['excludedPhantoms not an array', { excludedPhantoms: 'a.json' }, 'excludedPhantoms'],
+    ['manifestTruncated as "true"', { manifestTruncated: 'true' }, 'manifestTruncated'],
+  ])('drops %s, and the snapshot still lands', (_label, bad, key) => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...bad });
+    expect(got).not.toHaveProperty(key);
+    expect(got!.changes).toHaveLength(2);
+  });
+
+  it.each([
+    ['openPR with a non-finite number', { openPR: { number: NaN, url: 'u' } }, 'openPR'],
+    ['openPR without a url', { openPR: { number: 7 } }, 'openPR'],
+    ['defaultSaveMode outside the two modes', { defaultSaveMode: 'force' }, 'defaultSaveMode'],
+  ])('drops %s', (_label, bad, key) => {
+    let got: VcsState | undefined;
+    mod.onVcsStateChange((s) => (got = s));
+    push({ ...sample, ...bad });
+    expect(got).not.toHaveProperty(key);
+    expect(got!.branch!.name).toBe('my-edit');
+  });
+});
+
 describe('vcs actions — request shape', () => {
   it.each([
     ['refreshDiff', () => mod.refreshDiff(), 'refreshDiff', {}],
@@ -175,5 +287,76 @@ describe('vcs actions — typed errors', () => {
     protocolRequest.mockResolvedValue({ ok: false });
     const err = await mod.refreshPRs().catch((e) => e);
     expect(err.code).toBe('unknown');
+  });
+});
+
+describe('bundle history (R3-954)', () => {
+  const MOUNT = 'content:immediately-run/trololo';
+  const A = 'a'.repeat(40);
+  const B = 'b'.repeat(40);
+
+  it.each([
+    ['bundleHead', () => mod.bundleHead(MOUNT), { mountId: MOUNT }, { sha: A }, A],
+    [
+      'bundleLog',
+      () => mod.bundleLog(MOUNT, { since: A, max: 50 }),
+      { mountId: MOUNT, since: A, max: 50 },
+      { commits: [{ sha: B, parent: A, message: 'm' }] },
+      [{ sha: B, parent: A, message: 'm' }],
+    ],
+    [
+      'bundleIsAncestor',
+      () => mod.bundleIsAncestor(MOUNT, A, B),
+      { mountId: MOUNT, a: A, b: B },
+      { ancestor: true },
+      true,
+    ],
+    [
+      'bundleDiffPaths',
+      () => mod.bundleDiffPaths(MOUNT, A, B),
+      { mountId: MOUNT, from: A, to: B },
+      { paths: ['board.json'] },
+      ['board.json'],
+    ],
+    ['bundleCanWrite', () => mod.bundleCanWrite(MOUNT), { mountId: MOUNT }, { canWrite: false }, false],
+  ])('%s drives the protocol-vcs request and unwraps the result', async (method, call, params, data, expected) => {
+    protocolRequest.mockResolvedValue({ ok: true, data });
+    await expect((call as () => Promise<unknown>)()).resolves.toEqual(expected);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', method, [params]);
+  });
+
+  it('bundleLog sends only the options given', async () => {
+    protocolRequest.mockResolvedValue({ ok: true, data: { commits: [] } });
+    await mod.bundleLog(MOUNT);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', 'bundleLog', [{ mountId: MOUNT }]);
+  });
+
+  it('bundleRead decodes base64 to bytes and keeps null for a missing file', async () => {
+    protocolRequest.mockResolvedValue({
+      ok: true,
+      data: { files: { 'board.json': btoa('{"name":"x"}'), 'gone.json': null } },
+    });
+    const files = await mod.bundleRead(MOUNT, A, ['board.json', 'gone.json']);
+    expect(protocolRequest).toHaveBeenCalledWith('vcs', 'bundleRead', [
+      { mountId: MOUNT, sha: A, paths: ['board.json', 'gone.json'] },
+    ]);
+    expect(new TextDecoder().decode(files['board.json']!)).toBe('{"name":"x"}');
+    expect(files['gone.json']).toBeNull();
+  });
+
+  it('a host refusal rejects with its typed code, and a rate limit with retryAfter', async () => {
+    protocolRequest.mockResolvedValue({ ok: false, code: 'forbidden', message: 'not held' });
+    await expect(mod.bundleHead(MOUNT)).rejects.toMatchObject({ code: 'forbidden' });
+    protocolRequest.mockResolvedValue({ ok: false, code: 'budget', message: 'rate limited', retryAfter: 30 });
+    await expect(mod.bundleLog(MOUNT)).rejects.toMatchObject({ code: 'budget', retryAfter: 30 });
+    protocolRequest.mockResolvedValue({
+      ok: false,
+      code: 'invalid-params',
+      message: 'history-too-long: more than 200',
+    });
+    await expect(mod.bundleLog(MOUNT)).rejects.toMatchObject({
+      code: 'invalid-params',
+      message: expect.stringMatching(/^history-too-long/),
+    });
   });
 });

@@ -14,6 +14,31 @@ import { PROTOCOL_CONTRIBUTE } from './generated/protocol';
  *  is REJECTED (`forbidden`), never silently downgraded to a PR (threat T11). */
 export type ContributeMode = 'pr' | 'direct';
 
+/** The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12), so an app
+ *  renders the specified action instead of a generic "try again". Mirrors the
+ *  host orchestrator's `RecoveryAction`.
+ *  - `retry` — the failed step is idempotent; re-running the save is safe.
+ *  - `use-different-name` — a branch with that name exists and is not this
+ *    session's lineage; renaming (or, for a caller-supplied name, the §8.8 gated
+ *    force-update) is the only way on.
+ *  - `open-pr` — the branch was pushed but opening the PR failed; resume with the
+ *    event's `openPR` context (CT-6), never re-push.
+ *  - `switch-to-pr` — a direct commit was rejected as a non-fast-forward; offer a
+ *    new branch + PR instead (CT-3). */
+export type RecoveryAction = 'retry' | 'use-different-name' | 'open-pr' | 'switch-to-pr';
+
+/** Identifiers for the `open-pr` resume: the branch already exists on the push
+ *  repo (the upstream or the user's fork) and only the PR is missing. `head` is
+ *  the PR head ref (`branch` or `forkOwner:branch`). Minted by the host; an app
+ *  passes it back unchanged in {@link ContributeOptions.resume}. */
+export interface OpenPRResumeContext {
+  pushOwner: string;
+  repository: string;
+  branchName: string;
+  base: string;
+  head: string;
+}
+
 /** A stage emitted as the contribution runs. Mirrors the host orchestrator's
  *  event union; carries progress metadata only — never the token or file blobs. */
 export type ContributionEvent =
@@ -33,7 +58,15 @@ export type ContributionEvent =
   | { stage: 'switch-branch'; provider: 'github'; pushOwner: string; repository: string; branchName: string }
   | { stage: 'done'; prUrl?: string; prNumber?: number; commitSha: string }
   | { stage: 'warning'; message: string; details?: unknown }
-  | { stage: 'error'; message: string; recoverable: boolean };
+  | {
+      stage: 'error';
+      message: string;
+      recoverable: boolean;
+      /** The specific recovery to offer. Absent ⇒ the generic recoverable surface. */
+      recovery?: RecoveryAction;
+      /** Present only with `recovery === 'open-pr'`: the existing branch to open a PR for. */
+      openPR?: OpenPRResumeContext;
+    };
 
 /** The settled outcome (the stream's return value). */
 export interface ContributionResult {
@@ -60,6 +93,14 @@ export interface ContributeOptions {
    *  (R-CT-6). The host's disclosure review remains the consent (R-CT-7) and
    *  the hint is spent per contribution (R-CT-8). */
   transcriptRequested?: boolean;
+  /** CONTRIBUTE_SPEC §8.8: update a caller-supplied branch that already exists.
+   *  Offer it only after a `use-different-name` error on a name the user typed;
+   *  the host's lineage gate (CT-4) still decides whether the update is allowed. */
+  forceUpdateBranch?: boolean;
+  /** Resume instead of a fresh save. `open-pr` opens the PR for the branch a
+   *  failed attempt already pushed (CT-6), using the error event's `openPR`
+   *  context unchanged; the host refuses a context it did not mint for this app. */
+  resume?: { kind: 'open-pr'; context: OpenPRResumeContext };
 }
 
 /**
