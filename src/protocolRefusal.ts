@@ -117,7 +117,7 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Seventeen sites call this;
+ * `code` and `message` must be STRINGS to be used. Eighteen sites call this;
  * **sixteen** had an inline copy it replaced (`spacesMode.ts` was written against the
  * helper in R3-708 and replaced nothing). All sixteen tested for PRESENCE, in **three**
  * shapes:
