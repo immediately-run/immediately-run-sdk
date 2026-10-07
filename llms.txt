@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.83.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.85.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -290,6 +290,8 @@ Import: `@immediately-run/sdk/contribute`
 - `ContributeOptions` (interface) — Options for a contribution: the commit message, save ContributeMode, (PR mode) an optional branch name, and the transcript request hint.
 - `ContributionEvent` (type) — A stage emitted as the contribution runs.
 - `ContributionResult` (interface) — The settled outcome (the stream's return value).
+- `OpenPRResumeContext` (interface) — Identifiers for the `open-pr` resume: the branch already exists on the push repo (the upstream or the user's fork) and only the PR is missing.
+- `RecoveryAction` (type) — The recovery a recoverable save error offers (CONTRIBUTE_SPEC §12), so an app renders the specified action instead of a generic "try again".
 
 ## dnd
 
@@ -738,6 +740,16 @@ Import: `@immediately-run/sdk/node_modules/@immediately-run/safe-content/dist/in
 - `WikiLinkToken` (interface)
 - `WikiPart` (type)
 
+## openBundle
+
+Import: `@immediately-run/sdk/openBundle`
+
+- `OPEN_BUNDLE_REPLY_TIMEOUT_MS` (const) — How long `openBundle` waits for the host's answer, in ms.
+- `openBundle` (function) — Ask the host to open a bundle in a new browser tab.
+- `OpenBundleError` (interface)
+- `OpenBundleErrorCode` (type) — Why a bundle did not open in a tab.
+- `OpenBundleTarget` (interface) — What to open: a bundle directory the app holds, and optionally one of its declared views.
+
 ## openExternal
 
 Import: `@immediately-run/sdk/openExternal`
@@ -754,6 +766,7 @@ Import: `@immediately-run/sdk/openRepository`
 - `OpenRepositoryError` (interface)
 - `OpenRepositoryErrorCode` (type) — Why the host refused to open a tab.
 - `RepositoryCoordinates` (interface) — Where a repository lives.
+- `RepositoryReveal` (interface) — A chrome reveal that may ride an open (R3-1033) — the host's own surface to open at the destination, never a destination the app names.
 
 ## platformLink
 
@@ -885,8 +898,17 @@ Import: `@immediately-run/sdk/useEntryState`
 
 Import: `@immediately-run/sdk/vcs`
 
+- `bundleCanWrite` (function) — Whether the signed-in user may push to the bundle's repository (false signed out).
+- `BundleCommit` (interface) — One first-parent commit of a bundle's history.
+- `bundleDiffPaths` (function) — The bundle-relative paths that differ between two commits (added, removed or changed).
+- `bundleHead` (function) — The commit the bundle's ref points at now.
+- `BundleHistoryError` (interface) — A refused bundle-history call.
+- `bundleIsAncestor` (function) — Whether commit `a` is an ancestor of commit `b` (reflexive: a commit is its own).
+- `bundleLog` (function) — First-parent commits, oldest first, from `until` (default: the head) back to — not including — `since` (default: the root).
+- `bundleRead` (function) — Files at commit `sha`, by bundle-relative path; `null` where there is no file.
 - `getVcsState` (function) — One-off read of the current source-control state.
 - `onVcsStateChange` (function) — Subscribe to source-control changes.
+- `REF_KINDS` (const) — The refKind values the parser keeps (exported so the suite derives its cases from the producer rather than probing one favourite member — every member must pass through, because a miss silently drops the whole target fact).
 - `refreshDiff` (function) — Ask the host to recompute the working-tree diff and push a fresh VcsState.
 - `refreshPRs` (function) — Ask the host to re-poll the open PRs and push a fresh VcsState.
 - `resetWorkingTree` (function) — Ask the host to DISCARD the working tree (COW writable wipe + journal clear) — irreversible.
@@ -895,8 +917,10 @@ Import: `@immediately-run/sdk/vcs`
 - `VcsAgentSession` (interface) — The gate facts the host projects about an active agent session on the target repo (CONTRIBUTE_TRANSCRIPT_SPEC §3/§4, R3-632/R3-659): enough for a contribute app to render the "Commit session transcript" checkbox — never transcript bytes, a title, or message content.
 - `VcsBranch` (interface) — The branch the working tree sits on and the upstream it diverged from (host `BranchInfo`, §15.1).
 - `VcsChange` (interface) — One changed path in the working tree (vs.
+- `VcsDiffWarning` (interface) — One warning from the host's diff.
 - `VcsPR` (interface) — One pull request open from the current branch (host `BranchPR`).
 - `VcsState` (interface) — The whole source-control snapshot the host projects to a `vcs:read` frame.
+- `VcsTarget` (interface) — What the working tree was loaded from (the host manifest), so a form can name and link the target and apply §15.0 rule 2 on a tag or commit load.
 
 ## version
 
@@ -943,7 +967,7 @@ Every request-kind wrapper above also exposes `.try(...)` → `Promise<{ ok: tru
 
 | function | catalog name | capability | kind | params | yields → returns |
 |---|---|---|---|---|---|
-| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested | `ContributionEvent → ContributionResult` |
+| `contribute` | `contribute:run` | `contribute:any` | stream | commitMessage, mode, branchName, transcriptRequested, forceUpdateBranch, resume | `ContributionEvent → ContributionResult` |
 | `chat` | `llm:chat` | `llm:chat` | stream | messages, tools, responseFormat, maxTokens, modelHint | `ChatDelta → ChatResult` |
 
 ---

@@ -68,6 +68,20 @@
       "detail": "the export itself",
       "reason": "R3-876 review round 1 (both passes, R6): the hand-written UrlChangeMessage interface duplicated UrlchangePayload, which the pinned @immediately-run/sandbox-protocol@0.17.0 already exports; the sites now import the contract's own type. NEVER SHIPPED: the interface existed only on the PR branch between its first commit and this fix — no release carried it (0.79.0 predates it; 0.80.0 publishes without it), so no consumer could pin it.",
       "date": "2026-10-04"
+    },
+    {
+      "module": "contribute",
+      "export": "ContributionEvent",
+      "detail": "union member `{message, recoverable, stage}`",
+      "reason": "R3-984: not a removal — the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
+      "date": "2026-10-06"
+    },
+    {
+      "module": "index",
+      "export": "ContributionEvent",
+      "detail": "union member `{message, recoverable, stage}`",
+      "reason": "R3-984: not a removal — the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
+      "date": "2026-10-06"
     }
   ]
 }
