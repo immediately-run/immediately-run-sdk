@@ -10,7 +10,10 @@
 //
 // R3-994 (SDK #210 landed): contribute:run's recovery inputs and its error's
 // recovery/openPR are the typed wrapper's own fields now — the exception note
-// is removed and the field-for-field match is verified below.
+// is removed. Honest residue: the params half is gate-checked by
+// verify-lockstep (the host mirror's paramsSchema); the error member's
+// recovery/openPR half is a transcription, guarded by no gate (the old
+// "runs ahead" note was its only marker).
 
 export const types = {
   // ── contribute ──────────────────────────────────────────────────────────────
