@@ -7,15 +7,15 @@ wrappers, the catalog, and the docs in parallel. Covers both a **request** famil
 
 ## Files
 
-| File | Role (spec §) |
-|---|---|
-| `descriptors.spaces.mjs` | The **single source** for the request family — the §2 `CapabilityDescriptor` set for `spaces:*`, transcribed from `src/catalog.ts` + `src/mounts.ts` + `CAPABILITY_REFERENCE.md`. |
-| `descriptors.streams.mjs` | The single source for the **stream** family — `contribute:run` + `llm:chat`, transcribed from `src/contribute.ts` + `src/llm.ts`. Proves the `kind:'stream'` → `AsyncGenerator<Event, Result>` projection (incl. discriminated-union events via `oneOf`/`const`). Until SDK #210 (R3-994) lands, `contribute:run`'s recovery inputs and error `recovery`/`openPR` run ahead of `src/contribute.ts`. |
-| `generate.mjs` | The generator — emits the §3 projections (wrappers, types, error unions, llms.txt, catalog manifest). Dependency-free; ships a tiny json-schema→TS (object/enum/const/array/record/unknown/$ref/oneOf/void). Real impl uses `json-schema-to-typescript`. |
-| `verify.mjs` | §7 acceptance test (request) — descriptors ≡ the **SHIPPED** surface: each `alias.fn` is a real export of the BUILT `dist/mounts.js` and is pinned in `api-snapshot.json`, and the generated path (via the real `invoke()` from `dist/catalog.js`) makes an identical wire call + throws the same `.code`, all 9 methods. |
-| `verify.streams.mjs` | §7 acceptance test (stream) — descriptors ≡ the **SHIPPED** surface, through the REAL `consumeStream`: each `alias.fn` is an export of the BUILT `dist/contribute.js`/`dist/llm.js`, and the generated path (real `invokeStream`) matches on request envelope, yielded events, return value and thrown `.code`. Plus the `signal`-stays-off-the-wire constraint. |
-| `verify.types.mjs` | Type-member parity — the descriptors' shared types vs. the BUILT `dist/mounts.d.ts`, field by field (TypeScript compiler AST, not regex). Closes a gap **both** other gates have: `api:check` compares exported NAMES, and the wire check never sees types, so an interface silently losing a FIELD passes everything. It caught the descriptors dropping `Member.principal`. |
-| `generated/` | Output: `<family>.generated.ts` (wrappers+types), `<family>.llms.txt` (docs), `<family>.catalog.json` (catalog twin). |
+| File                      | Role (spec §)                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `descriptors.spaces.mjs`  | The **single source** for the request family — the §2 `CapabilityDescriptor` set for `spaces:*`, transcribed from `src/catalog.ts` + `src/mounts.ts` + `CAPABILITY_REFERENCE.md`.                                                                                                                                                                                                                |
+| `descriptors.streams.mjs` | The single source for the **stream** family — `contribute:run` + `llm:chat`, transcribed from `src/contribute.ts` + `src/llm.ts`. Proves the `kind:'stream'` → `AsyncGenerator<Event, Result>` projection (incl. discriminated-union events via `oneOf`/`const`). `contribute:run`'s recovery inputs and error `recovery`/`openPR` match `src/contribute.ts` field for field (R3-994, SDK #210). |
+| `generate.mjs`            | The generator — emits the §3 projections (wrappers, types, error unions, llms.txt, catalog manifest). Dependency-free; ships a tiny json-schema→TS (object/enum/const/array/record/unknown/$ref/oneOf/void). Real impl uses `json-schema-to-typescript`.                                                                                                                                         |
+| `verify.mjs`              | §7 acceptance test (request) — descriptors ≡ the **SHIPPED** surface: each `alias.fn` is a real export of the BUILT `dist/mounts.js` and is pinned in `api-snapshot.json`, and the generated path (via the real `invoke()` from `dist/catalog.js`) makes an identical wire call + throws the same `.code`, all 9 methods.                                                                        |
+| `verify.streams.mjs`      | §7 acceptance test (stream) — descriptors ≡ the **SHIPPED** surface, through the REAL `consumeStream`: each `alias.fn` is an export of the BUILT `dist/contribute.js`/`dist/llm.js`, and the generated path (real `invokeStream`) matches on request envelope, yielded events, return value and thrown `.code`. Plus the `signal`-stays-off-the-wire constraint.                                 |
+| `verify.types.mjs`        | Type-member parity — the descriptors' shared types vs. the BUILT `dist/mounts.d.ts`, field by field (TypeScript compiler AST, not regex). Closes a gap **both** other gates have: `api:check` compares exported NAMES, and the wire check never sees types, so an interface silently losing a FIELD passes everything. It caught the descriptors dropping `Member.principal`.                    |
+| `generated/`              | Output: `<family>.generated.ts` (wrappers+types), `<family>.llms.txt` (docs), `<family>.catalog.json` (catalog twin).                                                                                                                                                                                                                                                                            |
 
 ## Run
 
@@ -38,7 +38,7 @@ The generated `spaces.generated.ts` type-checks under `--strict` and its public
 signatures (`inviteToSpace(spaceId, login, role)`, the `Role`/`Member`/`GrantRecord`
 types) are byte-identical to today's hand-written `src/mounts.ts` exports — so a
 swap is a no-op to consuming apps and keeps `npm run api:check` green. That claim is
-now *checked* rather than asserted: `verify.mjs` reads the built artifacts (see
+now _checked_ rather than asserted: `verify.mjs` reads the built artifacts (see
 below), and it is what caught the descriptors having drifted to a `shareSpace`
 method the SDK never shipped.
 
@@ -48,11 +48,11 @@ The hand-written wrapper (human / authoring-agent surface) and the catalog
 descriptor (embedded-agent surface) are **two projections of one fact**. Change
 `spaces:share`'s params in `descriptors.spaces.mjs` and the wrapper, its types,
 the error union, the llms.txt row, and the catalog entry all move together — they
-*cannot* drift (the drift recorded in `status/SDK_PACKAGING_STATUS.md`, where
+_cannot_ drift (the drift recorded in `status/SDK_PACKAGING_STATUS.md`, where
 `llm.ts` fell out of `api-snapshot.json`, becomes structurally impossible).
 
 This is why "agent-friendly vs human-friendly" stops being a trade-off: the two
-surfaces are the same artifact viewed from two angles. The one axis it does *not*
+surfaces are the same artifact viewed from two angles. The one axis it does _not_
 fix — ambient magic (e.g. `fs` is not an SDK export) — is called out in the spec
 §6 as out-of-scope-but-named, not papered over.
 
