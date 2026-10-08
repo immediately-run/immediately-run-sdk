@@ -8,10 +8,12 @@
 // `scheme:method` maps to `protocol-${scheme}` + method, so a generated
 // invokeStream() wrapper is byte-equivalent to each hand-written generator.
 //
-// One exception, temporary: contribute:run's recovery inputs (forceUpdateBranch,
-// resume) and its error's recovery/openPR describe the host wire AHEAD of
-// src/contribute.ts, which gains them with SDK #210 (roadmap R3-994) once the
-// sandbox-protocol 0.22.0 wire freeze publishes. #210 removes this note.
+// R3-994 (SDK #210 landed): contribute:run's recovery inputs and its error's
+// recovery/openPR are the typed wrapper's own fields now — the exception note
+// is removed. Honest residue: the params half is gate-checked by
+// verify-lockstep (the host mirror's paramsSchema); the error member's
+// recovery/openPR half is a transcription, guarded by no gate (the old
+// "runs ahead" note was its only marker).
 
 export const types = {
   // ── contribute ──────────────────────────────────────────────────────────────
