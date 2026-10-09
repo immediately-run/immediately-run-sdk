@@ -438,6 +438,18 @@ const selfTest = () => {
       ['THROW DoesNotExist'],
     ],
     [
+      'an SDK $ref cycle throws, naming the ref',
+      [
+        {
+          ...base[0],
+          result: { $ref: 'A' },
+          _types: { A: { $ref: 'B' }, B: { $ref: 'A' } },
+        },
+        base[1],
+      ],
+      ['THROW cycle'],
+    ],
+    [
       'a kind flip (SDK string vs host object) flags',
       [
         {
