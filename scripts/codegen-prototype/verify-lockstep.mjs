@@ -58,7 +58,11 @@ const deref = (node, types, name) => {
   let cur = node;
   const seen = new Set();
   while (cur && typeof cur === 'object' && typeof cur.$ref === 'string') {
-    if (seen.has(cur.$ref)) return null; // a ref cycle is uncomparable, not a crash
+    if (seen.has(cur.$ref)) {
+      throw new Error(
+        `RESULT ${name}: SDK \$ref cycle at '${cur.$ref}' — an authoring error, not an uncomparable schema`,
+      );
+    }
     seen.add(cur.$ref);
     const entry = types?.[cur.$ref];
     cur = entry?.schema ?? entry;
@@ -92,6 +96,7 @@ const hostConstrains = (host) =>
 export function resultViolations(name, sdkResult, hostSchema, types) {
   const out = [];
   let compared = false;
+  let voidIgnored = false;
   const walk = (sdkNode, hostNode, path) => {
     const sdk = deref(sdkNode, types, name);
     // A HOST-side $ref is uncomparable, never resolved against the SDK's types
@@ -102,7 +107,11 @@ export function resultViolations(name, sdkResult, hostSchema, types) {
     if (!hostConstrains(host)) return;
     // An SDK `void` result IGNORES the reply — the narrowest possible reading, legal
     // by the item's one-directional rule (the SDK may ignore fields the host sends).
-    if (sdk.type === 'void') return;
+    // Counted as its own bucket ('void-ignored'), never as host-unconstrained.
+    if (sdk.type === 'void') {
+      voidIgnored = true;
+      return;
+    }
     // A kind flip (SDK string vs host object, say) is a width violation of its own —
     // the item's two bullets do not cover it (review round 1, item-silent).
     if (sdk.type && host.type && sdk.type !== host.type) {
@@ -145,7 +154,7 @@ export function resultViolations(name, sdkResult, hostSchema, types) {
     }
   };
   walk(sdkResult, hostSchema, 'result');
-  return { violations: out, compared };
+  return { violations: out, compared, voidIgnored };
 }
 
 /** Pure: every way an SDK descriptor can disagree with the host mirror.
@@ -157,6 +166,7 @@ export function lockstepViolations(mirror, sdk) {
   const out = [];
   let resultCompared = 0;
   let resultUnconstrained = 0;
+  let resultVoidIgnored = 0;
   for (const d of sdk) {
     const m = byName.get(d.name);
     if (!m) {
@@ -173,6 +183,7 @@ export function lockstepViolations(mirror, sdk) {
       const r = resultViolations(d.name, d.result, m.resultSchema, d._types);
       out.push(...r.violations);
       if (r.compared) resultCompared++;
+      else if (r.voidIgnored) resultVoidIgnored++;
       else resultUnconstrained++;
     }
     if (m.paramsSchema) {
@@ -197,7 +208,7 @@ export function lockstepViolations(mirror, sdk) {
   }
   // The summary reads the counts off the return — attach them without changing
   // the array shape callers destructure.
-  return Object.assign(out, { resultCompared, resultUnconstrained });
+  return Object.assign(out, { resultCompared, resultUnconstrained, resultVoidIgnored });
 }
 
 const readMirror = (siteMainRoot) => {
@@ -259,7 +270,8 @@ const main = async (arg) => {
       `(${mirror.methods.length} methods, ${mirror.errorCodes.length} error codes; ` +
       `params-schema compared on ${paramsCompared} of ${sdk.length}; ` +
       `result compared on ${violations.resultCompared} of ${resultEligible} ` +
-      `(${violations.resultUnconstrained} unconstrained on the host side)).`,
+      `(${violations.resultUnconstrained} unconstrained on the host side, ` +
+      `${violations.resultVoidIgnored} void-ignored on the SDK side)).`,
   );
 };
 
@@ -423,7 +435,7 @@ const selfTest = () => {
         },
         base[1],
       ],
-      ['THROW'],
+      ['THROW DoesNotExist'],
     ],
     [
       'a kind flip (SDK string vs host object) flags',
@@ -439,15 +451,19 @@ const selfTest = () => {
   ];
   let ok = 0;
   for (const [label, mutated, expect] of cases) {
-    if (expect.length === 1 && expect[0] === 'THROW') {
-      let threw = false;
+    if (expect.length === 1 && expect[0].startsWith('THROW')) {
+      // 'THROW <needle>' — the throw must NAME the case's ref, or an unrelated
+      // TypeError regression would still read PASS (review round 2).
+      const needle = expect[0].slice(6);
+      let message = null;
       try {
         lockstepViolations(mirror, mutated);
-      } catch {
-        threw = true;
+      } catch (e) {
+        message = e instanceof Error ? e.message : String(e);
       }
-      console.log(`${threw ? 'PASS' : 'FAIL'}  detects: ${label}`);
-      if (threw) ok++;
+      const caught = message !== null && message.includes(needle);
+      console.log(`${caught ? 'PASS' : 'FAIL'}  detects: ${label}`);
+      if (caught) ok++;
       continue;
     }
     const got = lockstepViolations(mirror, mutated);
