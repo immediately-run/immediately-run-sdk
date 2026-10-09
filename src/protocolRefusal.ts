@@ -117,6 +117,8 @@
 /** An error carrying a stable, host-supplied `code` the app can branch on. */
 export interface CodedRefusalError<C extends string = string> extends Error {
   code: C;
+  /** A provider rate-limit's wait in seconds, when the refusal carried one (R3-954). */
+  retryAfter?: number;
 }
 
 /**
@@ -126,11 +128,11 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * the code when it refused without one — a refusal is never reported as a success just
  * because it arrived under-specified.
  *
- * `code` and `message` must be STRINGS to be used. Twenty sites call this; **eighteen**
- * had an inline copy it replaced (`spacesMode.ts` was written against the helper in R3-708
- * and `openBundle.ts` against it in R3-808, so neither replaced anything; `catalog.ts`'s
- * copy returned inline in R3-954 — its error carries a `retryAfter` this helper does not
- * build, the one named not-folded site). They tested for PRESENCE, in **three** shapes:
+ * `code` and `message` must be STRINGS to be used. Twenty-three sites call this;
+ * **eighteen** had an inline copy it replaced (`spacesMode.ts` was written against the
+ * helper in R3-708, `openBundle.ts` against it in R3-808, and `catalog.ts` folded in
+ * R3-1089 once the helper learned `retryAfter` — the one site R3-954's copy had kept
+ * out). They tested for PRESENCE, in **three** shapes:
  *
  * - **seven** cast the value: `(res?.code as SomeError['code']) ?? 'unknown'` —
  *   `dnd`, `editor`, `vcs`, `mounts` (×3), `secrets`;
@@ -179,9 +181,14 @@ export interface CodedRefusalError<C extends string = string> extends Error {
  * `function` declaration and not an arrow const.)
  */
 export function throwOnRefusal(res: unknown, fallbackMessage: string): asserts res is { ok: true; data?: unknown } {
-  const r = res as { ok?: unknown; code?: unknown; message?: unknown } | null | undefined;
+  const r = res as { ok?: unknown; code?: unknown; message?: unknown; retryAfter?: unknown } | null | undefined;
   if (r && r.ok === true) return;
   const err = new Error(typeof r?.message === 'string' ? r.message : fallbackMessage) as CodedRefusalError;
   err.code = typeof r?.code === 'string' ? r.code : 'unknown';
+  // R3-1089: R3-954's retryAfter (a provider rate-limit's wait in seconds) rides
+  // the refusal here too, so catalog.ts's invoke() folds like every other site.
+  // Number.isFinite, not typeof: NaN and Infinity are numbers the
+  // structured-clone transport carries intact.
+  if (Number.isFinite(r?.retryAfter)) err.retryAfter = (r as { retryAfter: number }).retryAfter;
   throw err;
 }
