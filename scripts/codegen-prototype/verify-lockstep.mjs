@@ -50,15 +50,23 @@ import { dirname, join, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const defaultSiteMain = join(here, '..', '..', '..', 'immediately-run-site-main');
 
-/** Resolve a `$ref` against the descriptor file's own `types` table. */
-const deref = (node, types) => {
+/** Resolve a `$ref` against the descriptor file's own `types` table — whose entries
+ *  are `{ description, schema }` envelopes (the shape generate.mjs reads). A ref that
+ *  resolves to nothing returns null and the caller FAILS LOUD — an SDK type that
+ *  cannot be read is not 'unconstrained on the host side' (review round 1). */
+const deref = (node, types, name) => {
   let cur = node;
   const seen = new Set();
   while (cur && typeof cur === 'object' && typeof cur.$ref === 'string') {
     if (seen.has(cur.$ref)) return null; // a ref cycle is uncomparable, not a crash
     seen.add(cur.$ref);
-    cur = types?.[cur.$ref];
-    if (!cur) return null;
+    const entry = types?.[cur.$ref];
+    cur = entry?.schema ?? entry;
+    if (!cur) {
+      throw new Error(
+        `RESULT ${name}: SDK \$ref '${[...seen].pop()}' does not resolve against the descriptor file's types table`,
+      );
+    }
   }
   return cur ?? null;
 };
@@ -85,14 +93,27 @@ export function resultViolations(name, sdkResult, hostSchema, types) {
   const out = [];
   let compared = false;
   const walk = (sdkNode, hostNode, path) => {
-    const sdk = deref(sdkNode, types);
-    const host = deref(hostNode, types) ?? hostNode;
+    const sdk = deref(sdkNode, types, name);
+    // A HOST-side $ref is uncomparable, never resolved against the SDK's types
+    // (a name collision would compare the SDK against itself and pass a real
+    // violation silently — review round 1). The mirror today has no types table.
+    const host = hostNode && typeof hostNode === 'object' && typeof hostNode.$ref === 'string' ? null : hostNode;
     if (!sdk || !host || typeof sdk !== 'object' || typeof host !== 'object') return;
     if (!hostConstrains(host)) return;
-    compared = true;
+    // An SDK `void` result IGNORES the reply — the narrowest possible reading, legal
+    // by the item's one-directional rule (the SDK may ignore fields the host sends).
+    if (sdk.type === 'void') return;
+    // A kind flip (SDK string vs host object, say) is a width violation of its own —
+    // the item's two bullets do not cover it (review round 1, item-silent).
+    if (sdk.type && host.type && sdk.type !== host.type) {
+      compared = true;
+      out.push(`RESULT ${name}: SDK declares ${path} as ${sdk.type}; the host sends ${host.type}`);
+      return;
+    }
     const hostValues = acceptedValues(host);
     const sdkValues = acceptedValues(sdk);
     if (hostValues && sdkValues) {
+      compared = true;
       const extra = sdkValues.filter((v) => !hostValues.includes(v));
       if (extra.length) {
         out.push(
@@ -108,6 +129,7 @@ export function resultViolations(name, sdkResult, hostSchema, types) {
       const hostProps = Object.keys(host.properties ?? {});
       const hostReq = new Set(host.required ?? []);
       for (const prop of sdk.required ?? []) {
+        compared = true;
         if (!hostProps.includes(prop)) {
           if (host.additionalProperties === false) {
             out.push(`RESULT ${name}: SDK requires ${path}.${prop}, which the host's closed object never sends`);
@@ -373,9 +395,61 @@ const selfTest = () => {
       ],
       ['RESULT spaces:invite'],
     ],
+    // R3-1089 review round 1 — the leg's own failure modes, pinned:
+    [
+      'an SDK $ref into the { description, schema } envelope (the real types-table shape) resolves and passes',
+      [
+        {
+          ...base[0],
+          result: { $ref: 'Reply' },
+          _types: {
+            Reply: {
+              description: 'd',
+              schema: { type: 'object', properties: { ok: { const: true } }, required: ['ok'] },
+            },
+          },
+        },
+        base[1],
+      ],
+      [],
+    ],
+    [
+      'an SDK $ref that resolves to nothing throws (never buckets as host-unconstrained)',
+      [
+        {
+          ...base[0],
+          result: { $ref: 'DoesNotExist' },
+          _types: {},
+        },
+        base[1],
+      ],
+      ['THROW'],
+    ],
+    [
+      'a kind flip (SDK string vs host object) flags',
+      [
+        {
+          ...base[0],
+          result: { type: 'string', enum: ['ok'] },
+        },
+        base[1],
+      ],
+      ['RESULT spaces:invite'],
+    ],
   ];
   let ok = 0;
   for (const [label, mutated, expect] of cases) {
+    if (expect.length === 1 && expect[0] === 'THROW') {
+      let threw = false;
+      try {
+        lockstepViolations(mirror, mutated);
+      } catch {
+        threw = true;
+      }
+      console.log(`${threw ? 'PASS' : 'FAIL'}  detects: ${label}`);
+      if (threw) ok++;
+      continue;
+    }
     const got = lockstepViolations(mirror, mutated);
     // An empty expectation must mean "nothing flagged", or a [] case passes
     // without checking anything.

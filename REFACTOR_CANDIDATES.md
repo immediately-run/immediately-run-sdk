@@ -13,7 +13,9 @@ a cited reason a future, separately-scoped refactor task can start from.
 ## SDK_SIMPLIFICATION §7 — the hand-cast `res.data as T` sites
 
 Verified on 2026-10-09 (`grep -n "res.data as" src/*.ts` — this list is the complete
-set; R3-1089's exit criterion pins it). The §7 migration item replaces each with the
+set; R3-1089's exit criterion pins it. The grep also matches `src/mounts.test.ts:19`,
+a COMMENT quoting the pattern — not a cast, and deliberately unlisted). The §7 migration
+item replaces each with the
 generated wrapper for its family; until then these are the only places a reply is
 hand-cast after the refusal gate:
 

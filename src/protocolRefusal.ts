@@ -6,20 +6,16 @@
 //
 // R3-708's review said three copies, then five, then "ten across eight files". This file
 // then said ten while the list beneath it summed to twelve, and a fourth reviewer caught
-// that. After R3-816 folded the pure copies, the count is:
+// that. After R3-816 folded the pure copies, and R3-1089 folded `catalog.ts` (the helper
+// learned `retryAfter` for it — the fold's premise holds again), the count is:
 //
-//   **twenty CALL SITES across fifteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`, minus
-//   the declaration here, minus `*.test.*`, and minus this census's own mention of the
-//   pattern (the recipe's literal matches it):
+//   **twenty-one CALL SITES across sixteen FILES** — `grep -n 'throwOnRefusal(' src/*.ts`,
+//   minus the declaration here, minus `*.test.*`, and minus this census's own mention of
+//   the pattern (the recipe's literal matches it):
 //
-//   dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
+//   catalog.ts · dnd.ts · editor.ts · feed.ts · ipc.ts (×2) · mounts.ts (×3) · netFetch.ts ·
 //   openBundle.ts · openExternal.ts · openRepository.ts · recents.ts · secrets.ts ·
 //   spacesMode.ts · tasks.ts · theme.ts (×3) · vcs.ts
-//
-//   `catalog.ts` is the one named NOT-folded site: its refusal copy is no longer pure —
-//   R3-954 gave `invoke`'s error a `retryAfter` field this helper does not build, so the
-//   fold's premise (a byte-identical copy) stopped holding for it between this branch's
-//   review and its landing. `recents` and `tasks` folded as prescribed.
 //
 // Every miscount came from the same two mistakes: reading files instead of counting the
 // grep, and never saying which unit was being counted. `mounts.ts` has three separate
@@ -36,10 +32,11 @@
 //
 // Still deliberately NOT folded:
 //
-//   · `catalog.ts` — the exemption above (R3-954's `retryAfter`, a field this helper
-//     does not build);
 //   · `launch.ts` — it folds `!res.data?.launchId` into the same condition and RETURNS
 //     `{ ok: false, code }` instead of throwing. Different control flow entirely.
+//
+// (`catalog.ts` folded in R3-1089 — the helper now builds R3-954's `retryAfter`, so the
+// exemption's premise is gone.)
 //
 // `check:clones` cannot help with any of this: minLines 6, minTokens 50, and no identifier
 // normalisation, so blocks differing only in type names read as distinct.
