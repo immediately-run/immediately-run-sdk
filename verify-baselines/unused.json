@@ -5,8 +5,6 @@
   "safe-content/scripts/lib/treeCompare.mjs:fileDigest",
   "safe-content/src/SafeContent.tsx:(file)",
   "safe-content/src/index.ts:(file)",
-  "safe-content/src/parseSafeMdast.ts:ParseSafeMdastOptions",
-  "safe-content/src/parseSafeMdast.ts:parseSafeMdast",
   "safe-content/src/wikilink.ts:parseWikiInner",
   "safe-content/tsup.config.ts:(file)",
   "safe-content/vitest.config.ts:(file)",

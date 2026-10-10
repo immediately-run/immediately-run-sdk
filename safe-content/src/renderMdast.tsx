@@ -14,6 +14,11 @@ import type { SafeMdastNode, SafeMdxAttribute } from './parseSafeMdast';
 //    renders its children inert (a Fragment, no element) — so author-written `<div
 //    onclick=…>`, `<img onerror=…>`, `<script>` never become an intrinsic element with
 //    attacker attributes. (Block-level raw HTML arrives as an `html` node, below.)
+//    ONE carve-out (R3-1068): an unregistered `<WikiLink>` — the childless element this
+//    package's own parser emits for every `[[…]]` — renders through `renderWiki` (inert
+//    text, or a sanitizeUrl-gated in-mount anchor), because the children-fallback would
+//    erase the link text; it receives no author attributes beyond the literal
+//    `target`/`label` strings, and no other unknown tag is excepted.
 //  - **Expression attributes are dropped.** `f={fetch("/x")}` / `{...spread}` are
 //    `mdxJsxExpressionAttribute` or object-valued `mdxJsxAttribute`s — never passed to
 //    a component, never evaluated. (There is also no evaluator to reach — parse used
@@ -204,7 +209,28 @@ function renderNode(node: SafeMdastNode, opts: RenderMdastOptions, index = 0): R
       // Unknown tag (not in the registry) OR a fragment `<>` → render children inert,
       // NO element, NO author attributes. This is what neutralizes `<script>`/`<div
       // onclick>`/`<img onerror>` written as JSX.
-      if (!Component) return createElement(Fragment, { key }, ...children);
+      if (!Component) {
+        // R3-1068: ONE exception — the `<WikiLink target label?>` this package's own
+        // parser (remarkWikiLinks in parseSafeMdast) emits for every `[[…]]`. It is
+        // childless, so the children-fallback renders NOTHING and the link text
+        // vanishes for every consumer that passes no WikiLink component. Route it
+        // through renderWiki — the documented inert-text/anchor contract the
+        // text-node path already implements. literalProps drops an expression-valued
+        // target as it does for any component; no usable target renders nothing.
+        // Every OTHER unknown tag keeps the children-fallback: this is not a general
+        // "print unknown tags" rule, which would put author-controlled attributes
+        // where the escaped-children rule holds.
+        if (name === 'WikiLink') {
+          const props = literalProps(node.attributes);
+          if (!props.target) return null;
+          return createElement(
+            Fragment,
+            { key },
+            renderWiki({ target: props.target, label: props.label || undefined }, opts),
+          );
+        }
+        return createElement(Fragment, { key }, ...children);
+      }
       return createElement(Component, { key, ...literalProps(node.attributes) }, ...children);
     }
     // Inert expression nodes (should not occur — expression extension is off — but be
