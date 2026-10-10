@@ -468,7 +468,18 @@ function renderNode(node, opts, index = 0) {
       const name = typeof node.name === "string" ? node.name : "";
       const Component = name ? opts.components?.[name] : void 0;
       const children = renderChildren(node, opts);
-      if (!Component) return createElement(Fragment, { key }, ...children);
+      if (!Component) {
+        if (name === "WikiLink") {
+          const props = literalProps(node.attributes);
+          if (!props.target) return null;
+          return createElement(
+            Fragment,
+            { key },
+            renderWiki({ target: props.target, label: props.label || void 0 }, opts)
+          );
+        }
+        return createElement(Fragment, { key }, ...children);
+      }
       return createElement(Component, { key, ...literalProps(node.attributes) }, ...children);
     }
     // Inert expression nodes (should not occur — expression extension is off — but be

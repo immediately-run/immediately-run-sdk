@@ -14,7 +14,7 @@ import { createRoot } from 'react-dom/client';
 import { renderMdast, type SafeContentComponents } from './renderMdast';
 import { sanitizeUrl } from './sanitizeUrl';
 import { splitWikiLinks } from './wikilink';
-import type { SafeMdastNode } from './parseSafeMdast';
+import { parseSafeMdast, type SafeMdastNode, type SafeMdxAttribute } from './parseSafeMdast';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -347,6 +347,80 @@ describe('renderMdast — the render-as-data security properties', () => {
     expect(container.querySelector('h2')?.textContent).toBe('Title');
     expect(container.querySelector('strong')?.textContent).toBe('bold');
     expect(container.querySelector('ul li')?.textContent).toBe('item');
+    unmount();
+  });
+});
+
+// ── R3-1068: through the REAL producer (parseSafeMdast), not hand-built nodes ──
+//
+// remarkWikiLinks rewrites every `[[…]]` into a CHILDLESS <WikiLink target label?>
+// element, so the text-node wikilink path above never sees a parsed link: with no
+// registered WikiLink component the children-fallback rendered nothing and the link
+// text vanished (the kanban card modal, found by R3-550's live drill). These cases
+// feed source strings through the package's own parser, which is what every consumer
+// outside Grove does.
+describe('renderMdast — a parsed wikilink with no registered component (R3-1068)', () => {
+  // A bare link, a labelled link and a link inside emphasis, in one source.
+  const SOURCE =
+    'Reads first: [[../specs/PLATFORM_LAYERING_SPEC.mdx]] and [[the guide|specs/x.mdx]], *see [[in-mount.mdx]]*.';
+
+  it('no options: every link renders its text, and no anchor is emitted', async () => {
+    const tree = await parseSafeMdast(SOURCE);
+    const { container, unmount } = render(renderMdast(tree));
+    expect(container.textContent).toContain('../specs/PLATFORM_LAYERING_SPEC.mdx');
+    expect(container.textContent).toContain('the guide');
+    expect(container.textContent).toContain('in-mount.mdx');
+    expect(container.querySelector('a')).toBeNull();
+    unmount();
+  });
+
+  it('a resolver returning an in-mount path yields data-wikilink anchors; undefined stays inert', async () => {
+    const tree = await parseSafeMdast(SOURCE);
+    const resolveWikiLink = (target: string) =>
+      target === 'in-mount.mdx' ? '/mnt/board/in-mount.mdx' : undefined;
+    const { container, unmount } = render(renderMdast(tree, { resolveWikiLink }));
+    const links = container.querySelectorAll('a[data-wikilink]');
+    expect(links.length).toBe(1);
+    expect(links[0].getAttribute('href')).toBe('/mnt/board/in-mount.mdx');
+    expect(links[0].getAttribute('data-wikilink')).toBe('in-mount.mdx');
+    expect(container.textContent).toContain('../specs/PLATFORM_LAYERING_SPEC.mdx');
+    expect(container.textContent).toContain('the guide');
+    unmount();
+  });
+
+  it('a registered WikiLink component still wins and receives target (the R3-213 path)', async () => {
+    const seen: Record<string, string>[] = [];
+    const components = {
+      WikiLink: (props: Record<string, string>) => {
+        seen.push(props);
+        return <a data-t={props.target ?? ''}>{props.label ?? props.target ?? ''}</a>;
+      },
+    } as unknown as SafeContentComponents;
+    const tree = await parseSafeMdast(SOURCE);
+    const { container, unmount } = render(renderMdast(tree, { components }));
+    expect(seen.map((p) => p.target)).toEqual([
+      '../specs/PLATFORM_LAYERING_SPEC.mdx',
+      'specs/x.mdx',
+      'in-mount.mdx',
+    ]);
+    expect(seen[1].label).toBe('the guide');
+    expect(container.querySelectorAll('a[data-t]').length).toBe(3);
+    unmount();
+  });
+
+  it('a parsed WikiLink with an expression-valued target renders nothing (dropped as today)', async () => {
+    const tree = await parseSafeMdast('plain [[ok.mdx]] text');
+    // Simulate what no parser of this package emits but a foreign tree could carry:
+    // an expression-valued target attribute, dropped by literalProps.
+    const paraNode = (tree.children ?? [])[0];
+    const wiki = (paraNode.children ?? []).find(
+      (c) => c.type === 'mdxJsxTextElement' && c.name === 'WikiLink',
+    );
+    expect(wiki).toBeDefined();
+    wiki!.attributes = [{ type: 'mdxJsxAttribute', name: 'target', value: { type: 'mdxJsxAttributeValueExpression', value: 'fetch("/x")' } }];
+    const { container, unmount } = render(renderMdast(tree));
+    expect(container.textContent).toBe('plain  text');
+    expect(container.querySelector('a')).toBeNull();
     unmount();
   });
 });
