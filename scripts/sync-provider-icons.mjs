@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // sync-provider-icons.mjs — vendor opencode's monochrome provider icons (R3-1141).
 //
-// Fetches packages/ui/src/assets/icons/provider/*.svg from sst/opencode at a PINNED
+// Fetches packages/ui/src/assets/icons/provider/*.svg from sst/opencode at a pinned
 // commit (no runtime fetch — the CSP allows no external image host; a refresh's diff is
 // reviewable), optimizes each with svgo, enforces monochrome (every fill/stroke becomes
 // currentColor except `none`), and writes src/providerIcons/sprite.generated.ts: a
@@ -39,8 +39,8 @@ for (const name of files) {
   const { data } = optimize(raw, {
     multipass: true,
     plugins: [
-      // Style-carried paint FIRST (convertStyleToAttrs): svgo's convertColors rewrites
-      // only fill=/stroke= ATTRIBUTES, and an inline style beats a presentation
+      // Style-carried paint first (convertStyleToAttrs): svgo's convertColors rewrites
+      // only fill=/stroke= attributes, and an inline style beats a presentation
       // attribute in the cascade — zenmux shipped `style="fill:#f5f5f5;…"` and would
       // have rendered brand-colored under a "monochrome" claim (review round 1).
       'convertStyleToAttrs',
