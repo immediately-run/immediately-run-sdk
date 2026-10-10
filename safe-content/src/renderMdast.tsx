@@ -14,6 +14,11 @@ import type { SafeMdastNode, SafeMdxAttribute } from './parseSafeMdast';
 //    renders its children inert (a Fragment, no element) — so author-written `<div
 //    onclick=…>`, `<img onerror=…>`, `<script>` never become an intrinsic element with
 //    attacker attributes. (Block-level raw HTML arrives as an `html` node, below.)
+//    ONE carve-out (R3-1068): an unregistered `<WikiLink>` — the childless element this
+//    package's own parser emits for every `[[…]]` — renders through `renderWiki` (inert
+//    text, or a sanitizeUrl-gated in-mount anchor), because the children-fallback would
+//    erase the link text; it receives no author attributes beyond the literal
+//    `target`/`label` strings, and no other unknown tag is excepted.
 //  - **Expression attributes are dropped.** `f={fetch("/x")}` / `{...spread}` are
 //    `mdxJsxExpressionAttribute` or object-valued `mdxJsxAttribute`s — never passed to
 //    a component, never evaluated. (There is also no evaluator to reach — parse used

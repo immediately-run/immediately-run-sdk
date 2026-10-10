@@ -2,11 +2,14 @@
  * @jest-environment jsdom
  */
 import { describe, it, expect } from 'vitest';
-// Safe content renderer — the PURE security logic (TRUST_MODES_SPEC §5.1). These
+// Safe content renderer — the PURE security logic (TRUST_MODES_SPEC §5.1). Most
 // tests drive `renderMdast`/`sanitizeUrl`/`splitWikiLinks` directly against mdast
 // trees shaped exactly as the verified no-acorn parser produces them (see
-// `safeContent.e2e.mjs` for the real parse+render+eval-spy end-to-end proof). No
-// ESM parser dep is imported here, so it runs under the repo's CJS jest.
+// `safeContent.e2e.mjs` for the real parse+render+eval-spy end-to-end proof); the
+// R3-1068 describe imports the real parser (`parseSafeMdast`, ESM-only via
+// mdastDeps) so the parsed-WikiLink cases run the producer itself. Requires an
+// ESM-capable runner — vitest, which this package uses (the repo's CJS jest
+// excludes safe-content via testPathIgnorePatterns).
 import { act } from 'react';
 import type { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -14,7 +17,7 @@ import { createRoot } from 'react-dom/client';
 import { renderMdast, type SafeContentComponents } from './renderMdast';
 import { sanitizeUrl } from './sanitizeUrl';
 import { splitWikiLinks } from './wikilink';
-import { parseSafeMdast, type SafeMdastNode, type SafeMdxAttribute } from './parseSafeMdast';
+import { parseSafeMdast, type SafeMdastNode } from './parseSafeMdast';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -409,15 +412,9 @@ describe('renderMdast — a parsed wikilink with no registered component (R3-106
   });
 
   it('a parsed WikiLink with an expression-valued target renders nothing (dropped as today)', async () => {
-    const tree = await parseSafeMdast('plain [[ok.mdx]] text');
-    // Simulate what no parser of this package emits but a foreign tree could carry:
-    // an expression-valued target attribute, dropped by literalProps.
-    const paraNode = (tree.children ?? [])[0];
-    const wiki = (paraNode.children ?? []).find(
-      (c) => c.type === 'mdxJsxTextElement' && c.name === 'WikiLink',
-    );
-    expect(wiki).toBeDefined();
-    wiki!.attributes = [{ type: 'mdxJsxAttribute', name: 'target', value: { type: 'mdxJsxAttributeValueExpression', value: 'fetch("/x")' } }];
+    // Author-written JSX carries exactly this shape: the parser emits an
+    // expression-valued `target` attribute, which literalProps drops.
+    const tree = await parseSafeMdast('plain <WikiLink target={fetch("/x")} /> text');
     const { container, unmount } = render(renderMdast(tree));
     expect(container.textContent).toBe('plain  text');
     expect(container.querySelector('a')).toBeNull();

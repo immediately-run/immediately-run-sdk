@@ -8,7 +8,7 @@ var __export = (target, all) => {
     __defProp(target, name, { get: all[name], enumerable: true });
 };
 
-// node_modules/@immediately-run/mdx-plugins/dist/index.js
+// safe-content/node_modules/@immediately-run/mdx-plugins/dist/index.js
 function textSlug(text) {
   return text.trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
 }
@@ -185,7 +185,7 @@ function walk2(node) {
 }
 var LEADING_TOKEN, remarkHeadingAnchors, remarkHeadingAnchors_default, FS_PREFIX, normalizeAbsolute, WIKILINK, remarkWikiLinks, remarkWikiLinks_default, MARKER, remarkAdmonitions, remarkAdmonitions_default;
 var init_dist = __esm({
-  "node_modules/@immediately-run/mdx-plugins/dist/index.js"() {
+  "safe-content/node_modules/@immediately-run/mdx-plugins/dist/index.js"() {
     LEADING_TOKEN = /^([A-Za-z0-9]+(?:\.[A-Za-z0-9]+)*)/;
     remarkHeadingAnchors = (options = {}) => (tree) => {
       const sectionEnabled = options.sectionIds !== false;
@@ -233,7 +233,7 @@ var init_dist = __esm({
   }
 });
 
-// src/mdastDeps.ts
+// safe-content/src/mdastDeps.ts
 var mdastDeps_exports = {};
 __export(mdastDeps_exports, {
   fromMarkdown: () => fromMarkdown,
@@ -251,16 +251,16 @@ import { mdxJsxFromMarkdown } from "mdast-util-mdx-jsx";
 import { gfm } from "micromark-extension-gfm";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 var init_mdastDeps = __esm({
-  "src/mdastDeps.ts"() {
+  "safe-content/src/mdastDeps.ts"() {
     "use strict";
     init_dist();
   }
 });
 
-// src/SafeContent.tsx
+// safe-content/src/SafeContent.tsx
 import { useEffect, useMemo, useRef, useState } from "react";
 
-// src/parseSafeMdast.ts
+// safe-content/src/parseSafeMdast.ts
 var depsPromise = null;
 function loadDeps() {
   if (!depsPromise) {
@@ -304,10 +304,10 @@ async function parseSafeMdast(source, options = {}) {
   return tree;
 }
 
-// src/renderMdast.tsx
+// safe-content/src/renderMdast.tsx
 import { createElement, Fragment } from "react";
 
-// src/sanitizeUrl.ts
+// safe-content/src/sanitizeUrl.ts
 var SCHEME = /^([a-zA-Z][a-zA-Z0-9+.-]*):/;
 var ALLOWED_SCHEMES = /* @__PURE__ */ new Set(["http", "https", "mailto"]);
 var CONTROL_CHARS = /[\u0000-\u001F\u007F]/g;
@@ -320,7 +320,7 @@ function sanitizeUrl(url) {
   return ALLOWED_SCHEMES.has(m[1].toLowerCase()) ? cleaned : void 0;
 }
 
-// src/wikilink.ts
+// safe-content/src/wikilink.ts
 var WIKILINK2 = /\[\[([^[\]]+)\]\]/g;
 function parseWikiInner(inner) {
   const pipe = inner.indexOf("|");
@@ -355,7 +355,7 @@ function splitWikiLinks(value) {
   return out;
 }
 
-// src/renderMdast.tsx
+// safe-content/src/renderMdast.tsx
 init_dist();
 function literalProps(attributes) {
   const props = {};
@@ -497,7 +497,7 @@ function renderMdast(tree, options = {}) {
   return renderNode(tree, options);
 }
 
-// src/SafeContent.tsx
+// safe-content/src/SafeContent.tsx
 function SafeContent({ source, fallback = null, ...options }) {
   const [tree, setTree] = useState(null);
   const runId = useRef(0);
