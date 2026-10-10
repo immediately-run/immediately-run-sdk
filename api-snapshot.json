@@ -579,7 +579,7 @@
     "CallBounds": "interface(ceilingMs, idleMs)",
     "CaptureOptions": "interface(facing?)",
     "CaptureResult": "interface(bytes, durationMs, mimeType)",
-    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
+    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, cost?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
@@ -1137,7 +1137,7 @@
     "resolveLinkTarget": "fn(1..2)"
   },
   "llm": {
-    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
+    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, cost?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
