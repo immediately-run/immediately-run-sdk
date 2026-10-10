@@ -583,7 +583,7 @@
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
-    "ChatProviderChoice": "interface(displayName, models, providerId)",
+    "ChatProviderChoice": "interface(displayName, features?, models, providerId)",
     "ChatProviderInfo": "interface(connectedProviders?, displayName?, executor?, features, hostVouched, models?, providerId)",
     "ChatProviderState": "union({provider, status}|{status})",
     "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, tools?)",
@@ -757,7 +757,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.88.0\")",
+    "SDK_VERSION": "const(\"0.88.1\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1141,7 +1141,7 @@
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
-    "ChatProviderChoice": "interface(displayName, models, providerId)",
+    "ChatProviderChoice": "interface(displayName, features?, models, providerId)",
     "ChatProviderInfo": "interface(connectedProviders?, displayName?, executor?, features, hostVouched, models?, providerId)",
     "ChatProviderState": "union({provider, status}|{status})",
     "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, tools?)",
@@ -1399,7 +1399,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.88.0\")",
+    "SDK_VERSION": "const(\"0.88.1\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1605,7 +1605,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.88.0\")"
+    "SDK_VERSION": "const(\"0.88.1\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
