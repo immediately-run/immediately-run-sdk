@@ -12,7 +12,7 @@ describe('the generated provider-icon sprite', () => {
     }
   });
 
-  it('is monochrome — no fill or stroke other than currentColor/none, in attributes OR style', () => {
+  it('is monochrome — no fill or stroke other than currentColor/none, in attributes or style', () => {
     // Both carriers: a presentation attribute and a style declaration (zenmux shipped
     // `style="fill:#f5f5f5;…"` upstream — inline style beats the attribute in the
     // cascade, so an attribute-only check passes over a brand-colored icon).
