@@ -1,6 +1,6 @@
 {
   "name": "@immediately-run/sdk",
-  "version": "0.88.1",
+  "version": "0.89.0",
   "description": "Runtime SDK for code executing inside an immediately.run sandbox.",
   "license": "MIT",
   "repository": "github:immediately-run/immediately-run-sdk",
@@ -98,6 +98,7 @@
     "prettier": "2.8.8",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "svgo": "^4.1.0",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.2",
     "tsup": "^8.0.0",

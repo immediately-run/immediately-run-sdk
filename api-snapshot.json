@@ -757,7 +757,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.88.1\")",
+    "SDK_VERSION": "const(\"0.89.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1355,6 +1355,19 @@
     "consumeStream": "fn(4..7)",
     "protocolStream": "fn(3..5)"
   },
+  "providerIcons/ProviderIcon": {
+    "ProviderIcon": "fn(1..1)",
+    "ProviderIconProps": "interface(id, label, size?)"
+  },
+  "providerIcons/sprite.generated": {
+    "PROVIDER_ICON_IDS": "const(readonly string[])",
+    "PROVIDER_ICON_SPRITE": "const(string)"
+  },
+  "providerIcons": {
+    "PROVIDER_ICON_IDS": "const(readonly string[])",
+    "ProviderIcon": "fn(1..1)",
+    "ProviderIconProps": "interface(id, label, size?)"
+  },
   "pushChannel": {
     "ChannelTransport": "interface(addListener(2..2), sendMessage(1..2))",
     "PushChannel": "interface(get(0..0), onChange(1..1), use(0..0))",
@@ -1399,7 +1412,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.88.1\")",
+    "SDK_VERSION": "const(\"0.89.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1605,7 +1618,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.88.1\")"
+    "SDK_VERSION": "const(\"0.89.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

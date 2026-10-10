@@ -23,5 +23,6 @@
   "scripts/lib/dts-shape.mjs:parseDts",
   "scripts/lib/dts-shape.mjs:resolveDts",
   "scripts/lib/treeCompare.mjs:fileDigest",
+  "scripts/sync-provider-icons.mjs:(file)",
   "src/safeContent/mdastDeps.ts:(file)"
 ]
