@@ -3,9 +3,9 @@
 //
 // The sprite is vendored (scripts/sync-provider-icons.mjs → sprite.generated.ts):
 // no runtime fetch — the CSP allows no external image host, and a refresh's diff is
-// reviewable. Monochrome is enforced by the GENERATOR (every paint is currentColor or
+// reviewable. Monochrome is enforced by the generator (every paint is currentColor or
 // none), so the mark inherits the surrounding text color and no brand recoloring is
-// possible. A provider with no icon keeps its LETTERMARK — a guessed logo misrepresents
+// possible. A provider with no icon keeps its lettermark — a guessed logo misrepresents
 // the provider, which is worse than no logo.
 
 import type { ReactNode } from 'react';

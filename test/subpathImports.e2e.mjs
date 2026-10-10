@@ -79,6 +79,9 @@ test('the exports map expands to a non-trivial set of subpath entries', () => {
   for (const mustHave of ['dist/index.js', 'dist/tasks.js', 'dist/launch.js', 'dist/fs.js', 'dist/hooks.js']) {
     assert.ok(rels.includes(mustHave), `${mustHave} is a public entry`);
   }
+  // R3-1141 (review round 1): the BARE specifier is the item's contract, and the
+  // wildcard expansion above cannot see it — assert the resolution itself.
+  assert.ok(rels.includes('dist/providerIcons.js'), 'the bare @immediately-run/sdk/providerIcons subpath resolves');
 });
 
 test('no host transport is reachable in this realm (the premise of the suite)', () => {
