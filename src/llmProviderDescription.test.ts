@@ -130,6 +130,29 @@ describe('the enriched provider description', () => {
     ]);
   });
 
+  it('drops a choice’s features when the wire value is an array, empty, or partial (R3-1074)', () => {
+    // A present half-answer must never render as fact: `typeof [] === 'object'` is the
+    // classic guard hole, and an object missing a required key would emit a
+    // `ChatFeatures` with `maxContextTokens: undefined` under the published type.
+    const choice = (features: unknown) => ({
+      providerId: 'llm.chat.anthropic',
+      displayName: 'Anthropic',
+      models: [],
+      features,
+    });
+    for (const bad of [
+      [],
+      {},
+      { vision: true },
+      { vision: true, tools: true, jsonMode: false, maxContextTokens: 'big' },
+    ]) {
+      const out = normalizeProviderInfo(withWire({ connectedProviders: [choice(bad)] }))!;
+      expect(out.connectedProviders).toEqual([
+        { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: [] },
+      ]);
+    }
+  });
+
   it('leaves connectedProviders ABSENT for a host that predates the field', () => {
     const out = normalizeProviderInfo(base)!;
     expect('connectedProviders' in out).toBe(false);

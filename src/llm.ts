@@ -327,6 +327,28 @@ const usableModels = (raw: unknown): ChatTierModels | undefined => {
   return typeof fast === 'string' && fast && typeof smart === 'string' && smart ? { fast, smart } : undefined;
 };
 
+/** The one reasoning-fails-closed normalization both features reads share (R3-1074,
+ *  review round 1's R6 — a second copy is where the next ChatFeatures key drifts). */
+const withReasoningClosed = (f: Partial<ChatFeatures>): ChatFeatures =>
+  ({ ...f, reasoning: f.reasoning === true } as ChatFeatures);
+
+/** A choice's features cross only COMPLETE (R3-1074): a present half-answer — a
+ *  non-object, an array, or an object missing a required key — is dropped, exactly
+ *  like a half-answered `models` pair. Absent stays absent (an older host); present
+ *  but unusable never renders as fact. */
+const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const f = raw as Partial<ChatFeatures>;
+  if (
+    typeof f.vision !== 'boolean' ||
+    typeof f.tools !== 'boolean' ||
+    typeof f.jsonMode !== 'boolean' ||
+    typeof f.maxContextTokens !== 'number'
+  )
+    return undefined;
+  return withReasoningClosed(f);
+};
+
 /** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
  *  (whether the list arrives at all) is the host's — `normalizeProviderInfo` merely refuses
  *  to pass through a malformed list, exactly as it refuses a half-answered `models` pair. */
@@ -339,16 +361,7 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     if (typeof providerId !== 'string' || !providerId) continue;
     if (typeof displayName !== 'string' || !displayName) continue;
     const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
-    // R3-1074: the per-choice features, carried only when the host sent a well-formed
-    // object — same normalization as the top-level `features` (reasoning fails closed).
-    const rawFeatures = (item as Partial<ChatProviderChoice>).features;
-    const features =
-      rawFeatures && typeof rawFeatures === 'object'
-        ? ({
-            ...(rawFeatures as ChatFeatures),
-            reasoning: (rawFeatures as Partial<ChatFeatures>).reasoning === true,
-          } as ChatFeatures)
-        : undefined;
+    const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
     out.push({ providerId, displayName, models: cleanModels, ...(features ? { features } : {}) });
   }
   return out.length > 0 ? out : undefined;
@@ -376,7 +389,7 @@ export function normalizeProviderInfo(provider: ChatProviderInfo | null): ChatPr
   const connectedProviders = usableConnectedProviders(rawConnected);
   return {
     ...rest,
-    features: { ...wire, reasoning: wire.reasoning === true } as ChatFeatures,
+    features: withReasoningClosed(wire),
     ...(displayName ? { displayName } : {}),
     ...(executor ? { executor } : {}),
     ...(models ? { models } : {}),
