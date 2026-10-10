@@ -198,6 +198,11 @@ export interface ChatProviderChoice {
    *  chosen. A closed list here would re-introduce the ids-rot problem, so `model` is passed
    *  through to the adapter exactly as the Settings field is; this list is suggestions. */
   models: string[];
+  /** R3-1074: THIS provider's adapter features, so a run on a chosen provider sizes itself
+   *  by that provider's context window and vision rather than the default provider's (or the
+   *  conservative nothing). Absent on a host predating the field — keep your conservative
+   *  answer then. Optional on the wire, so an older host stays valid. */
+  features?: ChatFeatures;
 }
 
 /** Info about the provider the host resolved for this app. `null` when no provider
@@ -334,7 +339,17 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     if (typeof providerId !== 'string' || !providerId) continue;
     if (typeof displayName !== 'string' || !displayName) continue;
     const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
-    out.push({ providerId, displayName, models: cleanModels });
+    // R3-1074: the per-choice features, carried only when the host sent a well-formed
+    // object — same normalization as the top-level `features` (reasoning fails closed).
+    const rawFeatures = (item as Partial<ChatProviderChoice>).features;
+    const features =
+      rawFeatures && typeof rawFeatures === 'object'
+        ? ({
+            ...(rawFeatures as ChatFeatures),
+            reasoning: (rawFeatures as Partial<ChatFeatures>).reasoning === true,
+          } as ChatFeatures)
+        : undefined;
+    out.push({ providerId, displayName, models: cleanModels, ...(features ? { features } : {}) });
   }
   return out.length > 0 ? out : undefined;
 };
