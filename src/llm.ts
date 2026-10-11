@@ -242,6 +242,10 @@ export interface ChatProviderChoice {
    *  conservative nothing). Absent on a host predating the field — keep your conservative
    *  answer then. Optional on the wire, so an older host stays valid. */
   features?: ChatFeatures;
+  /** R3-1127 (§4.4): the provider's NON-CHAT models by kind (embeddings first). Sent
+   *  only when your frame holds BOTH `llm:model` and `llm:chooseModel`; absent otherwise
+   *  and on any older host. */
+  modelsByKind?: Record<string, { id: string; name: string; dimensions?: number }[]>;
 }
 
 /** Info about the provider the host resolved for this app. `null` when no provider
