@@ -579,7 +579,7 @@
     "CallBounds": "interface(ceilingMs, idleMs)",
     "CaptureOptions": "interface(facing?)",
     "CaptureResult": "interface(bytes, durationMs, mimeType)",
-    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
+    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, cost?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
@@ -757,7 +757,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.89.0\")",
+    "SDK_VERSION": "const(\"0.90.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1137,7 +1137,7 @@
     "resolveLinkTarget": "fn(1..2)"
   },
   "llm": {
-    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
+    "ChatDelta": "union({cacheReadTokens?, cacheWriteTokens?, cost?, inputTokens, outputTokens, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
@@ -1412,7 +1412,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.89.0\")",
+    "SDK_VERSION": "const(\"0.90.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1618,7 +1618,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.89.0\")"
+    "SDK_VERSION": "const(\"0.90.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
