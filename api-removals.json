@@ -2,8 +2,8 @@
   "_doc": [
     "The DELIBERATE-REMOVAL ledger for `npm run api:check` (R3-261).",
     "",
-    "The SDK's public API is additive-only (SDK_PACKAGING_SPEC \u00a79) so a pinned or",
-    "forked app keeps compiling (UI_AS_APPS \u00a70/\u00a77, core value #4). The gate compares",
+    "The SDK's public API is additive-only (SDK_PACKAGING_SPEC §9) so a pinned or",
+    "forked app keeps compiling (UI_AS_APPS §0/§7, core value #4). The gate compares",
     "the SHAPE of every export against api-snapshot.json, so removing an export, an",
     "interface field, a union member or a parameter all fail it.",
     "",
@@ -12,14 +12,14 @@
     "here makes one specific removal allowed, and `npm run api:update` REFUSES to",
     "write a snapshot that drops anything not listed, so re-running the updater is",
     "not a way past the gate. A deliberate break therefore lands in two reviewed",
-    "diffs \u2014 this ledger (with the reason) and the snapshot.",
+    "diffs — this ledger (with the reason) and the snapshot.",
     "",
     "Each entry needs all four fields; `detail` is copied verbatim from the failure",
     "message (`api:check` prints the exact entry to paste):",
     "  module  the api-snapshot.json module key, e.g. \"mounts\"",
     "  export  the exported name, e.g. \"Member\"",
-    "  detail  what is lost \u2014 \"the export itself\", \"member `principal?`\",",
-    "          \"union member `'reader'`\", \"now requires 2 parameters (was 1)\", \u2026",
+    "  detail  what is lost — \"the export itself\", \"member `principal?`\",",
+    "          \"union member `'reader'`\", \"now requires 2 parameters (was 1)\", …",
     "  reason  WHY this is deliberate, and what consumers should use instead.",
     "          A removal without a stated reason is not a documented removal.",
     "",
@@ -31,70 +31,70 @@
       "module": "linkSpace",
       "export": "LinkSpace",
       "detail": "member `corpusRoot`",
-      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 \u2192 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically \u2014 the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative \u2014 not bumping \u2014 would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
+      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 → 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically — the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative — not bumping — would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
       "date": "2026-09-15"
     },
     {
       "module": "index",
       "export": "LinkSpace",
       "detail": "member `corpusRoot`",
-      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 \u2192 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically \u2014 the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative \u2014 not bumping \u2014 would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
+      "reason": "R3-546 bumps the @immediately-run/mdx-plugins pin 0.5.0 → 0.7.1 (the SDK re-exports LinkSpace from it), which propagates mdx-plugins' own R3-482 rename window: `corpusRoot: string | null` becomes optional and the canonical `bundleRoot?: string | null` arrives beside it, read new-then-old by the resolver. NOT a runtime break: link resolution is dual-read (a caller spelling either field resolves identically — the window `cross_repo_migration` prescribes), and the optionality flip is the checker's name for the rename. A strict reader of `corpusRoot` now sees `string | null | undefined`; use `bundleRoot`, or null-check. The alternative — not bumping — would fork the bundle-layout vocabulary this SDK minor exists to carry (`SandboxMount.bundle`).",
       "date": "2026-09-15"
     },
     {
       "module": "corpus",
       "export": "CorpusContext",
-      "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
-      "reason": "R3-482 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "detail": "const type changed: react.Context<CorpusScope> → react.Context<BundleScope>",
+      "reason": "R3-482 corpus→bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` — one object, two spellings, pinned by src/corpus.test.ts — so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
       "date": "2026-08-31"
     },
     {
       "module": "index",
       "export": "CorpusContext",
-      "detail": "const type changed: react.Context<CorpusScope> \u2192 react.Context<BundleScope>",
-      "reason": "R3-482 corpus\u2192bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` \u2014 one object, two spellings, pinned by src/corpus.test.ts \u2014 so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
+      "detail": "const type changed: react.Context<CorpusScope> → react.Context<BundleScope>",
+      "reason": "R3-482 corpus→bundle symbol rename. NOT a consumer-visible break: `CorpusScope` is still exported, now as a type alias of `BundleScope`, so `Context<CorpusScope>` and `Context<BundleScope>` are the SAME type and a pinned consumer's annotation still compiles (verified under `strict` against the built dist with every old spelling, including this exact annotation). `CorpusContext` itself is a re-export of `BundleContext` — one object, two spellings, pinned by src/corpus.test.ts — so React context identity holds for an app mid-migration. The gate compares the type's NAME, which is what changed. Use `BundleScope`.",
       "date": "2026-08-31"
     },
     {
       "module": "index",
       "export": "UrlChangeMessage",
       "detail": "the export itself",
-      "reason": "R3-876 review round 1 (both passes, R6): the hand-written UrlChangeMessage interface duplicated UrlchangePayload, which the pinned @immediately-run/sandbox-protocol@0.17.0 already exports; the sites now import the contract's own type. NEVER SHIPPED: the interface existed only on the PR branch between its first commit and this fix \u2014 no release carried it (0.79.0 predates it; 0.80.0 publishes without it), so no consumer could pin it.",
+      "reason": "R3-876 review round 1 (both passes, R6): the hand-written UrlChangeMessage interface duplicated UrlchangePayload, which the pinned @immediately-run/sandbox-protocol@0.17.0 already exports; the sites now import the contract's own type. NEVER SHIPPED: the interface existed only on the PR branch between its first commit and this fix — no release carried it (0.79.0 predates it; 0.80.0 publishes without it), so no consumer could pin it.",
       "date": "2026-10-04"
     },
     {
       "module": "routing",
       "export": "UrlChangeMessage",
       "detail": "the export itself",
-      "reason": "R3-876 review round 1 (both passes, R6): the hand-written UrlChangeMessage interface duplicated UrlchangePayload, which the pinned @immediately-run/sandbox-protocol@0.17.0 already exports; the sites now import the contract's own type. NEVER SHIPPED: the interface existed only on the PR branch between its first commit and this fix \u2014 no release carried it (0.79.0 predates it; 0.80.0 publishes without it), so no consumer could pin it.",
+      "reason": "R3-876 review round 1 (both passes, R6): the hand-written UrlChangeMessage interface duplicated UrlchangePayload, which the pinned @immediately-run/sandbox-protocol@0.17.0 already exports; the sites now import the contract's own type. NEVER SHIPPED: the interface existed only on the PR branch between its first commit and this fix — no release carried it (0.79.0 predates it; 0.80.0 publishes without it), so no consumer could pin it.",
       "date": "2026-10-04"
     },
     {
       "module": "contribute",
       "export": "ContributionEvent",
       "detail": "union member `{message, recoverable, stage}`",
-      "reason": "R3-984: not a removal \u2014 the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
+      "reason": "R3-984: not a removal — the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
       "date": "2026-10-06"
     },
     {
       "module": "index",
       "export": "ContributionEvent",
       "detail": "union member `{message, recoverable, stage}`",
-      "reason": "R3-984: not a removal \u2014 the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
+      "reason": "R3-984: not a removal — the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
       "date": "2026-10-06"
     },
     {
       "module": "index",
       "export": "ChatDelta",
       "detail": "union member `{cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}`",
-      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field \u2014 additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
+      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field — additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
       "date": "2026-10-10"
     },
     {
       "module": "llm",
       "export": "ChatDelta",
       "detail": "union member `{cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}`",
-      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field \u2014 additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
+      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field — additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
       "date": "2026-10-10"
     }
   ]

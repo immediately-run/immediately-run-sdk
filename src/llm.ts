@@ -111,7 +111,7 @@ export type ChatDelta =
       /** R3-1124 (LLM_AND_AGENTS §4.2): the round's price. The host's estimate from the
        *  catalogue rates unless the provider returned its own cost (OpenRouter's
        *  `usage.cost` — then `estimated` is false and that value wins). Absent when no
-       *  rate and no schedule exists — unknown is ABSENT, never zero. Credits are the
+       *  rate and no schedule exists — unknown is absent, never zero. Credits are the
        *  plan's own unit, never converted. */
       cost?: { amount: number; unit: 'usd' | 'credits'; estimated: boolean; rule?: string };
     };
