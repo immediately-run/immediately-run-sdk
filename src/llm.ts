@@ -13,7 +13,7 @@
 // `llm-provider` describe channel; the contract ships here so apps (the file-explorer
 // summarize fork) can be written against it — exactly how `secrets.ts` shipped ahead
 // of `protocol-secrets`.
-import { invokeStream } from './catalog';
+import { invoke, invokeStream } from './catalog';
 import { createPushChannel } from './pushChannel';
 import { LLM_PROVIDER, REQUEST_LLM_PROVIDER } from './generated/protocol';
 
@@ -166,6 +166,39 @@ export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, vo
   return invokeStream<ChatDelta, ChatResult>('llm:chat', params as unknown as Record<string, unknown>, signal);
 }
 
+// ── embed() — the first non-chat kind (LLM_AND_AGENTS_SPEC §4.4, R3-1127) ─────
+
+/** An embeddings request: the texts plus an optional concrete model pair. */
+export interface EmbedRequest {
+  /** The texts to embed — at most 256 values and 1 MiB of text per call (the host
+   *  refuses larger with `invalid-params`). */
+  values: string[];
+  /** A concrete model on a connected provider. Requires `llm:chooseModel` ON TOP OF
+   *  `llm:model` (the same rule as chat's `model`); absent, the host uses the bound
+   *  provider's first embedding model. */
+  model?: { providerId: string; model: string };
+}
+
+/** The embeddings reply: one vector per input value, in order. */
+export interface EmbedResult {
+  embeddings: number[][];
+  /** The model that answered (the host's choice when the request named none). */
+  model: string;
+  usage?: { inputTokens?: number };
+}
+
+/**
+ * Embed texts with whichever provider the user has connected — the first non-chat kind
+ * on the `llm:model` capability (elevated, app-scoped; earned like `llm:chat`).
+ * NOT streamed: one request, one reply. A frame without `llm:model` throws
+ * `forbidden`; an over-limit call throws `invalid-params`; no provider with an
+ * embedding model throws `unsupported` naming the kind. The same connect-gate and
+ * key-routing rules as {@link chat} apply to the resolved provider.
+ */
+export function embed(req: EmbedRequest): Promise<EmbedResult> {
+  return invoke<EmbedResult>('llm:embed', req as unknown as Record<string, unknown>);
+}
+
 /** The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read
  *  to branch/degrade (offer image upload only when `vision`). */
 export interface ChatFeatures {
@@ -209,6 +242,10 @@ export interface ChatProviderChoice {
    *  conservative nothing). Absent on a host predating the field — keep your conservative
    *  answer then. Optional on the wire, so an older host stays valid. */
   features?: ChatFeatures;
+  /** R3-1127 (§4.4): the provider's NON-CHAT models by kind (embeddings first). Sent
+   *  only when your frame holds BOTH `llm:model` and `llm:chooseModel`; absent otherwise
+   *  and on any older host. */
+  modelsByKind?: Record<string, { id: string; name: string; dimensions?: number }[]>;
 }
 
 /** Info about the provider the host resolved for this app. `null` when no provider
