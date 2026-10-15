@@ -79,6 +79,11 @@ export interface ChatRequest {
    *  chooseable set (via `describeChat()`'s `connectedProviders`, gated `llm:chooseModel`);
    *  a stage app still passes at most the abstract hint. */
   model?: { providerId: string; model: string };
+  /** A per-request thinking level (R3-1122) — one of the chosen model's
+   *  `thinking.levels`; the host refuses anything else with `invalid-params`
+   *  naming the model and its levels. Omit for the Settings level, then the
+   *  model's default; never sent to a model whose `levels` are empty. */
+  thinking?: string;
   /** Abort the completion mid-stream. When it fires, the SDK sends the host a cancel
    *  frame so the host aborts the upstream provider request and STOPS BILLING the
    *  user's key — not merely stops the app-side iterator (LLM_AND_AGENTS_SPEC §3.3
@@ -225,6 +230,37 @@ export interface ChatTierModels {
   smart: string;
 }
 
+/** One model a connected provider offers, described per-model (R3-1122): the
+ *  features, modalities and context limits a picker sizes itself by, the
+ *  thinking levels the model supports (empty when it has none — a host or
+ *  provider predating the field omits `models` entirely; fall back to the
+ *  provider-level `features` then), and a price summary in the provider's
+ *  currency unit. Names and ids only — never keys, usage or balance. */
+export interface ChatModelInfo {
+  /** The model id exactly as {@link ChatRequest.model}.model takes it. */
+  id: string;
+  /** The model's human name, for a picker label. */
+  name: string;
+  /** This model's features — from the snapshot when it has them, else the
+   *  provider-level set (R3-1074). */
+  features: ChatFeatures;
+  /** The model's context window in tokens, when the snapshot knows it. */
+  contextTokens?: number;
+  /** The model's output limit in tokens, when the snapshot knows it. */
+  outputTokens?: number;
+  /** The input modalities the model accepts (e.g. `['text','image']`). */
+  inputModalities?: string[];
+  /** The output modalities the model produces. */
+  outputModalities?: string[];
+  /** The thinking levels the model supports and its default. `levels` is empty
+   *  for a model that does not think; the host refuses a `thinking` request
+   *  naming anything else with `invalid-params`. */
+  thinking: { levels: string[]; default: string };
+  /** A price summary per million tokens in the provider's `unit`, when the
+   *  snapshot knows one (R3-1121's `providerOptions` carries the rest). */
+  pricing?: { inputPerMTok: number; outputPerMTok: number; unit: string };
+}
+
 /** One CONNECTED provider the user may choose a model from, for a per-conversation model
  *  choice in an editing-session workbench (R3-620, LLM_AND_AGENTS_SPEC §0). Names and ids
  *  only — never keys, usage, balance or routing. */
@@ -233,10 +269,16 @@ export interface ChatProviderChoice {
   providerId: string;
   /** The provider's human name, for a picker label. */
   displayName: string;
-  /** The chooseable model names — the catalogue-recommended set plus the two the user has
-   *  chosen. A closed list here would re-introduce the ids-rot problem, so `model` is passed
-   *  through to the adapter exactly as the Settings field is; this list is suggestions. */
-  models: string[];
+  /** The provider's models with per-model data (R3-1122) — the
+   *  catalogue-recommended set plus the two the user has chosen, newest first.
+   *  Absent on a host predating the field; `modelIds` is the compatibility
+   *  spelling then. */
+  models?: ChatModelInfo[];
+  /** The chooseable model ids — the catalogue-recommended set plus the two the
+   *  user has chosen (kept one minor version for apps predating R3-1122; a
+   *  closed list here would re-introduce the ids-rot problem, so `model` is
+   *  passed through to the adapter exactly as the Settings field is). */
+  modelIds?: string[];
   /** R3-1074: THIS provider's adapter features, so a run on a chosen provider sizes itself
    *  by that provider's context window and vision rather than the default provider's (or the
    *  conservative nothing). Absent on a host predating the field — keep your conservative
@@ -392,6 +434,25 @@ const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
   return withReasoningClosed(f);
 };
 
+/** A per-model entry crosses only complete (R3-1122): id, name, features and
+ *  the thinking block are required; the rest is optional. */
+const usableModelInfo = (m: unknown): boolean => {
+  if (!m || typeof m !== 'object' || Array.isArray(m)) return false;
+  const info = m as Partial<ChatModelInfo>;
+  if (typeof info.id !== 'string' || !info.id) return false;
+  if (typeof info.name !== 'string' || !info.name) return false;
+  if (!usableFeatures(info.features)) return false;
+  if (
+    !info.thinking ||
+    typeof info.thinking !== 'object' ||
+    !Array.isArray(info.thinking.levels) ||
+    !info.thinking.levels.every((l) => typeof l === 'string') ||
+    typeof info.thinking.default !== 'string'
+  )
+    return false;
+  return true;
+};
+
 /** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
  *  (whether the list arrives at all) is the host's — `normalizeProviderInfo` merely refuses
  *  to pass through a malformed list, exactly as it refuses a half-answered `models` pair. */
@@ -403,9 +464,24 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     const { providerId, displayName, models } = item as Partial<ChatProviderChoice>;
     if (typeof providerId !== 'string' || !providerId) continue;
     if (typeof displayName !== 'string' || !displayName) continue;
-    const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
+    // R3-1122: `models` may arrive per-model (ChatModelInfo[]) or as the legacy
+    // id list. A per-model entry crosses only COMPLETE — a missing thinking
+    // block or feature set drops the entry, never a half-described model.
+    const modelInfos =
+      Array.isArray(models) && models.every((m) => typeof m === 'object')
+        ? (models.filter(usableModelInfo) as unknown as ChatModelInfo[])
+        : undefined;
+    const cleanModelIds = Array.isArray(models)
+      ? (models.filter((m) => typeof m === 'string' && !!m) as unknown as string[])
+      : undefined;
     const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
-    out.push({ providerId, displayName, models: cleanModels, ...(features ? { features } : {}) });
+    out.push({
+      providerId,
+      displayName,
+      ...(modelInfos && modelInfos.length > 0 ? { models: modelInfos } : {}),
+      ...(cleanModelIds && cleanModelIds.length > 0 ? { modelIds: cleanModelIds } : {}),
+      ...(features ? { features } : {}),
+    });
   }
   return out.length > 0 ? out : undefined;
 };
