@@ -86,8 +86,12 @@ describe('the enriched provider description', () => {
       }),
     )!;
     expect(out.connectedProviders).toEqual([
-      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['claude-opus-4-8', 'claude-sonnet-4-5'] },
-      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
+      {
+        providerId: 'llm.chat.anthropic',
+        displayName: 'Anthropic',
+        modelIds: ['claude-opus-4-8', 'claude-sonnet-4-5'],
+      },
+      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', modelIds: ['openai/gpt-5.4'] },
     ]);
   });
 
@@ -110,10 +114,10 @@ describe('the enriched provider description', () => {
       {
         providerId: 'llm.chat.anthropic',
         displayName: 'Anthropic',
-        models: ['claude-opus-4-8'],
+        modelIds: ['claude-opus-4-8'],
         features: { vision: true, tools: true, jsonMode: false, reasoning: false, maxContextTokens: 1000000 },
       },
-      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
+      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', modelIds: ['openai/gpt-5.4'] },
     ]);
   });
 
@@ -125,9 +129,7 @@ describe('the enriched provider description', () => {
         ],
       }),
     )!;
-    expect(out.connectedProviders).toEqual([
-      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: [] },
-    ]);
+    expect(out.connectedProviders).toEqual([{ providerId: 'llm.chat.anthropic', displayName: 'Anthropic' }]);
   });
 
   it('drops a choice’s features when the wire value is an array, empty, or partial (R3-1074)', () => {
@@ -147,9 +149,7 @@ describe('the enriched provider description', () => {
       { vision: true, tools: true, jsonMode: false, maxContextTokens: 'big' },
     ]) {
       const out = normalizeProviderInfo(withWire({ connectedProviders: [choice(bad)] }))!;
-      expect(out.connectedProviders).toEqual([
-        { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: [] },
-      ]);
+      expect(out.connectedProviders).toEqual([{ providerId: 'llm.chat.anthropic', displayName: 'Anthropic' }]);
     }
   });
 
@@ -177,7 +177,7 @@ describe('the enriched provider description', () => {
       }),
     )!;
     expect(out.connectedProviders).toEqual([
-      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['m1', 'm2'] },
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', modelIds: ['m1', 'm2'] },
     ]);
   });
 });
