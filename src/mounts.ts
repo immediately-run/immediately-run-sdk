@@ -636,9 +636,18 @@ const settingsRequest = async <T = unknown>(method: string, query: Record<string
  * early and keep the handle). The one exception: an instance the host has
  * **floored** below its app tier (the generic-viewer containment,
  * `TRUST_MODES_SPEC` §5) gets a per-origin partition instead — a DIFFERENT
- * filesystem, chosen by the host, that changes when the loaded origin changes
- * and refuses (`forbidden`) when the floor forbids the write. If your app can
- * run floored and needs continuity across origins, keep state per-mount (the
+ * filesystem, chosen by the host, that changes when the loaded origin changes.
+ *
+ * **A floored partition opens READ-ONLY; the call still RESOLVES** (R3-979).
+ * When the floor forbids writing, the promise is not rejected — you get a mount
+ * whose descriptor is `mode: 'ro'` with a whole-mount `ro` export scope. Any
+ * write through it fails with `EROFS`, and the host raises its own notice
+ * explaining why (`readOnlyStorageNoticeFor`). So do not treat `openSettings()`
+ * as the place to detect a degraded store, and never surface an `EROFS` from a
+ * write as a fatal error: the app can still read, and the remedy is host-side
+ * (the reader adjusts the app's permissions). Which partition you get is still
+ * host-chosen and still changes with the loaded origin. If your app can run
+ * floored and needs continuity across origins, keep state per-mount (the
  * returned `SandboxMount.id` tells you which partition you are in).
  */
 export const openSettings = async (): Promise<SandboxMount> => {
