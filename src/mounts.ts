@@ -638,17 +638,27 @@ const settingsRequest = async <T = unknown>(method: string, query: Record<string
  * `TRUST_MODES_SPEC` §5) gets a per-origin partition instead — a DIFFERENT
  * filesystem, chosen by the host, that changes when the loaded origin changes.
  *
- * **A floored partition opens READ-ONLY; the call still RESOLVES** (R3-979).
- * When the floor forbids writing, the promise is not rejected — you get a mount
- * whose descriptor is `mode: 'ro'` with a whole-mount `ro` export scope. Any
- * write through it fails with `EROFS`, and the host raises its own notice
- * explaining why (`readOnlyStorageNoticeFor`). So do not treat `openSettings()`
- * as the place to detect a degraded store, and never surface an `EROFS` from a
- * write as a fatal error: the app can still read, and the remedy is host-side
- * (the reader adjusts the app's permissions). Which partition you get is still
- * host-chosen and still changes with the loaded origin. If your app can run
- * floored and needs continuity across origins, keep state per-mount (the
- * returned `SandboxMount.id` tells you which partition you are in).
+ * **A floored instance's settings mount may open READ-ONLY; the call still
+ * RESOLVES** (R3-979). Whenever the host has **floored** an instance below its app
+ * tier (the generic-viewer containment, `TRUST_MODES_SPEC` §5), the partition it
+ * resolves may be read-only — and that is the app's OWN store, not only the
+ * per-origin partition above. An ordinary app that holds a space shared more
+ * widely than itself is floored this way, so "my app is ordinary" does not mean
+ * "my settings mount is writable".
+ *
+ * The open is not refused when writing is forbidden. You get a mount whose
+ * descriptor is `mode: 'ro'` with a whole-mount `ro` export scope; any write
+ * through it fails with `EROFS`; and the host raises its own notice explaining
+ * why (`readOnlyStorageNoticeFor`). So check `mount.mode` on resolution — and watch
+ * `onMountsChange` for a mid-session refloor that re-announces the same mount
+ * read-only — rather than treating this call as always-writable. Never surface an
+ * `EROFS` from a write as a fatal error: the app can still read, and the remedy is
+ * the user's — revoking the widely-shared space in Settings → App permissions.
+ *
+ * Which partition you get is still host-chosen and still changes with the loaded
+ * origin. If your app can run floored and needs continuity across origins, keep
+ * state per-mount (the returned `SandboxMount.id` tells you which partition you
+ * are in).
  */
 export const openSettings = async (): Promise<SandboxMount> => {
   const mount = await settingsRequest<SandboxMount>('open');
@@ -732,6 +742,13 @@ const localStoreRequest = async <T = unknown>(method: string, query: Record<stri
  * `forbidden` when the capability is absent. A quota/external failure surfaces the
  * underlying error unchanged, so an app can tell "the browser evicted me" from
  * "I never wrote anything".
+ *
+ * **A floored instance's local store may open READ-ONLY; the call still resolves**
+ * (R3-979). The same degrade {@link openSettings} documents applies here: when the
+ * host has floored the instance below its app tier, the store may be announced
+ * `mode: 'ro'`, writes through it fail `EROFS`, and the host raises its own notice.
+ * Treat this as the cache home it is — a failed write costs a cache entry, not the
+ * user's data — and never surface that `EROFS` as fatal.
  */
 export const openLocalStore = async (): Promise<SandboxMount> => {
   const mount = await localStoreRequest<SandboxMount>('open');
