@@ -19,6 +19,12 @@ on:
 permissions:
   checks: write
   pull-requests: read
+  contents: read
+  # The line above is load-bearing: `collectGateFacts` reads `reviews { commit { oid } }`,
+  # and resolving a commit object needs contents: read. A workflow `permissions:` block
+  # sets every unlisted scope to `none`, so without it the query is denied with one
+  # "Resource not accessible by integration" per review — a verdict that can only pass on a
+  # PR that has no reviews, i.e. before the gate has run. Found on site-main#769 (R3-1279).
 
 # One run per PR at a time: a synchronize plus the skill's dispatch is a realistic
 # trigger pair, and two overlapping runs would double-POST.
