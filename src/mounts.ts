@@ -631,29 +631,30 @@ const settingsRequest = async <T = unknown>(method: string, query: Record<string
  *
  * **Which filesystem you get, and when that can change** (R3-413): for an
  * ordinary app — including one holding space grants, powerbox-picked or
- * declared — this is ALWAYS the app-level store (same mount id every call, so
- * "which space did I pick" style state survives later grants; no need to open
- * early and keep the handle). The one exception: an instance the host has
- * **floored** below its app tier (the generic-viewer containment,
- * `TRUST_MODES_SPEC` §5) gets a per-origin partition instead — a DIFFERENT
- * filesystem, chosen by the host, that changes when the loaded origin changes.
+ * declared — this is the app-level store (same mount id every call, so "which
+ * space did I pick" style state survives later grants; no need to open early and
+ * keep the handle). An instance the host has **floored** below its app tier (the
+ * generic-viewer containment, `TRUST_MODES_SPEC` §5) keeps that app-level store
+ * unless exactly one origin it opened at runtime is less trusted than the app; in
+ * that one case it gets a per-origin partition instead — a DIFFERENT filesystem,
+ * chosen by the host, that changes when the loaded origin changes. That
+ * partition is normally writable: its mouth is the origin's own tier.
  *
- * **A floored instance's settings mount may open READ-ONLY; the call still
- * RESOLVES** (R3-979). Whenever the host has **floored** an instance below its app
- * tier (the generic-viewer containment, `TRUST_MODES_SPEC` §5), the partition it
- * resolves may be read-only — and that is the app's OWN store, not only the
- * per-origin partition above. An ordinary app that holds a space shared more
- * widely than itself is floored this way, so "my app is ordinary" does not mean
- * "my settings mount is writable".
+ * **A floored instance's settings mount may open read-only; the call still
+ * resolves.** A floor below the app's tier can make the store you get read-only,
+ * and that is most often the app's own app-level store above, not the per-origin
+ * partition. An ordinary app that holds a space shared more widely than itself is
+ * floored this way, so "my app is ordinary" does not mean "my settings mount is
+ * writable".
  *
  * The open is not refused when writing is forbidden. You get a mount whose
- * descriptor is `mode: 'ro'` with a whole-mount `ro` export scope; any write
- * through it fails with `EROFS`; and the host raises its own notice explaining
- * why (`readOnlyStorageNoticeFor`). So check `mount.mode` on resolution — and watch
- * `onMountsChange` for a mid-session refloor that re-announces the same mount
- * read-only — rather than treating this call as always-writable. Never surface an
- * `EROFS` from a write as a fatal error: the app can still read, and the remedy is
- * the user's — revoking the widely-shared space in Settings → App permissions.
+ * descriptor is `mode: 'ro'`; any write through it fails with `EROFS`; and the
+ * host shows its own notice explaining why. So check `mount.mode` on resolution
+ * rather than treating this call as always-writable. A refloor mid-session ends
+ * the app's realm and restarts it, so checking on each resolution covers that too.
+ * Never surface an `EROFS` from a write as a fatal error: the app can still read,
+ * and the remedy is the user's — revoking the widely-shared space in Settings →
+ * App permissions.
  *
  * Which partition you get is still host-chosen and still changes with the loaded
  * origin. If your app can run floored and needs continuity across origins, keep
@@ -743,12 +744,14 @@ const localStoreRequest = async <T = unknown>(method: string, query: Record<stri
  * underlying error unchanged, so an app can tell "the browser evicted me" from
  * "I never wrote anything".
  *
- * **A floored instance's local store may open READ-ONLY; the call still resolves**
- * (R3-979). The same degrade {@link openSettings} documents applies here: when the
- * host has floored the instance below its app tier, the store may be announced
- * `mode: 'ro'`, writes through it fail `EROFS`, and the host raises its own notice.
- * Treat this as the cache home it is — a failed write costs a cache entry, not the
- * user's data — and never surface that `EROFS` as fatal.
+ * **A floored instance's local store may open read-only; the call still
+ * resolves.** The same degrade {@link openSettings} documents applies here: when
+ * the host has floored the instance below its app tier, the store may be announced
+ * `mode: 'ro'`, writes through it fail `EROFS`, and the host shows its own notice.
+ * Check the mount's `mode` as you would a settings mount, and never surface that
+ * `EROFS` as fatal — but do not treat a failed write as harmless: this store holds
+ * drafts and checkpoints too, so tell the user their save did not happen rather
+ * than swallowing it.
  */
 export const openLocalStore = async (): Promise<SandboxMount> => {
   const mount = await localStoreRequest<SandboxMount>('open');
