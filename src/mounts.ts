@@ -638,7 +638,7 @@ const settingsRequest = async <T = unknown>(method: string, query: Record<string
  * unless exactly one origin it opened at runtime is less trusted than the app; in
  * that one case it gets a per-origin partition instead — a DIFFERENT filesystem,
  * chosen by the host, that changes when the loaded origin changes. That
- * partition is normally writable: its mouth is the origin's own tier.
+ * partition is normally writable: it is tiered by that origin's own trust.
  *
  * **A floored instance's settings mount may open read-only; the call still
  * resolves.** A floor below the app's tier can make the store you get read-only,
