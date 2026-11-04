@@ -336,7 +336,10 @@ jobs:
           fi
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Deploy to GitHub Pages
+      # This only PUSHES the payload to the `gh-pages` branch (the accumulating store
+      # of every version). Pages serves the branch through the `pages` job below
+      # (pages.yml, the Actions-based deploy); the legacy branch builder is off.
+      - name: Push the payload to the gh-pages branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -528,6 +531,19 @@ jobs:
             fi
           done
           echo "::warning::Dispatch was accepted but no NEW deploy run became visible within 60s (newest is still ${before}). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
+
+  # Serve the gh-pages branch the release job just pushed (pages.yml: the
+  # Actions-based deploy with our own timeout). Runs after every release, version
+  # bump or not, so the docs at the root stay current too. A failed deploy fails
+  # this job visibly; the legacy builder's failures were only on the Pages tab.
+  pages:
+    needs: release
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
 
   # @immediately-run/safe-content — the S3 content-framework's first extraction
   # (PLATFORM_LAYERING_SPEC §4, R3-279 phase 2). A second package in this repo with
