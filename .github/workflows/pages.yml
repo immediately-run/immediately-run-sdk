@@ -1,0 +1,53 @@
+name: pages
+
+# Deploys the `gh-pages` BRANCH to GitHub Pages through the Actions-based deploy
+# (actions/deploy-pages), not the legacy branch builder.
+#
+# Why: the branch is the accumulating store of every self-hosted SDK version
+# (SDK_PACKAGING_SPEC §5: `v/<version>/`, each immutable), ~26k files and growing by
+# ~340 per release. On 2026-11-04 the legacy builder's generated
+# `pages-build-deployment` workflow accepted three deployments in a row and never
+# reported a status, so its fixed 10-minute deploy timeout cancelled each one and
+# the origin kept serving the 2026-10-22 build: `/v/0.93.0/` was 404 and every app
+# pinned to it failed closed. Here the timeout is ours to set, and a failed deploy
+# fails THIS run visibly.
+#
+# The release job (ci.yml) still pushes the payload to the branch with keep_files;
+# this workflow only publishes the branch as it stands. Called by ci.yml after a
+# release, and runnable by hand to redeploy the current branch.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write     # deploy-pages
+      id-token: write  # deploy-pages verifies the run's OIDC token
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: gh-pages
+          path: site
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          # 30 minutes: the legacy builder's fixed 10 is what cancelled the
+          # 2026-11-04 deploys; a 2026-10-19 legacy build took 27 minutes.
+          timeout: 1800000
