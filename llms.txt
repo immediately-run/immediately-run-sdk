@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.90.2)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.91.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -263,6 +263,10 @@ Import: `@immediately-run/sdk/llm`
 - `ContentPart` (type) — A part of a message.
 - `describeChat` (function) — The provider the host resolved for this app, or `null`.
 - `describeChatState` (function) — The four-state read: `unknown` before the host answers; then the host's `ungranted` mark, or the provider (configured / not-configured).
+- `embed` (function) — Embed texts with whichever provider the user has connected — the first non-chat kind on the `llm:model` capability (elevated, app-scoped; earned like `llm:chat`).
+- `EmbedRequest` (interface) — An embeddings request: the texts plus an optional concrete model pair.
+- `EmbedResult` (interface) — The embeddings reply: one vector per input value, in order.
+- `KindModelInfo` (interface) — One non-chat model a connected provider offers (R3-1127): its id (what EmbedRequest.model.model takes), its human name, and, for an embedding model, its vector size and per-call input limit, when the host knows them.
 - `normalizeProviderInfo` (function)
 - `onChatProviderChange` (function) — Subscribe to provider changes (key added/revoked, preference changed).
 - `onChatProviderStateChange` (function) — Subscribe to the provider-state description.
@@ -739,6 +743,12 @@ Import: `@immediately-run/sdk/node_modules/@immediately-run/safe-content/dist/in
 - `splitWikiLinks` (function) — Split a text string on its `[[…]]` runs into ordered text / wiki parts, or `null` when there is no usable wiki-link (so the caller keeps the text node untouched).
 - `WikiLinkToken` (interface)
 - `WikiPart` (type)
+
+## node_modules/@immediately-run/sandbox-protocol/dist/index.d
+
+Import: `@immediately-run/sdk/node_modules/@immediately-run/sandbox-protocol/dist/index.d`
+
+- `ModelKind` (type) — The AI SDK's model-kind taxonomy, adopted as the platform's (LLM_AND_AGENTS_SPEC §4.4, R3-1127): `chat` is the surface that predates the taxonomy (the spec's ChatModelInfo.kind names it `chat` — the item's draft said `language`; the spec wins, recorded upstream on the item); the rest are the non-chat kinds gated by `llm:model`.
 
 ## openBundle
 
