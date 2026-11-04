@@ -437,6 +437,13 @@ const usableModels = (raw: unknown): ChatTierModels | undefined => {
 const withReasoningClosed = (f: Partial<ChatFeatures>): ChatFeatures =>
   ({ ...f, reasoning: f.reasoning === true } as ChatFeatures);
 
+const positiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
+
+/** A token count where 0 is meaningful: the host sends `maxContextTokens: 0` for "assume
+ *  no capacity" (LLM_AND_AGENTS_SPEC §4.1, the dev proxy). NaN, ±Infinity, negatives and
+ *  fractions are not counts. */
+const tokenCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+
 /** A choice's features cross only COMPLETE (R3-1074): a present half-answer — a
  *  non-object, an array, or an object missing a required key — is dropped, exactly
  *  like a half-answered `models` pair. Absent stays absent (an older host); present
@@ -448,7 +455,7 @@ const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
     typeof f.vision !== 'boolean' ||
     typeof f.tools !== 'boolean' ||
     typeof f.jsonMode !== 'boolean' ||
-    typeof f.maxContextTokens !== 'number'
+    !tokenCount(f.maxContextTokens)
   )
     return undefined;
   // Rebuilt from the declared keys, so nothing else the wire object carries crosses.
@@ -467,8 +474,6 @@ const MODEL_KINDS: Record<ModelKind, true> = {
   video: true,
   reranking: true,
 };
-
-const positiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
 
 /** A choice's `modelsByKind` crosses rebuilt (R3-1127): only known kinds, only entries
  *  with a non-empty `id` and `name`, `dimensions`/`maxInputs` kept only as positive
@@ -553,7 +558,8 @@ const usableModelInfo = (raw: unknown): ChatModelInfo | undefined => {
 
 /** Split a choice's wire `models` per entry: a string is an id; an object is run through
  *  {@link usableModelInfo}, and its `id`, when it has one, is an id whether or not it was
- *  described. One bad entry costs only itself. Ids are deduplicated, first wins. */
+ *  described. One bad entry costs only itself. Ids and descriptions are each deduplicated
+ *  by id, first wins. */
 const partitionModels = (raw: unknown): { ids: string[]; infos: ChatModelInfo[] } => {
   const ids: string[] = [];
   const infos: ChatModelInfo[] = [];
@@ -562,8 +568,10 @@ const partitionModels = (raw: unknown): { ids: string[]; infos: ChatModelInfo[] 
     if (nonEmptyString(entry)) {
       ids.push(entry);
     } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      // A second description of an id already described is dropped, first wins — the
+      // same rule as the ids, so `modelInfo` never holds two answers for one model.
       const info = usableModelInfo(entry);
-      if (info) infos.push(info);
+      if (info && !infos.some((i) => i.id === info.id)) infos.push(info);
       const id = (entry as Record<string, unknown>).id;
       if (nonEmptyString(id)) ids.push(id);
     }
@@ -588,13 +596,16 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     const wireIds = (item as { modelIds?: unknown }).modelIds;
     const wireIdList = Array.isArray(wireIds) ? [...new Set(wireIds.filter(nonEmptyString))] : [];
     const modelIds = wireIdList.length > 0 ? wireIdList : ids;
+    // `modelInfo` describes models in `models` and nothing else: when a wire `modelIds`
+    // wins, a description of an id it does not name is dropped.
+    const described = wireIdList.length > 0 ? infos.filter((i) => wireIdList.includes(i.id)) : infos;
     const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
     const modelsByKind = usableModelsByKind((item as Partial<ChatProviderChoice>).modelsByKind);
     out.push({
       providerId,
       displayName,
       models: modelIds,
-      ...(infos.length > 0 ? { modelInfo: infos } : {}),
+      ...(described.length > 0 ? { modelInfo: described } : {}),
       ...(features ? { features } : {}),
       ...(modelsByKind ? { modelsByKind } : {}),
     });

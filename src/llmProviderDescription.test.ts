@@ -320,7 +320,9 @@ describe('per-model descriptions on a connected provider (R3-1122)', () => {
 
   it('partitions a mixed list per entry: every complete entry and every id survives', () => {
     const other = { ...complete, id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' };
-    const out = choiceOf([complete, 'stray', 7, null, ['x'], other, '', 'stray']);
+    const dupe = { ...complete, name: 'Claude Sonnet 5 (again)', contextTokens: 1000 };
+    const out = choiceOf([complete, 'stray', 7, null, ['x'], other, '', 'stray', dupe]);
+    // the duplicate id is described once, by its first entry
     expect(out.modelInfo).toEqual([complete, other]);
     expect(out.models).toEqual(['claude-sonnet-5', 'stray', 'claude-haiku-4-5']);
   });
@@ -365,11 +367,28 @@ describe('per-model descriptions on a connected provider (R3-1122)', () => {
     ).not.toHaveProperty('pricing');
   });
 
+  it('drops features whose maxContextTokens is not a token count (NaN, Infinity, negative, fraction)', () => {
+    for (const maxContextTokens of [NaN, Infinity, -Infinity, -1, 1.5, '200000']) {
+      const bad = { ...complete, features: { ...features, maxContextTokens } };
+      expect('modelInfo' in choiceOf([bad])).toBe(false);
+      expect('features' in choiceOf([], { features: { ...features, maxContextTokens } })).toBe(false);
+    }
+    // 0 is the host's "assume no capacity", a count it does send
+    expect(choiceOf([], { features: { ...features, maxContextTokens: 0 } }).features?.maxContextTokens).toBe(0);
+  });
+
   it('prefers a wire modelIds over the ids in models, and falls back when it is unusable', () => {
     expect(choiceOf([complete], { modelIds: ['claude-sonnet-5', 'claude-opus-4-8'] }).models).toEqual([
       'claude-sonnet-5',
       'claude-opus-4-8',
     ]);
+    // modelInfo never describes a model outside models: a description of an id the
+    // winning modelIds does not name is dropped.
+    const other = { ...complete, id: 'a' };
+    const filtered = choiceOf([complete, other], { modelIds: ['b', 'claude-sonnet-5'] });
+    expect(filtered.models).toEqual(['b', 'claude-sonnet-5']);
+    expect(filtered.modelInfo).toEqual([complete]);
+    expect('modelInfo' in choiceOf([other], { modelIds: ['b'] })).toBe(false);
     // An empty models list with a modelIds list loses nothing.
     expect(choiceOf([], { modelIds: ['a', '', 3, 'b'] }).models).toEqual(['a', 'b']);
     for (const modelIds of ['a', [], [3], null]) {
