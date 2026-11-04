@@ -14,14 +14,30 @@ import { bundleRelativeTarget } from './bundleLinkPath';
  * Follow a link that leaves the current bundle.
  *
  * `href` is the link as the author wrote it; `fromEntry` is the bundle-relative path of
- * the document it appears in (e.g. `tickets/B-10.mdx`). When the href resolves OUTSIDE
- * the bundle, posts one `bundle-link` message to the host and returns `true`. Returns
- * `false` and sends nothing for an external href, a bare anchor, or a target inside the
- * bundle — route those as before.
+ * the document it appears in (e.g. `tickets/B-10.mdx`).
+ *
+ * - Returns `true` when the href resolves OUTSIDE the bundle: one `bundle-link` message
+ *   is posted to the host.
+ * - Also returns `true`, posting nothing, for a link this function refuses: one that
+ *   leaves the bundle with a query or a second `#`, or one with a percent-encoded dot
+ *   segment. The click is consumed and one `console.warn` names the reason. Do not
+ *   route it as before, because URL parsing would collapse its `..` into a wrong path
+ *   inside the bundle. Render it as a broken link instead.
+ * - Returns `false`, posting nothing, for an external href, a bare anchor, or a target
+ *   inside the bundle. Route those as before.
  */
 export function followBundleLink(href: string, fromEntry: string): boolean {
-  const target = bundleRelativeTarget(href, fromEntry);
+  let reason = '';
+  const target = bundleRelativeTarget(href, fromEntry, (r) => {
+    reason = r;
+  });
   if (target === null || target === 'inside') return false;
+  if (target === 'refused') {
+    console.warn(
+      `followBundleLink: not following ${JSON.stringify(href)} from ${JSON.stringify(fromEntry)}: ${reason}`,
+    );
+    return true;
+  }
   const payload: BundleLinkPayload = target;
   sendMessage(BUNDLE_LINK, payload);
   return true;

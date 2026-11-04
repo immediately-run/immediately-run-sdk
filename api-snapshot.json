@@ -125,7 +125,7 @@
     "useCurrentEntry": "fn(0..0)"
   },
   "bundleLinkPath": {
-    "bundleRelativeTarget": "fn(2..2)"
+    "bundleRelativeTarget": "fn(2..3)"
   },
   "catalog": {
     "ApiMethod": "interface(capability, name, paramsSchema?, stream?)",

@@ -1,6 +1,6 @@
 // R3-1324 — the bundle-link normaliser: an escaping href keeps its leading `..` segments
-// (a URL would collapse them), an inside href is 'inside', and what is not a relative
-// path is null.
+// (a URL would collapse them), an inside href is 'inside', a malformed escape is
+// 'refused', and what is not a relative path is null.
 import { bundleRelativeTarget } from './bundleLinkPath';
 
 describe('bundleRelativeTarget', () => {
@@ -45,12 +45,42 @@ describe('bundleRelativeTarget', () => {
   });
 
   it('refuses an encoded dot segment rather than guessing what the host will decode', () => {
-    expect(bundleRelativeTarget('%2e%2e/x', 'b.mdx')).toBeNull();
-    expect(bundleRelativeTarget('../.%2E/x', 'b.mdx')).toBeNull();
+    expect(bundleRelativeTarget('%2e%2e/x', 'b.mdx')).toBe('refused');
+    expect(bundleRelativeTarget('../.%2E/x', 'b.mdx')).toBe('refused');
+    expect(bundleRelativeTarget('a/%2e/b', 'b.mdx')).toBe('refused');
   });
 
-  it('refuses a query and an entry that is not bundle-relative', () => {
-    expect(bundleRelativeTarget('../x.md?y=1', 'b.mdx')).toBeNull();
+  it('refuses an escape with a query or a second #, naming the reason', () => {
+    const reasons: string[] = [];
+    const onRefused = (r: string) => reasons.push(r);
+    expect(bundleRelativeTarget('../x.md?y=1', 'b.mdx', onRefused)).toBe('refused');
+    expect(bundleRelativeTarget('../x.md#a#b', 'B-10.mdx', onRefused)).toBe('refused');
+    expect(bundleRelativeTarget('%2e%2e/x', 'b.mdx', onRefused)).toBe('refused');
+    expect(reasons).toEqual([
+      'it leaves the bundle with a query',
+      'it leaves the bundle with a second #',
+      'it has a percent-encoded dot segment',
+    ]);
+  });
+
+  it('a query or a second # on a link that stays inside is routed as today', () => {
+    expect(bundleRelativeTarget('c.mdx?y=1', 'a/b.mdx')).toBe('inside');
+    expect(bundleRelativeTarget('c.mdx#a#b', 'a/b.mdx')).toBe('inside');
+  });
+
+  it('a fragment never carries a #', () => {
+    for (const href of ['../x.md#a', '../x.md#a#', '../x.md##a', '../x.md#a#b#c']) {
+      const out = bundleRelativeTarget(href, 'b.mdx');
+      if (typeof out === 'object' && out !== null) expect(out.fragment ?? '').not.toContain('#');
+    }
+  });
+
+  it('an entry that is not bundle-relative is not ours (null)', () => {
     expect(bundleRelativeTarget('../x.md', '../outside/b.mdx')).toBeNull();
+  });
+
+  it('resolves from the bundle-absolute entry form BundleEntry.path carries', () => {
+    expect(bundleRelativeTarget('../../spec/x.md', '/tickets/B-10.mdx')).toEqual({ path: '../spec/x.md' });
+    expect(bundleRelativeTarget('../c.mdx', '/tickets/B-10.mdx')).toBe('inside');
   });
 });

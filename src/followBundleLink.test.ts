@@ -30,7 +30,23 @@ it('an escaping href without a fragment carries no fragment key', () => {
   expect(sendMessage.mock.calls).toEqual([['bundle-link', { path: '../x.md' }]]);
 });
 
-it.each(['c.mdx', 'https://example.com/', '#x'])('%j posts nothing and returns false', (href) => {
+it.each(['c.mdx', 'https://example.com/', 'mailto:a@b.c', '#x'])('%j posts nothing and returns false', (href) => {
   expect(followBundleLink(href, 'a/b.mdx')).toBe(false);
   expect(sendMessage).not.toHaveBeenCalled();
+});
+
+it.each([
+  ['../x.md?y=1', 'a query'],
+  ['../x.md#a#b', 'a second #'],
+  ['%2e%2e/x', 'percent-encoded dot segment'],
+])('a refused escape %j consumes the click: true, one warn naming the reason, nothing posted', (href, reason) => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  try {
+    expect(followBundleLink(href, 'B-10.mdx')).toBe(true);
+    expect(sendMessage).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain(reason);
+  } finally {
+    warn.mockRestore();
+  }
 });
