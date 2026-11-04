@@ -39,6 +39,16 @@ it.each([
   ['../x.md?y=1', 'a query'],
   ['../x.md#a#b', 'a second #'],
   ['%2e%2e/x', 'percent-encoded dot segment'],
+  // host-parity: what site-main's resolveBundleEscape always refuses
+  ['../a%2Fb.md', 'separator'],
+  ['../a%5Cb.md', 'separator'],
+  ['../a%zz.md', 'malformed % escape'],
+  ['../a%00.md', 'control character'],
+  ['../a\\b.md', 'backslash'],
+  ['../\uD800.md', 'lone surrogate'],
+  ['../a\tb.md', 'control character'],
+  ['..', 'names no file'],
+  ['../..', 'names no file'],
 ])('a refused escape %j consumes the click: true, one warn naming the reason, nothing posted', (href, reason) => {
   const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
   try {

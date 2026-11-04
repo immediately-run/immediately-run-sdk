@@ -18,9 +18,10 @@ import { bundleRelativeTarget } from './bundleLinkPath';
  *
  * - Returns `true` when the href resolves OUTSIDE the bundle: one `bundle-link` message
  *   is posted to the host.
- * - Also returns `true`, posting nothing, for a link this function refuses: one that
- *   leaves the bundle with a query or a second `#`, or one with a percent-encoded dot
- *   segment. The click is consumed and one `console.warn` names the reason. Do not
+ * - Also returns `true`, posting nothing, for a link `bundleRelativeTarget` refuses: one
+ *   with a backslash or a percent-encoded dot segment, or one that leaves the bundle with
+ *   a query, a second `#`, only `..` segments, or a segment the host would refuse once
+ *   decoded. The click is consumed and one `console.warn` names the reason. Do not
  *   route it as before, because URL parsing would collapse its `..` into a wrong path
  *   inside the bundle. Render it as a broken link instead.
  * - Returns `false`, posting nothing, for an external href, a bare anchor, or a target

@@ -83,4 +83,38 @@ describe('bundleRelativeTarget', () => {
     expect(bundleRelativeTarget('../../spec/x.md', '/tickets/B-10.mdx')).toEqual({ path: '../spec/x.md' });
     expect(bundleRelativeTarget('../c.mdx', '/tickets/B-10.mdx')).toBe('inside');
   });
+
+  it('a backslash anywhere in the path is refused, so ..\\x.md is never routed as inside', () => {
+    const reasons: string[] = [];
+    expect(bundleRelativeTarget('..\\x.md', 'B-10.mdx', (r) => reasons.push(r))).toBe('refused');
+    expect(bundleRelativeTarget('a\\b.md', 'B-10.mdx', (r) => reasons.push(r))).toBe('refused');
+    expect(reasons).toEqual(['it has a backslash', 'it has a backslash']);
+  });
+});
+
+// Parity with the host: every escaping payload site-main's resolveBundleEscape /
+// decodeSegment (src/editor/bundleUrl.ts, R3-1321) always refuses is refused here first,
+// with the host's reason, so the SDK never posts a link the host is certain to drop.
+describe('bundleRelativeTarget refuses what the host refuses', () => {
+  it.each([
+    ['../a%2Fb.md', 'separator'],
+    ['../a%5Cb.md', 'separator'],
+    ['../a%zz.md', 'malformed % escape'],
+    ['../a%00.md', 'control character'],
+    ['../a\\b.md', 'backslash'],
+    ['../\uD800.md', 'lone surrogate'],
+    ['../a\tb.md', 'control character'],
+    ['..', 'names no file'],
+    ['../..', 'names no file'],
+  ])('%j is refused (%s)', (href, reason) => {
+    const reasons: string[] = [];
+    expect(bundleRelativeTarget(href, 'B-10.mdx', (r) => reasons.push(r))).toBe('refused');
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toContain(reason);
+  });
+
+  it('an escaping segment the host decodes cleanly still crosses, percent-encoded as written', () => {
+    expect(bundleRelativeTarget('../a%20b.md', 'B-10.mdx')).toEqual({ path: '../a%20b.md' });
+    expect(bundleRelativeTarget('../caf%C3%A9.md', 'B-10.mdx')).toEqual({ path: '../caf%C3%A9.md' });
+  });
 });
