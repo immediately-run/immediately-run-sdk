@@ -257,12 +257,14 @@ export interface ChatProviderChoice {
 
 /** One non-chat model a connected provider offers (R3-1127): its id (what
  *  {@link EmbedRequest.model}.model takes), its human name, and, for an embedding
- *  model, the vector size and the most values one call may carry, when the host
- *  knows them. */
+ *  model, its vector size and per-call input limit, when the host knows them. */
 export interface KindModelInfo {
   id: string;
   name: string;
   dimensions?: number;
+  /** The provider's own limit on values per call. The host's cap on an
+   *  {@link EmbedRequest} (256 values, 1 MiB of text) applies first, so the most one
+   *  `embed()` call can carry is `min(maxInputs, 256)`. */
   maxInputs?: number;
 }
 
