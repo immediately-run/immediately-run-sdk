@@ -86,7 +86,8 @@ function fold(start: { ups: number; segs: string[] }, parts: string[]): Segments
  * - `'refused'` — a relative href this function will not hand to the host, and which must
  *   not be routed as today either, because URL parsing would collapse its `..` into a
  *   wrong in-bundle path. That is any href with a backslash or a percent-encoded dot
- *   segment (whether it leaves depends on who reads it), and one that leaves the bundle
+ *   segment in its path (whether it leaves depends on who reads it; the fragment is not
+ *   checked), and one that leaves the bundle
  *   and carries a query or a second `#`, names only `..` segments, or has a segment the
  *   host refuses once decoded: a malformed `%` escape, a `/` or `\`, a control character
  *   or a lone surrogate. `onRefused` receives the reason.
@@ -95,7 +96,7 @@ function fold(start: { ups: number; segs: string[] }, parts: string[]): Segments
  *   no other `..`). `fragment` carries no `#` and is absent when empty.
  *
  * A root-absolute href (`/x`) is bundle-root-relative and clamps at the root, so it is
- * `'inside'` unless it carries a backslash or an encoded dot segment.
+ * `'inside'` unless its path carries a backslash or an encoded dot segment.
  */
 export function bundleRelativeTarget(
   href: string,
