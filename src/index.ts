@@ -10,6 +10,8 @@ export { SafeInclude } from './components/SafeInclude';
 export * from './sourceCache';
 export * from './components/MDXComponents';
 export * from './linkSpace';
+// R3-1324: a link that leaves its bundle is handed to the host (`bundle-link`).
+export { followBundleLink } from './followBundleLink';
 export * from './bundle';
 // Deprecated `Corpus*` spellings of the above (R3-482); see `src/corpus.ts`.
 export * from './corpus';
