@@ -97,6 +97,7 @@ jobs:
         run: |
           npm run check:clones
           npm run check:unused
+          npm run check:comment-refs
           npm run check:untested
       - run: npm test
       - run: npm run build
