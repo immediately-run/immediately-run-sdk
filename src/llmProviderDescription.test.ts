@@ -7,7 +7,14 @@
 // behaviour. These three do not: a host that does not say which model answered must
 // leave the app with nothing to render, never with a guess — so absent stays absent, and
 // only an unusable value is dropped.
-import { normalizeProviderInfo, type ChatProviderChoice, type ChatProviderInfo, type ModelKind } from './llm';
+import {
+  normalizeProviderInfo,
+  type ChatModelInfo,
+  type ChatProviderChoice,
+  type ChatProviderInfo,
+  type ChatRequest,
+  type ModelKind,
+} from './llm';
 import type { ModelKind as ProtocolModelKind } from '@immediately-run/sandbox-protocol';
 
 const base: ChatProviderInfo = {
@@ -87,12 +94,8 @@ describe('the enriched provider description', () => {
       }),
     )!;
     expect(out.connectedProviders).toEqual([
-      {
-        providerId: 'llm.chat.anthropic',
-        displayName: 'Anthropic',
-        modelIds: ['claude-opus-4-8', 'claude-sonnet-4-5'],
-      },
-      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', modelIds: ['openai/gpt-5.4'] },
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['claude-opus-4-8', 'claude-sonnet-4-5'] },
+      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
     ]);
   });
 
@@ -115,10 +118,10 @@ describe('the enriched provider description', () => {
       {
         providerId: 'llm.chat.anthropic',
         displayName: 'Anthropic',
-        modelIds: ['claude-opus-4-8'],
+        models: ['claude-opus-4-8'],
         features: { vision: true, tools: true, jsonMode: false, reasoning: false, maxContextTokens: 1000000 },
       },
-      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', modelIds: ['openai/gpt-5.4'] },
+      { providerId: 'llm.chat.openrouter', displayName: 'OpenRouter', models: ['openai/gpt-5.4'] },
     ]);
   });
 
@@ -130,7 +133,9 @@ describe('the enriched provider description', () => {
         ],
       }),
     )!;
-    expect(out.connectedProviders).toEqual([{ providerId: 'llm.chat.anthropic', displayName: 'Anthropic' }]);
+    expect(out.connectedProviders).toEqual([
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: [] },
+    ]);
   });
 
   it('drops a choice’s features when the wire value is an array, empty, or partial (R3-1074)', () => {
@@ -150,7 +155,9 @@ describe('the enriched provider description', () => {
       { vision: true, tools: true, jsonMode: false, maxContextTokens: 'big' },
     ]) {
       const out = normalizeProviderInfo(withWire({ connectedProviders: [choice(bad)] }))!;
-      expect(out.connectedProviders).toEqual([{ providerId: 'llm.chat.anthropic', displayName: 'Anthropic' }]);
+      expect(out.connectedProviders).toEqual([
+        { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: [] },
+      ]);
     }
   });
 
@@ -178,7 +185,7 @@ describe('the enriched provider description', () => {
       }),
     )!;
     expect(out.connectedProviders).toEqual([
-      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', modelIds: ['m1', 'm2'] },
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['m1', 'm2'] },
     ]);
   });
 
@@ -251,5 +258,132 @@ describe('the enriched provider description', () => {
     // @ts-expect-error — a key outside the taxonomy is a compile error
     const unknownKind: NonNullable<ChatProviderChoice['modelsByKind']> = { hologram: [] };
     expect([fromProtocol, toProtocol, Object.keys(byKind), unknownKind]).toBeDefined();
+  });
+});
+
+// R3-1122: per-model descriptions. The wire carries them as object entries of a choice's
+// `models`; the ids an app passes to chat() stay in `models: string[]` on the SDK side.
+describe('per-model descriptions on a connected provider (R3-1122)', () => {
+  const features = { vision: true, tools: true, jsonMode: true, reasoning: true, maxContextTokens: 200000 };
+  const complete: ChatModelInfo = {
+    id: 'claude-sonnet-5',
+    name: 'Claude Sonnet 5',
+    features,
+    contextTokens: 200000,
+    outputTokens: 64000,
+    inputModalities: ['text', 'image', 'pdf'],
+    outputModalities: ['text'],
+    thinking: { levels: ['off', 'low', 'medium', 'high'], default: 'off' },
+    pricing: { inputPerMTok: 3, outputPerMTok: 15, unit: 'USD' },
+  };
+  const choiceOf = (models: unknown, extra: Record<string, unknown> = {}): ChatProviderChoice =>
+    normalizeProviderInfo(
+      withWire({
+        connectedProviders: [{ providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models, ...extra }],
+      }),
+    )!.connectedProviders![0];
+
+  it('the wire site-main sends today — ids only — reads as ids with no descriptions', () => {
+    // Recorded from site-main main's `connectedProviderChoices` (src/editor/llm/describeProvider.ts):
+    // `{ providerId, displayName, models: [...new Set(tier models + chosen)], features: entry.features }`
+    // for the OpenRouter row of providerCatalogue.json.
+    const wire = {
+      providerId: 'llm.chat.openrouter',
+      displayName: 'OpenRouter',
+      models: ['openai/gpt-5.4-mini', 'openai/gpt-5.4'],
+      features: { vision: true, tools: true, jsonMode: true, reasoning: true, maxContextTokens: 400000 },
+    };
+    const out = normalizeProviderInfo(withWire({ connectedProviders: [wire] }))!;
+    expect(out.connectedProviders).toEqual([wire]);
+    expect('modelInfo' in out.connectedProviders![0]).toBe(false);
+  });
+
+  it('carries a complete entry through, and its id into models', () => {
+    const out = choiceOf([complete]);
+    expect(out.modelInfo).toEqual([complete]);
+    expect(out.models).toEqual(['claude-sonnet-5']);
+  });
+
+  it('keeps a model with no thinking knob: empty levels, default naming nothing', () => {
+    const plain = { ...complete, id: 'm', thinking: { levels: [], default: '' } };
+    expect(choiceOf([plain]).modelInfo).toEqual([plain]);
+  });
+
+  it('drops a half-described entry from modelInfo but keeps its id', () => {
+    const { thinking: _t, ...noThinking } = complete;
+    const halfFeatures = { ...complete, id: 'b', features: { vision: true, tools: true } };
+    const { contextTokens: _c, ...noContext } = { ...complete, id: 'c' };
+    const out = choiceOf([noThinking, halfFeatures, noContext]);
+    expect('modelInfo' in out).toBe(false);
+    expect(out.models).toEqual(['claude-sonnet-5', 'b', 'c']);
+  });
+
+  it('partitions a mixed list per entry: every complete entry and every id survives', () => {
+    const other = { ...complete, id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5' };
+    const out = choiceOf([complete, 'stray', 7, null, ['x'], other, '', 'stray']);
+    expect(out.modelInfo).toEqual([complete, other]);
+    expect(out.models).toEqual(['claude-sonnet-5', 'stray', 'claude-haiku-4-5']);
+  });
+
+  it('rebuilds a hostile entry: wrong types drop it, extra keys never cross, reasoning closes', () => {
+    for (const bad of [
+      { ...complete, contextTokens: 'huge' },
+      { ...complete, outputTokens: -1 },
+      { ...complete, name: 7 },
+      { ...complete, inputModalities: 'text' },
+      { ...complete, outputModalities: ['text', 3] },
+      { ...complete, thinking: { levels: ['low', 'high'], default: 'max' } },
+      { ...complete, thinking: { levels: 'low', default: 'low' } },
+      { ...complete, features: [] },
+    ]) {
+      const out = choiceOf([bad]);
+      expect('modelInfo' in out).toBe(false);
+      expect(out.models).toEqual(['claude-sonnet-5']);
+    }
+    const out = choiceOf([
+      {
+        ...complete,
+        secret: 'k',
+        apiKey: 'sk-ant-x',
+        features: { ...features, reasoning: 'yes', extra: 1 },
+        thinking: { levels: ['off', 'high'], default: 'high', budget: 9 },
+        pricing: 'free',
+      },
+    ]);
+    const { pricing: _p, ...noPricing } = complete;
+    expect(out.modelInfo).toEqual([
+      {
+        ...noPricing,
+        features: { ...features, reasoning: false },
+        thinking: { levels: ['off', 'high'], default: 'high' },
+      },
+    ]);
+    expect(JSON.stringify(out)).not.toContain('sk-ant');
+    // A malformed pricing block costs only itself.
+    expect(
+      choiceOf([{ ...complete, pricing: { inputPerMTok: 3, outputPerMTok: 'x', unit: 'USD' } }]).modelInfo![0],
+    ).not.toHaveProperty('pricing');
+  });
+
+  it('prefers a wire modelIds over the ids in models, and falls back when it is unusable', () => {
+    expect(choiceOf([complete], { modelIds: ['claude-sonnet-5', 'claude-opus-4-8'] }).models).toEqual([
+      'claude-sonnet-5',
+      'claude-opus-4-8',
+    ]);
+    // An empty models list with a modelIds list loses nothing.
+    expect(choiceOf([], { modelIds: ['a', '', 3, 'b'] }).models).toEqual(['a', 'b']);
+    for (const modelIds of ['a', [], [3], null]) {
+      expect(choiceOf([complete, 'x'], { modelIds }).models).toEqual(['claude-sonnet-5', 'x']);
+    }
+  });
+
+  it('types ChatRequest.thinking as an optional string (type test)', () => {
+    const withLevel: ChatRequest = { messages: [], thinking: 'high' };
+    const without: ChatRequest = { messages: [] };
+    // @ts-expect-error — a level is a string, never a number or a budget object
+    const wrong: ChatRequest = { messages: [], thinking: 2048 };
+    // @ts-expect-error — ChatModelInfo.thinking is required: a description always says
+    const noThinking: ChatModelInfo = { ...complete, thinking: undefined };
+    expect([withLevel.thinking, without.thinking, wrong, noThinking]).toBeDefined();
   });
 });

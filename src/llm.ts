@@ -237,34 +237,33 @@ export interface ChatTierModels {
   smart: string;
 }
 
-/** One model a connected provider offers, described per-model (R3-1122): the
- *  features, modalities and context limits a picker sizes itself by, the
- *  thinking levels the model supports (empty when it has none — a host or
- *  provider predating the field omits `models` entirely; fall back to the
- *  provider-level `features` then), and a price summary in the provider's
- *  currency unit. Names and ids only — never keys, usage or balance. */
+/** One chat model a connected provider offers, described per model (R3-1122): what a
+ *  picker sizes itself by. The host sends it as an object entry of a choice's wire
+ *  `models` list. It crosses only complete and rebuilt: an entry missing a required
+ *  field, or carrying one of the wrong type, is not described at all (its `id` still
+ *  joins {@link ChatProviderChoice.models}), and a key not declared here never crosses.
+ *  Names, ids, features and prices only — never keys, usage or balance. */
 export interface ChatModelInfo {
   /** The model id exactly as {@link ChatRequest.model}.model takes it. */
   id: string;
   /** The model's human name, for a picker label. */
   name: string;
-  /** This model's features — from the snapshot when it has them, else the
-   *  provider-level set (R3-1074). */
+  /** This model's features, normalized like the provider-level set (`reasoning` fails
+   *  closed to `false`). */
   features: ChatFeatures;
-  /** The model's context window in tokens, when the snapshot knows it. */
-  contextTokens?: number;
-  /** The model's output limit in tokens, when the snapshot knows it. */
-  outputTokens?: number;
+  /** The model's context window in tokens. */
+  contextTokens: number;
+  /** The model's output limit in tokens. */
+  outputTokens: number;
   /** The input modalities the model accepts (e.g. `['text','image']`). */
-  inputModalities?: string[];
+  inputModalities: string[];
   /** The output modalities the model produces. */
-  outputModalities?: string[];
-  /** The thinking levels the model supports and its default. `levels` is empty
-   *  for a model that does not think; the host refuses a `thinking` request
-   *  naming anything else with `invalid-params`. */
+  outputModalities: string[];
+  /** The thinking levels the model accepts and the one it uses when a request names
+   *  none. `default` is always one of `levels`; `levels` is empty for a model with no
+   *  thinking knob, and then `default` means nothing — send no `thinking` to it. */
   thinking: { levels: string[]; default: string };
-  /** A price summary per million tokens in the provider's `unit`, when the
-   *  snapshot knows one (R3-1121's `providerOptions` carries the rest). */
+  /** A price summary per million tokens in `unit`, when the host knows one. */
   pricing?: { inputPerMTok: number; outputPerMTok: number; unit: string };
 }
 
@@ -276,16 +275,17 @@ export interface ChatProviderChoice {
   providerId: string;
   /** The provider's human name, for a picker label. */
   displayName: string;
-  /** The provider's models with per-model data (R3-1122) — the
-   *  catalogue-recommended set plus the two the user has chosen, newest first.
-   *  Absent on a host predating the field; `modelIds` is the compatibility
-   *  spelling then. */
-  models?: ChatModelInfo[];
-  /** The chooseable model ids — the catalogue-recommended set plus the two the
-   *  user has chosen (kept one minor version for apps predating R3-1122; a
-   *  closed list here would re-introduce the ids-rot problem, so `model` is
-   *  passed through to the adapter exactly as the Settings field is). */
-  modelIds?: string[];
+  /** The chooseable model ids — the catalogue-recommended set plus the two the user has
+   *  chosen. A closed list here would re-introduce the ids-rot problem, so `model` is passed
+   *  through to the adapter exactly as the Settings field is; this list is suggestions.
+   *  Read from the wire's `modelIds` when a host sends one, else from the wire's `models`:
+   *  its string entries plus the `id` of each object entry, described or not. Every host
+   *  so far sends `models` as ids only. */
+  models: string[];
+  /** R3-1122: per-model descriptions of the models above that the host describes, in the
+   *  host's order. Absent on a host that sends ids only — today, every host — and when no
+   *  entry crossed complete; fall back to {@link ChatProviderChoice.features} then. */
+  modelInfo?: ChatModelInfo[];
   /** R3-1074: THIS provider's adapter features, so a run on a chosen provider sizes itself
    *  by that provider's context window and vision rather than the default provider's (or the
    *  conservative nothing). Absent on a host predating the field — keep your conservative
@@ -451,7 +451,9 @@ const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
     typeof f.maxContextTokens !== 'number'
   )
     return undefined;
-  return withReasoningClosed(f);
+  // Rebuilt from the declared keys, so nothing else the wire object carries crosses.
+  const { vision, tools, jsonMode, maxContextTokens } = f;
+  return withReasoningClosed({ vision, tools, jsonMode, reasoning: f.reasoning, maxContextTokens });
 };
 
 /** Every {@link ModelKind}, as a runtime set — typed as a full record so a kind the
@@ -494,23 +496,79 @@ const usableModelsByKind = (raw: unknown): ChatProviderChoice['modelsByKind'] =>
   return Object.keys(out).length > 0 ? out : undefined;
 };
 
-/** A per-model entry crosses only complete (R3-1122): id, name, features and
- *  the thinking block are required; the rest is optional. */
-const usableModelInfo = (m: unknown): boolean => {
-  if (!m || typeof m !== 'object' || Array.isArray(m)) return false;
-  const info = m as Partial<ChatModelInfo>;
-  if (typeof info.id !== 'string' || !info.id) return false;
-  if (typeof info.name !== 'string' || !info.name) return false;
-  if (!usableFeatures(info.features)) return false;
-  if (
-    !info.thinking ||
-    typeof info.thinking !== 'object' ||
-    !Array.isArray(info.thinking.levels) ||
-    !info.thinking.levels.every((l) => typeof l === 'string') ||
-    typeof info.thinking.default !== 'string'
-  )
-    return false;
-  return true;
+const nonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+
+/** A list of non-empty strings, or undefined when the value is not one (an empty list is one). */
+const stringList = (v: unknown): string[] | undefined =>
+  Array.isArray(v) && v.every(nonEmptyString) ? [...v] : undefined;
+
+const nonNegativeNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+
+/** A model's thinking block: every level a non-empty string, and `default` one of them
+ *  (any string when there are no levels, since it then names nothing). */
+const usableThinking = (raw: unknown): ChatModelInfo['thinking'] | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const { levels: rawLevels, default: rawDefault } = raw as Record<string, unknown>;
+  const levels = stringList(rawLevels);
+  if (!levels || typeof rawDefault !== 'string') return undefined;
+  if (levels.length > 0 && !levels.includes(rawDefault)) return undefined;
+  return { levels, default: rawDefault };
+};
+
+const usablePricing = (raw: unknown): ChatModelInfo['pricing'] => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const { inputPerMTok, outputPerMTok, unit } = raw as Record<string, unknown>;
+  return nonNegativeNumber(inputPerMTok) && nonNegativeNumber(outputPerMTok) && nonEmptyString(unit)
+    ? { inputPerMTok, outputPerMTok, unit }
+    : undefined;
+};
+
+/** Rebuild one per-model entry from its declared fields (R3-1122), or undefined when a
+ *  required one is missing or mistyped. The optional `pricing` is dropped alone when it is
+ *  unusable. Nothing else on the wire object crosses. */
+const usableModelInfo = (raw: unknown): ChatModelInfo | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const m = raw as Record<string, unknown>;
+  const { id, name, contextTokens, outputTokens } = m;
+  if (!nonEmptyString(id) || !nonEmptyString(name)) return undefined;
+  if (!positiveInt(contextTokens) || !positiveInt(outputTokens)) return undefined;
+  const features = usableFeatures(m.features);
+  const thinking = usableThinking(m.thinking);
+  const inputModalities = stringList(m.inputModalities);
+  const outputModalities = stringList(m.outputModalities);
+  if (!features || !thinking || !inputModalities || !outputModalities) return undefined;
+  const pricing = usablePricing(m.pricing);
+  return {
+    id,
+    name,
+    features,
+    contextTokens,
+    outputTokens,
+    inputModalities,
+    outputModalities,
+    thinking,
+    ...(pricing ? { pricing } : {}),
+  };
+};
+
+/** Split a choice's wire `models` per entry: a string is an id; an object is run through
+ *  {@link usableModelInfo}, and its `id`, when it has one, is an id whether or not it was
+ *  described. One bad entry costs only itself. Ids are deduplicated, first wins. */
+const partitionModels = (raw: unknown): { ids: string[]; infos: ChatModelInfo[] } => {
+  const ids: string[] = [];
+  const infos: ChatModelInfo[] = [];
+  if (!Array.isArray(raw)) return { ids, infos };
+  for (const entry of raw) {
+    if (nonEmptyString(entry)) {
+      ids.push(entry);
+    } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      const info = usableModelInfo(entry);
+      if (info) infos.push(info);
+      const id = (entry as Record<string, unknown>).id;
+      if (nonEmptyString(id)) ids.push(id);
+    }
+  }
+  return { ids: [...new Set(ids)], infos };
 };
 
 /** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
@@ -524,23 +582,19 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     const { providerId, displayName, models } = item as Partial<ChatProviderChoice>;
     if (typeof providerId !== 'string' || !providerId) continue;
     if (typeof displayName !== 'string' || !displayName) continue;
-    // R3-1122: `models` may arrive per-model (ChatModelInfo[]) or as the legacy
-    // id list. A per-model entry crosses only COMPLETE — a missing thinking
-    // block or feature set drops the entry, never a half-described model.
-    const modelInfos =
-      Array.isArray(models) && models.every((m) => typeof m === 'object')
-        ? (models.filter(usableModelInfo) as unknown as ChatModelInfo[])
-        : undefined;
-    const cleanModelIds = Array.isArray(models)
-      ? (models.filter((m) => typeof m === 'string' && !!m) as unknown as string[])
-      : undefined;
+    // R3-1122: the ids come from a wire `modelIds` when the host sends a usable one,
+    // else from `models` itself; the per-model descriptions only from `models`.
+    const { ids, infos } = partitionModels(models);
+    const wireIds = (item as { modelIds?: unknown }).modelIds;
+    const wireIdList = Array.isArray(wireIds) ? [...new Set(wireIds.filter(nonEmptyString))] : [];
+    const modelIds = wireIdList.length > 0 ? wireIdList : ids;
     const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
     const modelsByKind = usableModelsByKind((item as Partial<ChatProviderChoice>).modelsByKind);
     out.push({
       providerId,
       displayName,
-      ...(modelInfos && modelInfos.length > 0 ? { models: modelInfos } : {}),
-      ...(cleanModelIds && cleanModelIds.length > 0 ? { modelIds: cleanModelIds } : {}),
+      models: modelIds,
+      ...(infos.length > 0 ? { modelInfo: infos } : {}),
       ...(features ? { features } : {}),
       ...(modelsByKind ? { modelsByKind } : {}),
     });
