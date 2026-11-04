@@ -7,7 +7,8 @@
 // behaviour. These three do not: a host that does not say which model answered must
 // leave the app with nothing to render, never with a guess — so absent stays absent, and
 // only an unusable value is dropped.
-import { normalizeProviderInfo, type ChatProviderInfo } from './llm';
+import { normalizeProviderInfo, type ChatProviderChoice, type ChatProviderInfo, type ModelKind } from './llm';
+import type { ModelKind as ProtocolModelKind } from '@immediately-run/sandbox-protocol';
 
 const base: ChatProviderInfo = {
   providerId: 'llm.chat.openrouter',
@@ -179,5 +180,76 @@ describe('the enriched provider description', () => {
     expect(out.connectedProviders).toEqual([
       { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['m1', 'm2'] },
     ]);
+  });
+
+  // R3-1127: the shape site-main#761's `connectedProviderChoices` sends for a frame holding
+  // llm:model + llm:chooseModel — rows of src/editor/llm/nonChatModels.json mapped to
+  // `{ id, name, dimensions? }` (maxInputs is in the overlay; the SDK carries it when sent).
+  const openAiByKind = {
+    embedding: [
+      { id: 'text-embedding-3-small', name: 'Text Embedding 3 Small', dimensions: 1536 },
+      { id: 'text-embedding-3-large', name: 'Text Embedding 3 Large', dimensions: 3072, maxInputs: 2048 },
+    ],
+  };
+
+  it('carries a choice’s modelsByKind through, and leaves it absent for an older host (R3-1127)', () => {
+    const out = normalizeProviderInfo(
+      withWire({
+        connectedProviders: [
+          { providerId: 'llm.chat.openai', displayName: 'OpenAI', models: ['gpt-5.4'], modelsByKind: openAiByKind },
+          // a host predating the field, or a frame without llm:model: no modelsByKind key
+          { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['claude-opus-4-8'] },
+        ],
+      }),
+    )!;
+    expect(out.connectedProviders).toEqual([
+      { providerId: 'llm.chat.openai', displayName: 'OpenAI', models: ['gpt-5.4'], modelsByKind: openAiByKind },
+      { providerId: 'llm.chat.anthropic', displayName: 'Anthropic', models: ['claude-opus-4-8'] },
+    ]);
+    expect('modelsByKind' in out.connectedProviders![1]).toBe(false);
+  });
+
+  it('rebuilds modelsByKind: unknown kinds, malformed entries and extra keys are dropped (R3-1127)', () => {
+    const choice = (modelsByKind: unknown) =>
+      normalizeProviderInfo(
+        withWire({
+          connectedProviders: [{ providerId: 'llm.chat.openai', displayName: 'OpenAI', models: [], modelsByKind }],
+        }),
+      )!.connectedProviders![0];
+    expect(
+      choice({
+        embedding: [
+          { id: 'e1', name: 'E1', dimensions: 1536, maxInputs: 2048, secret: 'k' },
+          { id: '', name: 'no id' },
+          { id: 'e2' },
+          'e3',
+          null,
+          [],
+          { id: 'e4', name: 'E4', dimensions: 'big', maxInputs: -1 },
+        ],
+        hologram: [{ id: 'h', name: 'H' }],
+        image: 'not a list',
+        speech: [],
+      }).modelsByKind,
+    ).toEqual({
+      embedding: [
+        { id: 'e1', name: 'E1', dimensions: 1536, maxInputs: 2048 },
+        { id: 'e4', name: 'E4' },
+      ],
+    });
+    // Nothing usable, or not a record at all → absent, never an empty map.
+    for (const bad of [{}, { embedding: [] }, { hologram: [{ id: 'h', name: 'H' }] }, [], 'x', 7, null]) {
+      expect('modelsByKind' in choice(bad)).toBe(false);
+    }
+  });
+
+  it('keys modelsByKind by the protocol’s ModelKind (type test, R3-1127)', () => {
+    // Both directions: the SDK's ModelKind is exactly the protocol's.
+    const fromProtocol: ModelKind = 'reranking' as ProtocolModelKind;
+    const toProtocol: ProtocolModelKind = 'embedding' as ModelKind;
+    const byKind: NonNullable<ChatProviderChoice['modelsByKind']> = { embedding: [{ id: 'e', name: 'E' }] };
+    // @ts-expect-error — a key outside the taxonomy is a compile error
+    const unknownKind: NonNullable<ChatProviderChoice['modelsByKind']> = { hologram: [] };
+    expect([fromProtocol, toProtocol, Object.keys(byKind), unknownKind]).toBeDefined();
   });
 });

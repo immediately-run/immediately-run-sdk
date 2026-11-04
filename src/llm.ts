@@ -8,14 +8,21 @@
 // look-at-nothing proxy), and streams normalized deltas back. The app never names a
 // vendor, never sees the key, and needs NO `net:fetch`/`secrets` grant of its own —
 // only the `llm:chat` capability (elevated, app-scoped: a fork earns it by consent).
+// `embed()` and the other non-chat kinds need `llm:model` instead (also elevated and
+// app-scoped); a concrete model pair on either needs `llm:chooseModel` on top.
 //
 // Inert until the host implements `protocol-llm` (the `chat` stream) + the
 // `llm-provider` describe channel; the contract ships here so apps (the file-explorer
 // summarize fork) can be written against it — exactly how `secrets.ts` shipped ahead
 // of `protocol-secrets`.
-import { invokeStream } from './catalog';
+import { invoke, invokeStream } from './catalog';
 import { createPushChannel } from './pushChannel';
 import { LLM_PROVIDER, REQUEST_LLM_PROVIDER } from './generated/protocol';
+import type { ModelKind } from '@immediately-run/sandbox-protocol';
+
+/** The model-kind taxonomy (LLM_AND_AGENTS_SPEC §4.4): `chat` plus the non-chat kinds
+ *  `llm:model` gates. The protocol package owns it; this is that type, re-exported. */
+export type { ModelKind };
 
 /** Who authored a {@link ChatMessage}. */
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -166,6 +173,39 @@ export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, vo
   return invokeStream<ChatDelta, ChatResult>('llm:chat', params as unknown as Record<string, unknown>, signal);
 }
 
+// ── embed() — the first non-chat kind (LLM_AND_AGENTS_SPEC §4.4, R3-1127) ─────
+
+/** An embeddings request: the texts plus an optional concrete model pair. */
+export interface EmbedRequest {
+  /** The texts to embed — at most 256 values and 1 MiB of text per call (the host
+   *  refuses larger with `invalid-params`). */
+  values: string[];
+  /** A concrete model on a connected provider. Requires `llm:chooseModel` ON TOP OF
+   *  `llm:model` (the same rule as chat's `model`); absent, the host uses the bound
+   *  provider's first embedding model. */
+  model?: { providerId: string; model: string };
+}
+
+/** The embeddings reply: one vector per input value, in order. */
+export interface EmbedResult {
+  embeddings: number[][];
+  /** The model that answered (the host's choice when the request named none). */
+  model: string;
+  usage?: { inputTokens?: number };
+}
+
+/**
+ * Embed texts with whichever provider the user has connected — the first non-chat kind
+ * on the `llm:model` capability (elevated, app-scoped; earned like `llm:chat`).
+ * NOT streamed: one request, one reply. A frame without `llm:model` throws
+ * `forbidden`; an over-limit call throws `invalid-params`; no provider with an
+ * embedding model throws `unsupported` naming the kind. The same connect-gate and
+ * key-routing rules as {@link chat} apply to the resolved provider.
+ */
+export function embed(req: EmbedRequest): Promise<EmbedResult> {
+  return invoke<EmbedResult>('llm:embed', req as unknown as Record<string, unknown>);
+}
+
 /** The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read
  *  to branch/degrade (offer image upload only when `vision`). */
 export interface ChatFeatures {
@@ -209,6 +249,23 @@ export interface ChatProviderChoice {
    *  conservative nothing). Absent on a host predating the field — keep your conservative
    *  answer then. Optional on the wire, so an older host stays valid. */
   features?: ChatFeatures;
+  /** R3-1127 (§4.4): the provider's NON-CHAT models by kind (embeddings first). Sent
+   *  only when your frame holds BOTH `llm:model` and `llm:chooseModel`; absent otherwise
+   *  and on any older host. Only kinds the host listed a usable model for are present. */
+  modelsByKind?: Partial<Record<ModelKind, KindModelInfo[]>>;
+}
+
+/** One non-chat model a connected provider offers (R3-1127): its id (what
+ *  {@link EmbedRequest.model}.model takes), its human name, and, for an embedding
+ *  model, its vector size and per-call input limit, when the host knows them. */
+export interface KindModelInfo {
+  id: string;
+  name: string;
+  dimensions?: number;
+  /** The provider's own limit on values per call. The host's cap on an
+   *  {@link EmbedRequest} (256 values, 1 MiB of text) applies first, so the most one
+   *  `embed()` call can carry is `min(maxInputs, 256)`. */
+  maxInputs?: number;
 }
 
 /** Info about the provider the host resolved for this app. `null` when no provider
@@ -355,6 +412,46 @@ const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
   return withReasoningClosed(f);
 };
 
+/** Every {@link ModelKind}, as a runtime set — typed as a full record so a kind the
+ *  protocol adds and this list misses is a compile error, not a silently dropped key. */
+const MODEL_KINDS: Record<ModelKind, true> = {
+  chat: true,
+  embedding: true,
+  image: true,
+  speech: true,
+  transcription: true,
+  video: true,
+  reranking: true,
+};
+
+const positiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
+
+/** A choice's `modelsByKind` crosses rebuilt (R3-1127): only known kinds, only entries
+ *  with a non-empty `id` and `name`, `dimensions`/`maxInputs` kept only as positive
+ *  integers, and no other key. A kind left with no usable entry is omitted; a map left
+ *  with no kind is absent, exactly like a host that never sent it. */
+const usableModelsByKind = (raw: unknown): ChatProviderChoice['modelsByKind'] => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Partial<Record<ModelKind, KindModelInfo[]>> = {};
+  for (const [kind, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Object.prototype.hasOwnProperty.call(MODEL_KINDS, kind) || !Array.isArray(list)) continue;
+    const models: KindModelInfo[] = [];
+    for (const m of list) {
+      if (!m || typeof m !== 'object' || Array.isArray(m)) continue;
+      const { id, name, dimensions, maxInputs } = m as Partial<KindModelInfo>;
+      if (typeof id !== 'string' || !id || typeof name !== 'string' || !name) continue;
+      models.push({
+        id,
+        name,
+        ...(positiveInt(dimensions) ? { dimensions } : {}),
+        ...(positiveInt(maxInputs) ? { maxInputs } : {}),
+      });
+    }
+    if (models.length > 0) out[kind as ModelKind] = models;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
 /** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
  *  (whether the list arrives at all) is the host's — `normalizeProviderInfo` merely refuses
  *  to pass through a malformed list, exactly as it refuses a half-answered `models` pair. */
@@ -368,7 +465,14 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     if (typeof displayName !== 'string' || !displayName) continue;
     const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
     const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
-    out.push({ providerId, displayName, models: cleanModels, ...(features ? { features } : {}) });
+    const modelsByKind = usableModelsByKind((item as Partial<ChatProviderChoice>).modelsByKind);
+    out.push({
+      providerId,
+      displayName,
+      models: cleanModels,
+      ...(features ? { features } : {}),
+      ...(modelsByKind ? { modelsByKind } : {}),
+    });
   }
   return out.length > 0 ? out : undefined;
 };
