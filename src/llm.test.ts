@@ -3,21 +3,50 @@
 // validate the pair against the user's connected providers — so the assertion is that the field
 // rides the request untouched while `signal` is still peeled OUT SDK-side (an AbortSignal can't
 // cross the postMessage boundary).
-import { chat } from './llm';
+import { chat, embed } from './llm';
 
 jest.mock('./catalog', () => ({
+  invoke: jest.fn(),
   invokeStream: jest.fn(),
 }));
 jest.mock('./pushChannel', () => ({
   createPushChannel: jest.fn(() => ({ get: () => null, subscribe: () => () => {} })),
 }));
 
-import { invokeStream } from './catalog';
+import { invoke, invokeStream } from './catalog';
 
 const mockInvoke = invokeStream as jest.MockedFunction<typeof invokeStream>;
+const mockInvokeReq = invoke as jest.MockedFunction<typeof invoke>;
 
 beforeEach(() => {
   mockInvoke.mockReset();
+  mockInvokeReq.mockReset();
+});
+
+describe('embed() — the first non-chat kind (R3-1127)', () => {
+  it('calls llm:embed as a REQUEST (never the stream) with the values untouched', async () => {
+    mockInvokeReq.mockResolvedValue({ embeddings: [[0.1, 0.2]], model: 'text-embedding-3-small' });
+    const out = await embed({ values: ['a', 'b'] });
+    expect(mockInvokeReq).toHaveBeenCalledWith('llm:embed', { values: ['a', 'b'] });
+    expect(mockInvoke).not.toHaveBeenCalled();
+    expect(out.embeddings).toEqual([[0.1, 0.2]]);
+    expect(out.model).toBe('text-embedding-3-small');
+  });
+
+  it('passes a concrete model pair through untouched (the llm:chooseModel rule is the host’s)', async () => {
+    mockInvokeReq.mockResolvedValue({ embeddings: [[]], model: 'm' });
+    await embed({ values: ['x'], model: { providerId: 'llm.chat.openai', model: 'text-embedding-3-large' } });
+    expect(mockInvokeReq.mock.calls[0][1]).toEqual({
+      values: ['x'],
+      model: { providerId: 'llm.chat.openai', model: 'text-embedding-3-large' },
+    });
+  });
+
+  it('a refusal propagates with its code (forbidden / invalid-params / unsupported)', async () => {
+    const err = Object.assign(new Error('no embedding model on the bound provider'), { code: 'unsupported' });
+    mockInvokeReq.mockRejectedValue(err);
+    await expect(embed({ values: ['x'] })).rejects.toMatchObject({ code: 'unsupported' });
+  });
 });
 
 describe('chat() carries the model choice (R3-620)', () => {

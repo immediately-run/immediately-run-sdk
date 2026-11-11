@@ -18,7 +18,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const files = ['ambient.d.ts', 'ambient-fs.d.ts'];
+const files = ['ambient.d.ts', 'ambient-fs.d.ts', 'providerIcons/NOTICE.md'];
 
 for (const name of files) {
   const src = join(root, 'src', name);

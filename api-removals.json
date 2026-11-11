@@ -82,6 +82,20 @@
       "detail": "union member `{message, recoverable, stage}`",
       "reason": "R3-984: not a removal — the error member GAINED two optional fields (recovery?, openPR?), and the snapshot names a union member by its full key set, so the widened member reads as `{message, recoverable, stage}` lost plus `{message, openPR?, recoverable, recovery?, stage}` added. Every value of the old member is still a value of the new one; a pinned consumer keeps compiling.",
       "date": "2026-10-06"
+    },
+    {
+      "module": "index",
+      "export": "ChatDelta",
+      "detail": "union member `{cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}`",
+      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field — additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
+      "date": "2026-10-10"
+    },
+    {
+      "module": "llm",
+      "export": "ChatDelta",
+      "detail": "union member `{cacheReadTokens?, cacheWriteTokens?, inputTokens, outputTokens, type}`",
+      "reason": "R3-1124: the usage union member gained the OPTIONAL `cost` field — additive for consumers (an old consumer's reads are untouched); the shape-exact checker reads a widened member as remove+add. Nothing was removed.",
+      "date": "2026-10-10"
     }
   ]
 }
