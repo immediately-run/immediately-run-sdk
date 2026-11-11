@@ -124,6 +124,9 @@
     "useBundleEntry": "fn(1..1)",
     "useCurrentEntry": "fn(0..0)"
   },
+  "bundleLinkPath": {
+    "bundleRelativeTarget": "fn(2..3)"
+  },
   "catalog": {
     "ApiMethod": "interface(capability, name, paramsSchema?, stream?)",
     "getCatalog": "fn(0..0)",
@@ -319,6 +322,9 @@
   "fence": {
     "fenceUntrusted": "fn(2..2)"
   },
+  "followBundleLink": {
+    "followBundleLink": "fn(2..2)"
+  },
   "formFactor": {
     "FormFactor": "interface(class, height, orientation, width)",
     "FormFactorClass": "union('desktop'|'mobile'|'tablet')",
@@ -342,6 +348,8 @@
   "generated/protocol": {
     "API_CATALOG": "const(\"api-catalog\")",
     "AUTH_STATE": "const(\"auth-state\")",
+    "BUNDLE_LINK": "const(\"bundle-link\")",
+    "BundleLinkPayload": "interface(fragment?, path)",
     "CHROME_STATE": "const(\"chrome-state\")",
     "COMPILE": "const(\"compile\")",
     "DEBUG_ENABLED": "const(\"debug-enabled\")",
@@ -399,7 +407,8 @@
     "ProtocolIpcPostParams": "interface(msg, to)",
     "ProtocolIpcRevealParams": "interface(to)",
     "ProtocolLaunchCreateParams": "interface(opts, target)",
-    "ProtocolLlmChatParams": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, tools?)",
+    "ProtocolLlmChatParams": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, thinking?, tools?)",
+    "ProtocolLlmEmbedParams": "interface(model?, values)",
     "ProtocolOpenbundleOpenParams": "interface(dir, view?)",
     "ProtocolOpenlinkOpenParams": "interface(url)",
     "ProtocolOpenrepoOpenParams": "interface(namespace, provider, repository, reveal?)",
@@ -469,9 +478,9 @@
     "URLCHANGE": "const(\"urlchange\")",
     "UrlchangePayload": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
     "VCS_STATE": "const(\"vcs-state\")",
-    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENBUNDLE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_TASK_INPUT, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
+    "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, BUNDLE_LINK, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENBUNDLE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_TASK_INPUT, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
-    "WireName": "union('api-catalog'|'auth-state'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openbundle'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-spaces-mode'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-spaces-mode'|'request-task-input'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'spaces-mode'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
+    "WireName": "union('api-catalog'|'auth-state'|'bundle-link'|'chrome-state'|'compile'|'debug-enabled'|'debug-log'|'debug-query'|'debug-query-result'|'diagnostics'|'dnd-cancel'|'dropped-item'|'editor-context'|'form-factor'|'fs-change'|'host-attention'|'invitations'|'launch-dismiss'|'launch-ended'|'llm-provider'|'metadata-update'|'mount-add'|'mount-remove'|'protocol-analytics'|'protocol-contribute'|'protocol-dnd'|'protocol-editor'|'protocol-feed'|'protocol-fetch'|'protocol-ipc'|'protocol-launch'|'protocol-llm'|'protocol-localstore'|'protocol-openbundle'|'protocol-openlink'|'protocol-openrepo'|'protocol-recents'|'protocol-secrets'|'protocol-settings'|'protocol-spaces'|'protocol-spaces-mode'|'protocol-task'|'protocol-theme'|'protocol-vcs'|'region-message'|'region-visibility'|'request-api-catalog'|'request-auth-state'|'request-chrome-state'|'request-debug-enabled'|'request-diagnostics'|'request-editor-context'|'request-form-factor'|'request-handshake'|'request-host-attention'|'request-invitations'|'request-llm-provider'|'request-mounts'|'request-region-visibility'|'request-secrets-metadata'|'request-session-mounts'|'request-spaces-mode'|'request-task-input'|'request-theme'|'request-theme-catalog'|'request-vcs-state'|'request-workspace'|'sdk-handshake'|'secrets-metadata'|'session-mounts'|'spaces-mode'|'task-cancel'|'task-complete'|'task-input'|'theme'|'theme-catalog'|'urlchange'|'vcs-state'|'workspace')"
   },
   "generated/spaces": {
     "AcceptInviteError": "union('auth-required'|'cancelled'|'forbidden'|'not-found'|'unknown'|'unsupported-scheme')",
@@ -583,10 +592,11 @@
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
-    "ChatProviderChoice": "interface(displayName, features?, models, providerId)",
+    "ChatModelInfo": "interface(contextTokens, features, id, inputModalities, name, outputModalities, outputTokens, pricing?, thinking)",
+    "ChatProviderChoice": "interface(displayName, features?, modelInfo?, models, modelsByKind?, providerId)",
     "ChatProviderInfo": "interface(connectedProviders?, displayName?, executor?, features, hostVouched, models?, providerId)",
     "ChatProviderState": "union({provider, status}|{status})",
-    "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, tools?)",
+    "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, thinking?, tools?)",
     "ChatResult": "interface(stopReason)",
     "ChatRole": "union('assistant'|'system'|'tool'|'user')",
     "ChatStopReason": "union('end'|'filtered'|'length'|'tool')",
@@ -625,6 +635,8 @@
     "EditorSelection": "interface(column?, line)",
     "EditorSessionError": "interface(code)",
     "EditorWriteError": "interface(code, limitBytes?)",
+    "EmbedRequest": "interface(model?, values)",
+    "EmbedResult": "interface(embeddings, model, usage?)",
     "EvaluationContext": "object(dynamicImport(2..2), evaluation, exports, getModuleEvaluationContext(1..1), resolve(1..1))",
     "FS_PREFIX": "const(\"$fs:\")",
     "FeedFetchResponse": "interface(body, headers, status, statusText, truncated)",
@@ -661,6 +673,7 @@
     "Invite": "interface(avatarUrl?, invitedAt?, invitedBy, login?, name?, owner, role, spaceId, uid)",
     "IrMarkerName": "alias(keyof typeof IR_MARKERS)",
     "ItemDragError": "interface(code)",
+    "KindModelInfo": "interface(dimensions?, id, maxInputs?, name)",
     "LOADING_TIMINGS": "const({fadeMs, shimmerMs, spinThresholdMs})",
     "LaunchErrorCode": "union('budget'|'cancelled'|'forbidden'|'invalid-params'|'revoked'|'unknown'|'unsupported')",
     "LaunchHandle": "interface(dismiss(0..0), launchId, onDismiss(1..1), status)",
@@ -691,6 +704,7 @@
     "MetadataSourceMode": "union('merge'|'replace')",
     "MetadataSourceProps": "interface(children?, mode?, value)",
     "ModelClient": "interface(createMessage(1..1))",
+    "ModelKind": "union('chat'|'embedding'|'image'|'reranking'|'speech'|'transcription'|'video')",
     "ModelResponse": "interface(content, stopReason, usage?)",
     "ModuleExports": "alias(any)",
     "MountChange": "interface(kind, path)",
@@ -757,7 +771,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.90.2\")",
+    "SDK_VERSION": "const(\"0.93.1\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -879,6 +893,7 @@
     "describeChat": "fn(0..0)",
     "describeChatState": "fn(0..0)",
     "detectStall": "fn(1..1)",
+    "embed": "fn(1..1)",
     "emitAnalyticsEvent": "fn(1..2)",
     "estimateTokens": "fn(1..1)",
     "executeMetadataQuery": "fn(3..4)",
@@ -887,6 +902,7 @@
     "findMount": "fn(1..1)",
     "firstFrameBoundsFor": "fn(2..2)",
     "firstFrameTimeoutFor": "fn(2..2)",
+    "followBundleLink": "fn(2..2)",
     "fromBundlePath": "fn(2..2)",
     "fromCorpusPath": "fn(2..2)",
     "fsAvailable": "fn(0..0)",
@@ -1141,20 +1157,26 @@
     "ChatExecutor": "union('backend-proxied'|'browser-direct')",
     "ChatFeatures": "interface(jsonMode, maxContextTokens, reasoning, tools, vision)",
     "ChatMessage": "interface(content, role)",
-    "ChatProviderChoice": "interface(displayName, features?, models, providerId)",
+    "ChatModelInfo": "interface(contextTokens, features, id, inputModalities, name, outputModalities, outputTokens, pricing?, thinking)",
+    "ChatProviderChoice": "interface(displayName, features?, modelInfo?, models, modelsByKind?, providerId)",
     "ChatProviderInfo": "interface(connectedProviders?, displayName?, executor?, features, hostVouched, models?, providerId)",
     "ChatProviderState": "union({provider, status}|{status})",
-    "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, tools?)",
+    "ChatRequest": "interface(maxTokens?, messages, model?, modelHint?, responseFormat?, signal?, thinking?, tools?)",
     "ChatResult": "interface(stopReason)",
     "ChatRole": "union('assistant'|'system'|'tool'|'user')",
     "ChatStopReason": "union('end'|'filtered'|'length'|'tool')",
     "ChatTierModels": "interface(fast, smart)",
     "ContentPart": "union({content, isError?, toolCallId, type}|{data, mimeType, type}|{data, type}|{id, input, name, type}|{signature?, text, type}|{text, type})",
+    "EmbedRequest": "interface(model?, values)",
+    "EmbedResult": "interface(embeddings, model, usage?)",
+    "KindModelInfo": "interface(dimensions?, id, maxInputs?, name)",
+    "ModelKind": "union('chat'|'embedding'|'image'|'reranking'|'speech'|'transcription'|'video')",
     "ToolDef": "interface(description?, inputSchema, name)",
     "chat": "fn(1..1)",
     "deriveChatProviderState": "fn(3..3)",
     "describeChat": "fn(0..0)",
     "describeChatState": "fn(0..0)",
+    "embed": "fn(1..1)",
     "normalizeProviderInfo": "fn(1..1)",
     "onChatProviderChange": "fn(1..1)",
     "onChatProviderStateChange": "fn(1..1)",
@@ -1412,7 +1434,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.90.2\")",
+    "SDK_VERSION": "const(\"0.93.1\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1618,7 +1640,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.90.2\")"
+    "SDK_VERSION": "const(\"0.93.1\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

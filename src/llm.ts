@@ -8,14 +8,21 @@
 // look-at-nothing proxy), and streams normalized deltas back. The app never names a
 // vendor, never sees the key, and needs NO `net:fetch`/`secrets` grant of its own —
 // only the `llm:chat` capability (elevated, app-scoped: a fork earns it by consent).
+// `embed()` and the other non-chat kinds need `llm:model` instead (also elevated and
+// app-scoped); a concrete model pair on either needs `llm:chooseModel` on top.
 //
 // Inert until the host implements `protocol-llm` (the `chat` stream) + the
 // `llm-provider` describe channel; the contract ships here so apps (the file-explorer
 // summarize fork) can be written against it — exactly how `secrets.ts` shipped ahead
 // of `protocol-secrets`.
-import { invokeStream } from './catalog';
+import { invoke, invokeStream } from './catalog';
 import { createPushChannel } from './pushChannel';
 import { LLM_PROVIDER, REQUEST_LLM_PROVIDER } from './generated/protocol';
+import type { ModelKind } from '@immediately-run/sandbox-protocol';
+
+/** The model-kind taxonomy (LLM_AND_AGENTS_SPEC §4.4): `chat` plus the non-chat kinds
+ *  `llm:model` gates. The protocol package owns it; this is that type, re-exported. */
+export type { ModelKind };
 
 /** Who authored a {@link ChatMessage}. */
 export type ChatRole = 'system' | 'user' | 'assistant' | 'tool';
@@ -79,6 +86,11 @@ export interface ChatRequest {
    *  chooseable set (via `describeChat()`'s `connectedProviders`, gated `llm:chooseModel`);
    *  a stage app still passes at most the abstract hint. */
   model?: { providerId: string; model: string };
+  /** A per-request thinking level (R3-1122) — one of the chosen model's
+   *  `thinking.levels`; the host refuses anything else with `invalid-params`
+   *  naming the model and its levels. Omit for the Settings level, then the
+   *  model's default; never sent to a model whose `levels` are empty. */
+  thinking?: string;
   /** Abort the completion mid-stream. When it fires, the SDK sends the host a cancel
    *  frame so the host aborts the upstream provider request and STOPS BILLING the
    *  user's key — not merely stops the app-side iterator (LLM_AND_AGENTS_SPEC §3.3
@@ -166,6 +178,39 @@ export function chat(req: ChatRequest): AsyncGenerator<ChatDelta, ChatResult, vo
   return invokeStream<ChatDelta, ChatResult>('llm:chat', params as unknown as Record<string, unknown>, signal);
 }
 
+// ── embed() — the first non-chat kind (LLM_AND_AGENTS_SPEC §4.4, R3-1127) ─────
+
+/** An embeddings request: the texts plus an optional concrete model pair. */
+export interface EmbedRequest {
+  /** The texts to embed — at most 256 values and 1 MiB of text per call (the host
+   *  refuses larger with `invalid-params`). */
+  values: string[];
+  /** A concrete model on a connected provider. Requires `llm:chooseModel` ON TOP OF
+   *  `llm:model` (the same rule as chat's `model`); absent, the host uses the bound
+   *  provider's first embedding model. */
+  model?: { providerId: string; model: string };
+}
+
+/** The embeddings reply: one vector per input value, in order. */
+export interface EmbedResult {
+  embeddings: number[][];
+  /** The model that answered (the host's choice when the request named none). */
+  model: string;
+  usage?: { inputTokens?: number };
+}
+
+/**
+ * Embed texts with whichever provider the user has connected — the first non-chat kind
+ * on the `llm:model` capability (elevated, app-scoped; earned like `llm:chat`).
+ * NOT streamed: one request, one reply. A frame without `llm:model` throws
+ * `forbidden`; an over-limit call throws `invalid-params`; no provider with an
+ * embedding model throws `unsupported` naming the kind. The same connect-gate and
+ * key-routing rules as {@link chat} apply to the resolved provider.
+ */
+export function embed(req: EmbedRequest): Promise<EmbedResult> {
+  return invoke<EmbedResult>('llm:embed', req as unknown as Record<string, unknown>);
+}
+
 /** The resolved provider's advertised abilities (SERVICE_PROVIDERS_SPEC §2.5) — read
  *  to branch/degrade (offer image upload only when `vision`). */
 export interface ChatFeatures {
@@ -192,6 +237,36 @@ export interface ChatTierModels {
   smart: string;
 }
 
+/** One chat model a connected provider offers, described per model (R3-1122): what a
+ *  picker sizes itself by. The host sends it as an object entry of a choice's wire
+ *  `models` list. It crosses only complete and rebuilt: an entry missing a required
+ *  field, or carrying one of the wrong type, is not described at all (its `id` still
+ *  joins {@link ChatProviderChoice.models}), and a key not declared here never crosses.
+ *  Names, ids, features and prices only — never keys, usage or balance. */
+export interface ChatModelInfo {
+  /** The model id exactly as {@link ChatRequest.model}.model takes it. */
+  id: string;
+  /** The model's human name, for a picker label. */
+  name: string;
+  /** This model's features, normalized like the provider-level set (`reasoning` fails
+   *  closed to `false`). */
+  features: ChatFeatures;
+  /** The model's context window in tokens. */
+  contextTokens: number;
+  /** The model's output limit in tokens. */
+  outputTokens: number;
+  /** The input modalities the model accepts (e.g. `['text','image']`). */
+  inputModalities: string[];
+  /** The output modalities the model produces. */
+  outputModalities: string[];
+  /** The thinking levels the model accepts and the one it uses when a request names
+   *  none. `default` is always one of `levels`; `levels` is empty for a model with no
+   *  thinking knob, and then `default` means nothing — send no `thinking` to it. */
+  thinking: { levels: string[]; default: string };
+  /** A price summary per million tokens in `unit`, when the host knows one. */
+  pricing?: { inputPerMTok: number; outputPerMTok: number; unit: string };
+}
+
 /** One CONNECTED provider the user may choose a model from, for a per-conversation model
  *  choice in an editing-session workbench (R3-620, LLM_AND_AGENTS_SPEC §0). Names and ids
  *  only — never keys, usage, balance or routing. */
@@ -200,15 +275,39 @@ export interface ChatProviderChoice {
   providerId: string;
   /** The provider's human name, for a picker label. */
   displayName: string;
-  /** The chooseable model names — the catalogue-recommended set plus the two the user has
+  /** The chooseable model ids — the catalogue-recommended set plus the two the user has
    *  chosen. A closed list here would re-introduce the ids-rot problem, so `model` is passed
-   *  through to the adapter exactly as the Settings field is; this list is suggestions. */
+   *  through to the adapter exactly as the Settings field is; this list is suggestions.
+   *  Read from the wire's `modelIds` when a host sends one, else from the wire's `models`:
+   *  its string entries plus the `id` of each object entry, described or not. Every host
+   *  so far sends `models` as ids only. */
   models: string[];
+  /** R3-1122: per-model descriptions of the models above that the host describes, in the
+   *  host's order. Absent on a host that sends ids only — today, every host — and when no
+   *  entry crossed complete; fall back to {@link ChatProviderChoice.features} then. */
+  modelInfo?: ChatModelInfo[];
   /** R3-1074: THIS provider's adapter features, so a run on a chosen provider sizes itself
    *  by that provider's context window and vision rather than the default provider's (or the
    *  conservative nothing). Absent on a host predating the field — keep your conservative
    *  answer then. Optional on the wire, so an older host stays valid. */
   features?: ChatFeatures;
+  /** R3-1127 (§4.4): the provider's NON-CHAT models by kind (embeddings first). Sent
+   *  only when your frame holds BOTH `llm:model` and `llm:chooseModel`; absent otherwise
+   *  and on any older host. Only kinds the host listed a usable model for are present. */
+  modelsByKind?: Partial<Record<ModelKind, KindModelInfo[]>>;
+}
+
+/** One non-chat model a connected provider offers (R3-1127): its id (what
+ *  {@link EmbedRequest.model}.model takes), its human name, and, for an embedding
+ *  model, its vector size and per-call input limit, when the host knows them. */
+export interface KindModelInfo {
+  id: string;
+  name: string;
+  dimensions?: number;
+  /** The provider's own limit on values per call. The host's cap on an
+   *  {@link EmbedRequest} (256 values, 1 MiB of text) applies first, so the most one
+   *  `embed()` call can carry is `min(maxInputs, 256)`. */
+  maxInputs?: number;
 }
 
 /** Info about the provider the host resolved for this app. `null` when no provider
@@ -338,6 +437,13 @@ const usableModels = (raw: unknown): ChatTierModels | undefined => {
 const withReasoningClosed = (f: Partial<ChatFeatures>): ChatFeatures =>
   ({ ...f, reasoning: f.reasoning === true } as ChatFeatures);
 
+const positiveInt = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v > 0;
+
+/** A token count where 0 is meaningful: the host sends `maxContextTokens: 0` for "assume
+ *  no capacity" (LLM_AND_AGENTS_SPEC §4.1, the dev proxy). NaN, ±Infinity, negatives and
+ *  fractions are not counts. */
+const tokenCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0;
+
 /** A choice's features cross only COMPLETE (R3-1074): a present half-answer — a
  *  non-object, an array, or an object missing a required key — is dropped, exactly
  *  like a half-answered `models` pair. Absent stays absent (an older host); present
@@ -349,10 +455,128 @@ const usableFeatures = (raw: unknown): ChatFeatures | undefined => {
     typeof f.vision !== 'boolean' ||
     typeof f.tools !== 'boolean' ||
     typeof f.jsonMode !== 'boolean' ||
-    typeof f.maxContextTokens !== 'number'
+    !tokenCount(f.maxContextTokens)
   )
     return undefined;
-  return withReasoningClosed(f);
+  // Rebuilt from the declared keys, so nothing else the wire object carries crosses.
+  const { vision, tools, jsonMode, maxContextTokens } = f;
+  return withReasoningClosed({ vision, tools, jsonMode, reasoning: f.reasoning, maxContextTokens });
+};
+
+/** Every {@link ModelKind}, as a runtime set — typed as a full record so a kind the
+ *  protocol adds and this list misses is a compile error, not a silently dropped key. */
+const MODEL_KINDS: Record<ModelKind, true> = {
+  chat: true,
+  embedding: true,
+  image: true,
+  speech: true,
+  transcription: true,
+  video: true,
+  reranking: true,
+};
+
+/** A choice's `modelsByKind` crosses rebuilt (R3-1127): only known kinds, only entries
+ *  with a non-empty `id` and `name`, `dimensions`/`maxInputs` kept only as positive
+ *  integers, and no other key. A kind left with no usable entry is omitted; a map left
+ *  with no kind is absent, exactly like a host that never sent it. */
+const usableModelsByKind = (raw: unknown): ChatProviderChoice['modelsByKind'] => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const out: Partial<Record<ModelKind, KindModelInfo[]>> = {};
+  for (const [kind, list] of Object.entries(raw as Record<string, unknown>)) {
+    if (!Object.prototype.hasOwnProperty.call(MODEL_KINDS, kind) || !Array.isArray(list)) continue;
+    const models: KindModelInfo[] = [];
+    for (const m of list) {
+      if (!m || typeof m !== 'object' || Array.isArray(m)) continue;
+      const { id, name, dimensions, maxInputs } = m as Partial<KindModelInfo>;
+      if (typeof id !== 'string' || !id || typeof name !== 'string' || !name) continue;
+      models.push({
+        id,
+        name,
+        ...(positiveInt(dimensions) ? { dimensions } : {}),
+        ...(positiveInt(maxInputs) ? { maxInputs } : {}),
+      });
+    }
+    if (models.length > 0) out[kind as ModelKind] = models;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+};
+
+const nonEmptyString = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
+
+/** A list of non-empty strings, or undefined when the value is not one (an empty list is one). */
+const stringList = (v: unknown): string[] | undefined =>
+  Array.isArray(v) && v.every(nonEmptyString) ? [...v] : undefined;
+
+const nonNegativeNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v) && v >= 0;
+
+/** A model's thinking block: every level a non-empty string, and `default` one of them
+ *  (any string when there are no levels, since it then names nothing). */
+const usableThinking = (raw: unknown): ChatModelInfo['thinking'] | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const { levels: rawLevels, default: rawDefault } = raw as Record<string, unknown>;
+  const levels = stringList(rawLevels);
+  if (!levels || typeof rawDefault !== 'string') return undefined;
+  if (levels.length > 0 && !levels.includes(rawDefault)) return undefined;
+  return { levels, default: rawDefault };
+};
+
+const usablePricing = (raw: unknown): ChatModelInfo['pricing'] => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const { inputPerMTok, outputPerMTok, unit } = raw as Record<string, unknown>;
+  return nonNegativeNumber(inputPerMTok) && nonNegativeNumber(outputPerMTok) && nonEmptyString(unit)
+    ? { inputPerMTok, outputPerMTok, unit }
+    : undefined;
+};
+
+/** Rebuild one per-model entry from its declared fields (R3-1122), or undefined when a
+ *  required one is missing or mistyped. The optional `pricing` is dropped alone when it is
+ *  unusable. Nothing else on the wire object crosses. */
+const usableModelInfo = (raw: unknown): ChatModelInfo | undefined => {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const m = raw as Record<string, unknown>;
+  const { id, name, contextTokens, outputTokens } = m;
+  if (!nonEmptyString(id) || !nonEmptyString(name)) return undefined;
+  if (!positiveInt(contextTokens) || !positiveInt(outputTokens)) return undefined;
+  const features = usableFeatures(m.features);
+  const thinking = usableThinking(m.thinking);
+  const inputModalities = stringList(m.inputModalities);
+  const outputModalities = stringList(m.outputModalities);
+  if (!features || !thinking || !inputModalities || !outputModalities) return undefined;
+  const pricing = usablePricing(m.pricing);
+  return {
+    id,
+    name,
+    features,
+    contextTokens,
+    outputTokens,
+    inputModalities,
+    outputModalities,
+    thinking,
+    ...(pricing ? { pricing } : {}),
+  };
+};
+
+/** Split a choice's wire `models` per entry: a string is an id; an object is run through
+ *  {@link usableModelInfo}, and its `id`, when it has one, is an id whether or not it was
+ *  described. One bad entry costs only itself. Ids and descriptions are each deduplicated
+ *  by id, first wins. */
+const partitionModels = (raw: unknown): { ids: string[]; infos: ChatModelInfo[] } => {
+  const ids: string[] = [];
+  const infos: ChatModelInfo[] = [];
+  if (!Array.isArray(raw)) return { ids, infos };
+  for (const entry of raw) {
+    if (nonEmptyString(entry)) {
+      ids.push(entry);
+    } else if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
+      // A second description of an id already described is dropped, first wins — the
+      // same rule as the ids, so `modelInfo` never holds two answers for one model.
+      const info = usableModelInfo(entry);
+      if (info && !infos.some((i) => i.id === info.id)) infos.push(info);
+      const id = (entry as Record<string, unknown>).id;
+      if (nonEmptyString(id)) ids.push(id);
+    }
+  }
+  return { ids: [...new Set(ids)], infos };
 };
 
 /** Validate the wire's `connectedProviders` list, keeping only usable entries. The gating
@@ -366,9 +590,25 @@ const usableConnectedProviders = (raw: unknown): ChatProviderChoice[] | undefine
     const { providerId, displayName, models } = item as Partial<ChatProviderChoice>;
     if (typeof providerId !== 'string' || !providerId) continue;
     if (typeof displayName !== 'string' || !displayName) continue;
-    const cleanModels = Array.isArray(models) ? models.filter((m): m is string => typeof m === 'string' && !!m) : [];
+    // R3-1122: the ids come from a wire `modelIds` when the host sends a usable one,
+    // else from `models` itself; the per-model descriptions only from `models`.
+    const { ids, infos } = partitionModels(models);
+    const wireIds = (item as { modelIds?: unknown }).modelIds;
+    const wireIdList = Array.isArray(wireIds) ? [...new Set(wireIds.filter(nonEmptyString))] : [];
+    const modelIds = wireIdList.length > 0 ? wireIdList : ids;
+    // `modelInfo` describes models in `models` and nothing else: when a wire `modelIds`
+    // wins, a description of an id it does not name is dropped.
+    const described = wireIdList.length > 0 ? infos.filter((i) => wireIdList.includes(i.id)) : infos;
     const features = usableFeatures((item as Partial<ChatProviderChoice>).features);
-    out.push({ providerId, displayName, models: cleanModels, ...(features ? { features } : {}) });
+    const modelsByKind = usableModelsByKind((item as Partial<ChatProviderChoice>).modelsByKind);
+    out.push({
+      providerId,
+      displayName,
+      models: modelIds,
+      ...(described.length > 0 ? { modelInfo: described } : {}),
+      ...(features ? { features } : {}),
+      ...(modelsByKind ? { modelsByKind } : {}),
+    });
   }
   return out.length > 0 ? out : undefined;
 };
