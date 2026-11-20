@@ -40,6 +40,8 @@ import { build } from 'esbuild';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
+import { BUNDLE_FILE, BUNDLE_SCHEMA_VERSION, bundleEntryMismatches } from './lib/selfhost-bundle.mjs';
+
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
 const pkg = JSON.parse(await import('node:fs').then((fs) => fs.readFileSync(join(root, 'package.json'), 'utf8')));
@@ -184,6 +186,44 @@ const integrityFiles = {};
 for (const rel of [...fetchable, 'manifest.json']) {
   integrityFiles[rel] = sha384(readFileSync(join(dest, rel)));
 }
+
+// Single-request transport bundle: every fetchable file plus manifest.json, as
+// `{ schemaVersion: 1, files: { <rel>: <utf8 content> } }`, so a consumer can load
+// the whole version in ONE request instead of one per file (about 120). It is
+// TRANSPORT ONLY and adds no trust: a consumer unpacks it and still verifies each
+// file against that file's own pinned hash above, exactly as for a per-file fetch.
+// That is also why it is not listed in manifest.json (it is not a module file) and
+// why the per-file layout stays published beside it (older sandboxes, and the
+// unpinned path, keep fetching file by file).
+//
+// Keys are sorted and the serialisation is fixed, so two runs over one `dist/` emit
+// the same bytes: a version dir is immutable, and its integrity entry pins them.
+const bundleFiles = {};
+for (const rel of Object.keys(integrityFiles).sort()) {
+  bundleFiles[rel] = readFileSync(join(dest, rel), 'utf8');
+}
+const bundleBytes = Buffer.from(
+  JSON.stringify({ schemaVersion: BUNDLE_SCHEMA_VERSION, files: bundleFiles }) + '\n',
+  'utf8',
+);
+
+// Prove the bundle carries the SAME bytes the integrity manifest pins, by reading
+// back what was serialised rather than what was meant to be. A file that is not
+// valid UTF-8 does not survive the string round trip; without this it would ship a
+// bundle whose every consumer fails verification on that file.
+const mismatched = bundleEntryMismatches(JSON.parse(bundleBytes.toString('utf8')), integrityFiles, sha384);
+if (mismatched.length) {
+  console.error(
+    `::error::build-selfhost: bundle.json does not reproduce ${mismatched.length} pinned file(s) ` +
+      `byte-for-byte (${mismatched.slice(0, 6).join(', ')}). A consumer would fail integrity verification.`,
+  );
+  process.exit(1);
+}
+writeFileSync(join(dest, BUNDLE_FILE), bundleBytes);
+// Pinned like any other fetched file, so the fetch layer can verify the bundle's own
+// bytes before it is cached. Added AFTER the bundle is built: the bundle holds the
+// module files, never itself.
+integrityFiles[BUNDLE_FILE] = sha384(bundleBytes);
 writeFileSync(
   join(dest, 'integrity.json'),
   JSON.stringify(
@@ -202,5 +242,5 @@ writeFileSync(
 console.log(
   `Built self-hosted SDK ${version} -> ${dest} (${jsFiles.length} js files, integrity.json over ${
     Object.keys(integrityFiles).length
-  } files)`,
+  } files, ${BUNDLE_FILE} ${bundleBytes.length} bytes)`,
 );

@@ -46,6 +46,9 @@ import { readdirSync, readFileSync, existsSync, mkdtempSync, writeFileSync, mkdi
 import { join, dirname, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { createHash } from 'node:crypto';
+
+import { BUNDLE_FILE, auditBundle } from './lib/selfhost-bundle.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ORIGIN = 'https://immediately-run.github.io/immediately-run-sdk';
@@ -222,6 +225,57 @@ const reportNames = (label, findings) => {
   return false;
 };
 
+// --- the single-request bundle must reproduce the pinned files ---------------
+//
+// `bundle.json` lets the sandbox load a whole version in one request. It is checked
+// here, over the FINISHED payload, for the same reason the two passes above are:
+// the integrity manifest proves the bytes are the ones built, not that the second
+// copy of them agrees with the first. A bundle that drifted from the files beside
+// it would fail closed in every sandbox that takes the bundle and boot fine in
+// every one that does not.
+
+const sha384 = (buf) => `sha384-${createHash('sha384').update(buf).digest('base64')}`;
+
+/** Findings for the bundle of the payload in `dir`. A payload with no integrity
+ *  manifest at all (`dist/`, the default target) has no bundle to audit: `null`. */
+export const scanBundle = (dir) => {
+  const integrityPath = join(dir, 'integrity.json');
+  if (!existsSync(integrityPath)) return null;
+  const integrityFiles = JSON.parse(readFileSync(integrityPath, 'utf8')).files ?? {};
+  const bundlePath = join(dir, BUNDLE_FILE);
+  if (!existsSync(bundlePath)) {
+    // A version built before the bundle existed pins none, and is complete without it.
+    return BUNDLE_FILE in integrityFiles
+      ? [`integrity.json pins ${BUNDLE_FILE}, but the payload does not ship it`]
+      : null;
+  }
+  const manifestPath = join(dir, 'manifest.json');
+  return auditBundle({
+    bundleBytes: readFileSync(bundlePath),
+    integrityFiles,
+    manifestFiles: existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')).files ?? [] : [],
+    readFileBytes: (rel) => (existsSync(join(dir, rel)) ? readFileSync(join(dir, rel)) : null),
+    sha384,
+  });
+};
+
+const reportBundle = (label, findings) => {
+  if (findings === null) return true;
+  if (findings.length === 0) {
+    console.log(`OK: ${label} — ${BUNDLE_FILE} reproduces every pinned file byte-for-byte.`);
+    return true;
+  }
+  console.error(
+    `::error::${label}: ${BUNDLE_FILE} disagrees with the payload it bundles (${findings.length} finding(s)).`,
+  );
+  console.error(
+    'A sandbox that loads the bundle verifies each unpacked file against its pinned hash and\n' +
+      'fails closed on any difference, while one that fetches file by file boots normally.\n',
+  );
+  for (const f of findings) console.error(`  ${f}`);
+  return false;
+};
+
 // --- audit a published payload over the wire --------------------------------
 const auditPublished = async (version) => {
   const base = `${ORIGIN}/v/${version}`;
@@ -323,7 +377,91 @@ const selfTest = () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
-  const total = cases.length + namedCases.length + 1;
+  // The bundle audit, over a real payload dir: a faithful bundle, then each way it
+  // can stop being one.
+  const bundleCases = [
+    { name: 'a faithful bundle passes', mutate: () => {}, want: 0 },
+    {
+      name: 'a bundled file that differs from the pinned one is named',
+      mutate: (p) => (p.bundle.files['index.js'] = 'export const a = 2;\n'),
+      repinBundle: true,
+      wantMatch: /index\.js does not hash/,
+    },
+    {
+      name: 'a pinned file missing from the bundle is named',
+      mutate: (p) => delete p.bundle.files['manifest.json'],
+      repinBundle: true,
+      wantMatch: /missing the pinned file manifest\.json/,
+    },
+    {
+      name: 'a file the trust root does not pin cannot ride in the bundle',
+      mutate: (p) => (p.bundle.files['extra.js'] = 'export {};\n'),
+      repinBundle: true,
+      wantMatch: /extra\.js, which integrity\.json does not pin/,
+    },
+    {
+      name: 'a bundle whose own bytes are not the pinned ones is caught',
+      mutate: (p) => (p.trailer = '\n'),
+      wantMatch: /does not hash to its own integrity entry/,
+    },
+    {
+      name: 'a manifest that lists the bundle is caught (it is transport, not a module)',
+      mutate: (p) => p.manifest.files.push(BUNDLE_FILE),
+      wantMatch: /manifest\.json lists bundle\.json/,
+    },
+    {
+      name: 'an unknown schemaVersion is caught',
+      mutate: (p) => (p.bundle.schemaVersion = 2),
+      repinBundle: true,
+      wantMatch: /schemaVersion 2/,
+    },
+    {
+      name: 'an integrity manifest that pins a bundle the payload lacks is caught',
+      mutate: (p) => (p.omitBundle = true),
+      wantMatch: /does not ship it/,
+    },
+  ];
+  for (const c of bundleCases) {
+    const bdir = mkdtempSync(join(tmpdir(), 'sdk-bundle-'));
+    try {
+      const sources = { 'index.js': 'export const a = 1;\n', 'package.json': '{"name":"x"}\n' };
+      const p = { manifest: { files: Object.keys(sources).sort() }, trailer: '', omitBundle: false };
+      const manifestText = JSON.stringify(p.manifest, null, 2) + '\n';
+      p.bundle = { schemaVersion: 1, files: { ...sources, 'manifest.json': manifestText } };
+      const integrityFiles = {};
+      for (const [rel, content] of Object.entries(p.bundle.files)) integrityFiles[rel] = sha384(Buffer.from(content));
+      const serialise = () => Buffer.from(JSON.stringify(p.bundle) + '\n' + p.trailer);
+      integrityFiles[BUNDLE_FILE] = sha384(serialise());
+      c.mutate(p);
+      // A case about the bundle's CONTENT re-pins the bundle's own bytes, so the
+      // finding it asserts is the one the case is about.
+      if (c.repinBundle) integrityFiles[BUNDLE_FILE] = sha384(serialise());
+      for (const [rel, content] of Object.entries(sources)) writeFileSync(join(bdir, rel), content);
+      writeFileSync(join(bdir, 'manifest.json'), JSON.stringify(p.manifest, null, 2) + '\n');
+      writeFileSync(join(bdir, 'integrity.json'), JSON.stringify({ files: integrityFiles }));
+      if (!p.omitBundle) writeFileSync(join(bdir, BUNDLE_FILE), serialise());
+      const got = scanBundle(bdir) ?? [];
+      const ok = c.wantMatch ? got.some((f) => c.wantMatch.test(f)) : got.length === c.want;
+      if (!ok) failed++;
+      console.log(`${ok ? 'PASS' : 'FAIL'}  bundle: ${c.name}${ok ? '' : ` (got ${JSON.stringify(got)})`}`);
+    } finally {
+      rmSync(bdir, { recursive: true, force: true });
+    }
+  }
+  {
+    // A bare dist/ and a version built before the bundle existed are not findings.
+    const bdir = mkdtempSync(join(tmpdir(), 'sdk-bundle-'));
+    try {
+      const bare = scanBundle(bdir) === null;
+      writeFileSync(join(bdir, 'integrity.json'), JSON.stringify({ files: { 'index.js': 'sha384-x' } }));
+      const ok = bare && scanBundle(bdir) === null;
+      if (!ok) failed++;
+      console.log(`${ok ? 'PASS' : 'FAIL'}  bundle: a payload that predates the bundle is not a finding`);
+    } finally {
+      rmSync(bdir, { recursive: true, force: true });
+    }
+  }
+  const total = cases.length + namedCases.length + 1 + bundleCases.length + 1;
   console.log(`\n${total - failed}/${total} self-test cases.`);
   return failed === 0;
 };
@@ -363,5 +501,6 @@ if (argv.includes('--self-test')) {
   const label = relative(ROOT, dir) || dir;
   const ok = report(label, scanPayload(read, files), files.length);
   const okNames = reportNames(label, scanNamedImports(read, files));
-  process.exit(ok && okNames ? 0 : 1);
+  const okBundle = reportBundle(label, scanBundle(dir));
+  process.exit(ok && okNames && okBundle ? 0 : 1);
 }

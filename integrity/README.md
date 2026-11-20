@@ -38,3 +38,16 @@ site-main's build (R3-15) ingests each covered version's `integrity.json` from
   build-time hashes.
 
 Manifests are immutable once committed (a published version dir never changes).
+
+## The `bundle.json` entry
+
+From the first release after 0.93.2, a version's manifest also pins `bundle.json`:
+one file holding every fetchable file of that version plus `manifest.json`, as
+`{ "schemaVersion": 1, "files": { "<rel>": "<utf8 content>" } }`, so the sandbox
+can load a version in one request instead of one per file. It is transport only.
+A consumer unpacks it and verifies each file against that file's own entry here,
+so the bundle adds no trust; its own hash is pinned only so the fetch layer can
+check the bytes before caching them. It is not a module file: `manifest.json`
+does not list it, and a consumer must not expect it among the module files.
+Manifests of earlier versions have no such entry, and those versions are served
+file by file as before.
