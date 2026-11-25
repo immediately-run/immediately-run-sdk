@@ -1363,7 +1363,7 @@
     "ProsePolarity": "union('dark'|'light')",
     "ProseTokenBlocks": "interface(dark, light, root)",
     "ProseTokenProbe": "interface(read(1..1), size(1..1))",
-    "ResolvedTokenFile": "interface(dir, path, size, warnings)",
+    "ResolvedTokenFile": "interface(dir, path, size, warnings, watch)",
     "affectsTokenLookup": "fn(3..3)",
     "dirOfFile": "fn(1..1)",
     "parseProseTokenFile": "fn(1..1)",
