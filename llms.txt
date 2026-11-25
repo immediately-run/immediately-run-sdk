@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.94.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.95.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -488,6 +488,12 @@ Import: `@immediately-run/sdk/components/MountImage`
 - `MountImage` (function) — Display an image file from a mount.
 - `MountImageProps` (interface) — Props for MountImage.
 
+## components/Prose
+
+Import: `@immediately-run/sdk/components/Prose`
+
+- `Prose` (function) — The wrapper for rendered Markdown: an `<article class="ir-prose">` styled by the SDK's layered default stylesheet and keyed to the host theme through `data-theme`.
+
 ## components/SafeInclude
 
 Import: `@immediately-run/sdk/components/SafeInclude`
@@ -792,6 +798,12 @@ Import: `@immediately-run/sdk/platformLink`
 - `PlatformLink` (function) — The ONE way to render an anchor to a PLATFORM route.
 - `PlatformLinkProps` (interface)
 - `usePlatformHref` (function) — Build a PLATFORM-space href (`/present/…`, `/edit/github/…`, `/home`) in the host's URL space, reading `outerHref` from TinkerableContext the way `useTinkerableLink` does.
+
+## proseStyles
+
+Import: `@immediately-run/sdk/proseStyles`
+
+- `PROSE_CLASS` (const) — The class on the element that wraps rendered Markdown.
 
 ## protocolDeadline
 
