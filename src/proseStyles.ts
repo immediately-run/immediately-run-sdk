@@ -175,15 +175,24 @@ ${P} th { background: ${t('panel')}; }
 }
 `;
 
-/** Markdown and MDX files get the prose wrapper; app components and HTML do not. */
-export const isProseFile = (path: string): boolean => /\.(md|mdx|markdown)$/i.test(path);
+/** Markdown and MDX files get the prose wrapper; app components and HTML do not. The
+ *  extensions are the ones the transpiler compiles as MDX (`.md`, `.mdx`); a `.markdown`
+ *  file is not compiled, so wrapping it would style nothing it renders. */
+export const isProseFile = (path: string): boolean => /\.mdx?$/i.test(path);
 
-/** Inject the default stylesheet once per document (idempotent, browser-only). */
+/**
+ * Inject the default stylesheet once per document (idempotent, browser-only).
+ *
+ * It goes FIRST in `<head>`. Cascade layers rank by the order they first appear, later
+ * layers winning, so a sheet appended after an app's own CSS would rank `ir.defaults`
+ * above the app's layered rules (Tailwind's `base`/`components`/`utilities`, say).
+ * First in the document makes it the lowest layer; unlayered rules beat it either way.
+ */
 export function ensureProseStyles(): void {
   if (typeof document === 'undefined') return;
   if (document.getElementById(PROSE_STYLE_ID)) return;
   const el = document.createElement('style');
   el.id = PROSE_STYLE_ID;
   el.textContent = PROSE_STYLE_TEXT;
-  document.head.appendChild(el);
+  document.head.prepend(el);
 }

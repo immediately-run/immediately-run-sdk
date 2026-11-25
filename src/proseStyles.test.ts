@@ -4,12 +4,15 @@
 import { ensureProseStyles, isProseFile, PROSE_STYLE_ID, PROSE_STYLE_TEXT, PROSE_TOKENS } from './proseStyles';
 
 describe('isProseFile', () => {
-  it.each(['README.md', 'docs/guide.mdx', 'notes/a.markdown', 'UPPER.MD', 'Mixed.Mdx'])('wraps %s', (path) => {
+  it.each(['README.md', 'docs/guide.mdx', 'UPPER.MD', 'Mixed.Mdx'])('wraps %s', (path) => {
     expect(isProseFile(path)).toBe(true);
   });
-  it.each(['src/App.tsx', 'index.html', 'README', 'notes.md.tsx', 'markdown'])('leaves %s alone', (path) => {
-    expect(isProseFile(path)).toBe(false);
-  });
+  it.each(['src/App.tsx', 'index.html', 'README', 'notes.md.tsx', 'markdown', 'notes/a.markdown'])(
+    'leaves %s alone',
+    (path) => {
+      expect(isProseFile(path)).toBe(false);
+    },
+  );
 });
 
 describe('PROSE_STYLE_TEXT', () => {
@@ -61,5 +64,14 @@ describe('ensureProseStyles', () => {
     const styles = document.querySelectorAll(`#${PROSE_STYLE_ID}`);
     expect(styles).toHaveLength(1);
     expect(styles[0].textContent).toBe(PROSE_STYLE_TEXT);
+  });
+
+  it('goes before every stylesheet already in head, so ir.defaults is the lowest layer', () => {
+    const app = document.createElement('style');
+    app.textContent = '@layer base { h2 { color: red } }';
+    document.head.appendChild(app);
+    ensureProseStyles();
+    expect(document.head.firstElementChild?.id).toBe(PROSE_STYLE_ID);
+    app.remove();
   });
 });
