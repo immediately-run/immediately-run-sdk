@@ -14,9 +14,10 @@ import { FragmentLink } from './Link';
  * It is registered in {@link DEFAULT_MDX_COMPONENTS} so a heading anchor renders
  * even in a plain-markdown repo that never calls `boot({ mdxComponents })` — the
  * MDX missing-reference guard never fires (§11.2 phantom defaults). The markup is
- * semantic and accessible — an `aria`-labelled `<a href="#id">` permalink — but
- * **styling is intentionally minimal** (`§15.4` honesty note): an app supplies CSS
- * targeting the `ir-heading-anchor` class to reveal it on hover / add an icon, or
+ * semantic and accessible — an `aria`-labelled `<a href="#id">` permalink. Its look
+ * comes from the SDK's default prose stylesheet (`proseStyles.ts`, MARKDOWN_SYNTAX_SPEC
+ * §16.4): in the gutter on hover devices, at the line end on touch. An app restyles it
+ * with CSS targeting the `ir-heading-anchor` class, or
  * overrides this component via `boot({ mdxComponents: { HeadingAnchor } })` to
  * change the icon, position, or behaviour (e.g. copy-permalink-to-clipboard) of
  * every heading anchor in every content file at once (§15.4 late binding).

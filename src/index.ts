@@ -26,6 +26,8 @@ export * from './metadataSource';
 export { getInjectedMetadataEmitter, getInjectedMetadataSnapshot } from './injectedBundler';
 export * from './auth';
 export * from './theme';
+export { Prose } from './components/Prose';
+export { PROSE_CLASS } from './proseStyles';
 export * from './editorContext';
 export * from './editor';
 export * from './formFactor';

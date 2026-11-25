@@ -5,6 +5,8 @@ import { TinkerableContext } from '../TinkerableContext';
 import { underAppRoot } from '../urlUtils';
 import { defaultErrorComponent, defaultLoadingComponent } from './defaults';
 import { Include } from './Include';
+import { Prose } from './Prose';
+import { isProseFile } from '../proseStyles';
 
 export const FileRouter: FC = ({
   LoadingComponent = defaultLoadingComponent,
@@ -29,7 +31,7 @@ export const FileRouter: FC = ({
   }
   // URL subpaths are repo-relative; the sandbox fs is rooted at `/` with the
   // repo mounted at `APP_ROOT`, so anchor the file path there before resolving.
-  return (
+  const content = (
     <Include
       filename={underAppRoot(filename)}
       LoadingComponent={LoadingComponent}
@@ -38,4 +40,7 @@ export const FileRouter: FC = ({
       baseModule={module}
     />
   );
+  // Markdown gets the default typography; a routed app component or HTML file renders as
+  // it always has, so an app's own interface is never restyled.
+  return isProseFile(filename) ? <Prose>{content}</Prose> : content;
 };
