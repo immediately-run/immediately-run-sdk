@@ -5,7 +5,7 @@ import { sendMessage } from './sandboxUtils';
 import { NavigationState, TinkerableContext } from './TinkerableContext';
 import { RouteParams, RoutingRule, RoutingSpec } from './RoutingSpec';
 import { matchRoute } from './routeMatch';
-import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
+import { appHrefFor, constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 import { takeQueuedEntryState } from './entryState';
 import { URLCHANGE, type UrlchangePayload } from './generated/protocol';
@@ -133,7 +133,22 @@ export const setViewedDocumentResolver = (
   viewedDocumentResolver = resolver;
 };
 
-export const navigate = (target: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
+// R3-1397: the shell's current href state (its `outerHref`, `navigationState` and
+// `filesHrefBase`), kept here so `navigate()` can map a rendered bundle href back to the app's
+// `files/` URL (`appHrefFor`). `TinkerableApp` sets it whenever its context changes. It is null
+// before boot and outside the shell, and then `navigate()` posts its target unchanged.
+type HrefState = Parameters<typeof appHrefFor>[1];
+let hrefState: HrefState | null = null;
+
+/** Hand `navigate()` the shell's current href state (R3-1397); `null` clears it. */
+export const setNavigationHrefState = (state: HrefState | null): void => {
+  hrefState = state;
+};
+
+export const navigate = (rawTarget: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
+  // A rendered bundle href (an anchor's real `href`, read by a consumer's own click policy)
+  // goes back to the app-space URL the host maps. Identity with no base.
+  const target = hrefState ? appHrefFor(rawTarget, hrefState) : rawTarget;
   console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
   // wire (the host derives from the URL convention). A resolver throw is

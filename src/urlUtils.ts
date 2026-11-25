@@ -134,6 +134,10 @@ export const constructOuterUrl = (
  * A base that is not an absolute URL ending in `/` on `outerHref`'s own origin is a host
  * bug: it is dropped with a warning, and links keep their app-space href.
  */
+// The last base refused, so a host that keeps pushing the same bad value warns once,
+// not on every urlchange (R3-1397 review rg:1-B-0).
+let lastRefusedBase: unknown = undefined;
+
 export const acceptFilesHrefBase = (base: unknown, outerHref: string): string | null => {
   if (base === undefined || base === null || base === '') return null;
   let ok = false;
@@ -143,6 +147,8 @@ export const acceptFilesHrefBase = (base: unknown, outerHref: string): string | 
     ok = false;
   }
   if (!ok) {
+    if (base === lastRefusedBase) return null;
+    lastRefusedBase = base;
     console.warn(
       `[sdk] ignoring filesHrefBase ${JSON.stringify(
         base,
@@ -173,6 +179,27 @@ export const displayHref = (
   if (rest.startsWith('?') || rest.startsWith('#')) return state.filesHrefBase + rest;
   // `files…` that is not the `files` segment (`/filesystem/x`): not this space.
   return appHref;
+};
+
+/**
+ * The inverse of {@link displayHref}: the app-space URL to NAVIGATE with for a target that
+ * may be a rendered (display) href. Code that reads an anchor's real `href` and navigates
+ * with it, which grove's link policy does (`e.currentTarget.href`, R3-1029), would otherwise
+ * post the host's bundle address, which the host does not map from the app. A target under
+ * the base becomes the app's `files/` URL. The base is matched as an opaque prefix and never
+ * parsed. Anything else is returned unchanged.
+ */
+export const appHrefFor = (
+  target: string,
+  state: { outerHref: string; navigationState: NavigationState; filesHrefBase?: string | null },
+): string => {
+  const base = state.filesHrefBase;
+  if (!base || !target.startsWith(base)) return target;
+  const filesHome = repositoryPrefixURL(state.outerHref, state.navigationState) + FILES_PREFIX.slice(1);
+  const rest = target.slice(base.length);
+  if (rest === '') return filesHome;
+  if (rest.startsWith('?') || rest.startsWith('#')) return filesHome + rest;
+  return `${filesHome}/${rest}`;
 };
 
 export const isInternalHref = (outerHref: string, target: string, navigationState: NavigationState) => {

@@ -56,3 +56,19 @@ describe('filesHrefBase in TinkerableState (R3-1397)', () => {
     warn.mockRestore();
   });
 });
+
+describe('a host that keeps pushing a bad base (R3-1397 review rg:1-B-0)', () => {
+  it('warns once per distinct refused value, not on every push', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const href = 'https://immediately.run/present/github/o/r/main/files/a.md';
+    window.history.replaceState(null, '', `/?${new URLSearchParams({ href })}`);
+    let ctx = getInitialContext(DEFAULT_ROUTING_SPEC)();
+    window.history.replaceState(null, '', '/');
+    for (let i = 0; i < 3; i++) ctx = updateContext(ctx, href, 'https://evil.example/bundle/x/');
+    expect(warn).toHaveBeenCalledTimes(1);
+    ctx = updateContext(ctx, href, 'not-a-url');
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(ctx.filesHrefBase).toBeNull();
+    warn.mockRestore();
+  });
+});

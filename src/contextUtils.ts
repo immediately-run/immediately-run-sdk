@@ -48,7 +48,7 @@ export const getInitialContext = (routingSpec: RoutingSpec): (() => TinkerableSt
 /** Apply a host `urlchange`. Each push carries the whole truth, so a push without a
  *  `filesHrefBase` clears the base (R3-1397). */
 export const updateContext = (context: TinkerableState, href: string, filesHrefBase?: unknown): TinkerableState => {
-  // Validated once, so a rejected base warns once; an accepted one re-validates silently.
+  // A refused base warns once per distinct value (acceptFilesHrefBase); an accepted one is silent.
   const base = acceptFilesHrefBase(filesHrefBase, href);
   // No update is necessary if neither the href nor the base has changed.
   if (href === context.outerHref && base === (context.filesHrefBase ?? null)) {
