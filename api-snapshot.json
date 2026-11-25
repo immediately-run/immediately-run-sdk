@@ -187,7 +187,8 @@
     "MountImageProps": "interface(fallback?, mount, placeholder?, relPath, type?)"
   },
   "components/Prose": {
-    "Prose": "fn(1..1)"
+    "Prose": "fn(1..1)",
+    "ProseProps": "interface(filename?)"
   },
   "components/Routes": {
     "Route": "fn(1..1)",
@@ -776,7 +777,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.95.0\")",
+    "SDK_VERSION": "const(\"0.96.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1353,6 +1354,25 @@
     "ensureProseStyles": "fn(0..0)",
     "isProseFile": "fn(1..1)"
   },
+  "proseTokens": {
+    "PROSE_MARKER_FILE": "const(\"immediately.run.json\")",
+    "PROSE_TOKEN_FILE": "const(\"immediately.run.css\")",
+    "PROSE_TOKEN_FILE_MAX_BYTES": "const(16384)",
+    "PROSE_TOKEN_VALUE_MAX_LENGTH": "const(256)",
+    "ParsedProseTokenFile": "union({blocks, ok, warnings}|{ok, reason})",
+    "ProsePolarity": "union('dark'|'light')",
+    "ProseTokenBlocks": "interface(dark, light, root)",
+    "ProseTokenProbe": "interface(read(1..1), size(1..1))",
+    "ResolvedTokenFile": "interface(dir, path, size, warnings, watch)",
+    "affectsTokenLookup": "fn(3..3)",
+    "dirOfFile": "fn(1..1)",
+    "parseProseTokenFile": "fn(1..1)",
+    "resolveTokenFile": "fn(2..2)",
+    "tokensFor": "fn(2..2)"
+  },
+  "proseTokensHook": {
+    "useProseTokens": "fn(1..1)"
+  },
   "protocolDeadline": {
     "ATTENDED_FIRST_FRAME_MS": "const(300000)",
     "ATTENDED_TIMEOUT_MS": "const(600000)",
@@ -1448,7 +1468,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.95.0\")",
+    "SDK_VERSION": "const(\"0.96.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1657,7 +1677,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.95.0\")"
+    "SDK_VERSION": "const(\"0.96.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

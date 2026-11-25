@@ -42,5 +42,5 @@ export const FileRouter: FC = ({
   );
   // Markdown gets the default typography; a routed app component or HTML file renders as
   // it always has, so an app's own interface is never restyled.
-  return isProseFile(filename) ? <Prose>{content}</Prose> : content;
+  return isProseFile(filename) ? <Prose filename={filename}>{content}</Prose> : content;
 };
