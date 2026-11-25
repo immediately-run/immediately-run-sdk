@@ -1,7 +1,7 @@
 import { ReactNode, use, useCallback } from 'react';
 import { scrollToId } from '../scrollToId';
 import { TinkerableContext } from '../TinkerableContext';
-import { constructOuterUrl } from '../urlUtils';
+import { constructOuterUrl, displayHref } from '../urlUtils';
 import { FragmentLink } from './Link';
 
 /**
@@ -63,7 +63,10 @@ export const HeadingAnchor = ({
   if (!id) return null;
   // No context (a plain-markdown repo that never called `boot()`) → keep the old bare
   // fragment, which FragmentLink handles on its own.
-  const href = ctx?.navigationState ? constructOuterUrl(ctx.outerHref, `#${id}`, ctx.navigationState) : `#${id}`;
+  // Inside a bundle the permalink is the bundle's own address (`displayHref`, R3-1397).
+  const href = ctx?.navigationState
+    ? displayHref(constructOuterUrl(ctx.outerHref, `#${id}`, ctx.navigationState), ctx)
+    : `#${id}`;
   return (
     <FragmentLink
       className="ir-heading-anchor"

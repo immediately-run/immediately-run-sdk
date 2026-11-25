@@ -13,7 +13,7 @@
     "NavigationState": "alias(PathState & { hash: string; search: string; })",
     "PathState": "object(mode, namespace, pathParameters?, provider, ref, repository, routingRule?, sandboxPath)",
     "TinkerableContext": "const(react.Context<TinkerableState>)",
-    "TinkerableState": "object(filesMetadata, navigationState, outerHref, routingSpec)"
+    "TinkerableState": "object(filesHrefBase?, filesMetadata, navigationState, outerHref, routingSpec)"
   },
   "agentChatClient": {
     "createChatModelClient": "fn(0..0)"
@@ -229,9 +229,9 @@
     "RenderFileContextType": "object(evaluationContext)"
   },
   "contextUtils": {
-    "getContextFromUrl": "fn(2..3)",
+    "getContextFromUrl": "fn(2..4)",
     "getInitialContext": "fn(1..1)",
-    "updateContext": "fn(2..2)"
+    "updateContext": "fn(2..3)"
   },
   "contribute": {
     "ContributeMode": "union('direct'|'pr')",
@@ -493,7 +493,7 @@
     "TaskCompletePayload": "interface(result)",
     "TaskInputPayload": "interface(params?, task)",
     "URLCHANGE": "const(\"urlchange\")",
-    "UrlchangePayload": "interface(back, entryState?, forward, replace?, url, viewedDocument?)",
+    "UrlchangePayload": "interface(back, entryState?, filesHrefBase?, forward, replace?, url, viewedDocument?)",
     "VCS_STATE": "const(\"vcs-state\")",
     "WIRE_NAMES": "const({API_CATALOG, AUTH_STATE, BUNDLE_LINK, CHROME_STATE, COMPILE, DEBUG_ENABLED, DEBUG_LOG, DEBUG_QUERY, DEBUG_QUERY_RESULT, DIAGNOSTICS, DND_CANCEL, DROPPED_ITEM, EDITOR_CONTEXT, FORM_FACTOR, FS_CHANGE, HOST_ATTENTION, INVITATIONS, LAUNCH_DISMISS, LAUNCH_ENDED, LLM_PROVIDER, METADATA_UPDATE, MOUNT_ADD, MOUNT_REMOVE, PROTOCOL_ANALYTICS, PROTOCOL_CONTRIBUTE, PROTOCOL_DND, PROTOCOL_EDITOR, PROTOCOL_FEED, PROTOCOL_FETCH, PROTOCOL_IPC, PROTOCOL_LAUNCH, PROTOCOL_LLM, PROTOCOL_LOCALSTORE, PROTOCOL_OPENBUNDLE, PROTOCOL_OPENLINK, PROTOCOL_OPENREPO, PROTOCOL_RECENTS, PROTOCOL_SECRETS, PROTOCOL_SETTINGS, PROTOCOL_SPACES, PROTOCOL_SPACES_MODE, PROTOCOL_TASK, PROTOCOL_THEME, PROTOCOL_VCS, REGION_MESSAGE, REGION_VISIBILITY, REQUEST_API_CATALOG, REQUEST_AUTH_STATE, REQUEST_CHROME_STATE, REQUEST_DEBUG_ENABLED, REQUEST_DIAGNOSTICS, REQUEST_EDITOR_CONTEXT, REQUEST_FORM_FACTOR, REQUEST_HANDSHAKE, REQUEST_HOST_ATTENTION, REQUEST_INVITATIONS, REQUEST_LLM_PROVIDER, REQUEST_MOUNTS, REQUEST_REGION_VISIBILITY, REQUEST_SECRETS_METADATA, REQUEST_SESSION_MOUNTS, REQUEST_SPACES_MODE, REQUEST_TASK_INPUT, REQUEST_THEME, REQUEST_THEME_CATALOG, REQUEST_VCS_STATE, REQUEST_WORKSPACE, SDK_HANDSHAKE, SECRETS_METADATA, SESSION_MOUNTS, SPACES_MODE, TASK_CANCEL, TASK_COMPLETE, TASK_INPUT, THEME, THEME_CATALOG, URLCHANGE, VCS_STATE, WORKSPACE})",
     "WORKSPACE": "const(\"workspace\")",
@@ -790,7 +790,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.97.0\")",
+    "SDK_VERSION": "const(\"0.98.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1030,6 +1030,7 @@
     "refreshDiff": "fn(0..0)",
     "refreshPRs": "fn(0..0)",
     "registerEntryStateCollector": "fn(2..2)",
+    "registerNavigationHrefState": "fn(1..1)",
     "removeThemeSource": "fn(1..1)",
     "renameEntry": "fn(2..2)",
     "renameSpace": "fn(2..2)&{try}",
@@ -1472,6 +1473,7 @@
     "Router": "fn(0..0)",
     "applyRoutingRule": "fn(2..2)",
     "navigate": "fn(1..2)",
+    "registerNavigationHrefState": "fn(1..1)",
     "renderRoute": "fn(2..2)",
     "setViewedDocumentResolver": "fn(1..1)",
     "useRoute": "fn(0..0)",
@@ -1481,7 +1483,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.97.0\")",
+    "SDK_VERSION": "const(\"0.98.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1645,8 +1647,11 @@
     "APP_ROOT": "const(\"/app\")",
     "FILES_PREFIX": "const(\"/files\")",
     "PathSegment": "object(encode?(1..1), name, optionalLeadingSlash?, pattern, transform?(1..1))",
+    "acceptFilesHrefBase": "fn(2..2)",
+    "appHrefFor": "fn(2..2)",
     "constructOuterUrl": "fn(3..4)",
     "constructUrl": "fn(2..2)",
+    "displayHref": "fn(2..2)",
     "getOuterHostname": "fn(1..1)",
     "getSearchParams": "fn(0..1)",
     "isAbsolutePath": "fn(1..1)",
@@ -1690,7 +1695,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.97.0\")"
+    "SDK_VERSION": "const(\"0.98.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",

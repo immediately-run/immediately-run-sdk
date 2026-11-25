@@ -12,7 +12,7 @@ import { getInitialContext, updateContext } from './contextUtils';
 import { getInjectedMetadataEmitter, resolveMetadataSource } from './injectedBundler';
 import { MDXProvider } from './MDXProvider';
 import { ModuleCache, ModuleCacheContextProvider } from './moduleCache';
-import { Router } from './routing';
+import { Router, registerNavigationHrefState } from './routing';
 import type { RoutingSpec } from './RoutingSpec';
 import { FilesMetadata } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
@@ -75,24 +75,27 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
 export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingSpec; children?: ReactNode }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
-    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }: UrlchangePayload) => {
-      // R3-627: record what the host says about this arrival BEFORE the route state
-      // updates, so a consumer reacting to the new route already sees the scratch
-      // and the direction that produced it.
-      receiveNavigation({
-        state: (entryState ?? undefined) as Record<string, unknown> | undefined,
-        direction: back ? 'back' : forward ? 'forward' : 'push',
-      });
-      setContext((context) => {
-        const updatedContext = updateContext(context, url);
-        if (updatedContext !== context) {
-          console.log(
-            `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`,
-          );
-        }
-        return updatedContext;
-      });
-    });
+    const removeListener = addListener(
+      URLCHANGE,
+      ({ url, entryState, back, forward, filesHrefBase }: UrlchangePayload) => {
+        // R3-627: record what the host says about this arrival BEFORE the route state
+        // updates, so a consumer reacting to the new route already sees the scratch
+        // and the direction that produced it.
+        receiveNavigation({
+          state: (entryState ?? undefined) as Record<string, unknown> | undefined,
+          direction: back ? 'back' : forward ? 'forward' : 'push',
+        });
+        setContext((context) => {
+          const updatedContext = updateContext(context, url, filesHrefBase);
+          if (updatedContext !== context) {
+            console.log(
+              `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`,
+            );
+          }
+          return updatedContext;
+        });
+      },
+    );
     return removeListener;
   }, [setContext]);
   useEffect(() => {
@@ -122,6 +125,13 @@ export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingS
     source.enable();
     return dispose;
   }, [setContext]);
+
+  // R3-1397: keep `navigate()`'s inverse mapping on the same href state the links render from.
+  const { outerHref, navigationState, filesHrefBase } = context;
+  useLayoutEffect(
+    () => registerNavigationHrefState({ outerHref, navigationState, filesHrefBase }),
+    [outerHref, navigationState, filesHrefBase],
+  );
 
   return (
     <TinkerableContext value={context}>

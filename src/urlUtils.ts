@@ -120,6 +120,88 @@ export const constructOuterUrl = (
   return new URL(sandboxTarget, constructUrl(previousOuterHref, navigationState)).toString();
 };
 
+/**
+ * The host's href base for this app's `files/` space, or `null` (R3-1397).
+ *
+ * Inside a bundle the host hands the app its own route space (`files/<rest>`, relative to
+ * the bundle) while the address bar shows the bundle's own address. A link rendered from
+ * the app's space is therefore right to CLICK (the host maps it) and wrong to COPY: as a
+ * URL, `files/` is filesystem-true and names a different file. The host sends the
+ * address its bar would show for the app's `files/` home as `filesHrefBase`, an opaque
+ * string the SDK prepends and never parses (REPO_CONTENT_DISPATCH_SPEC §9, the owner
+ * 2026-11-25).
+ *
+ * A base that is not an absolute URL ending in `/` on `outerHref`'s own origin is a host
+ * bug: it is dropped with a warning, and links keep their app-space href.
+ */
+// The last base refused, so a host that keeps pushing the same bad value warns once,
+// not on every urlchange (R3-1397 review rg:1-B-0).
+let lastRefusedBase: unknown = undefined;
+
+export const acceptFilesHrefBase = (base: unknown, outerHref: string): string | null => {
+  if (base === undefined || base === null || base === '') return null;
+  let ok = false;
+  try {
+    ok = typeof base === 'string' && base.endsWith('/') && getOuterHostname(base) === getOuterHostname(outerHref);
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    if (base === lastRefusedBase) return null;
+    lastRefusedBase = base;
+    console.warn(
+      `[sdk] ignoring filesHrefBase ${JSON.stringify(
+        base,
+      )}: not an absolute URL ending in '/' on ${outerHref}'s origin`,
+    );
+    return null;
+  }
+  return base as string;
+};
+
+/**
+ * The href to RENDER for an app-space URL (one {@link constructOuterUrl} built). With a
+ * {@link acceptFilesHrefBase} base, a URL in the app's `files/` space becomes the base
+ * plus the rest (path, `?search`, `#hash` kept verbatim); anything else, and everything
+ * when there is no base, is returned unchanged. Only what is rendered changes: a click
+ * still navigates with the app-space URL, which is what the host maps.
+ */
+export const displayHref = (
+  appHref: string,
+  state: { outerHref: string; navigationState: NavigationState; filesHrefBase?: string | null },
+): string => {
+  if (!state.filesHrefBase) return appHref;
+  const filesHome = repositoryPrefixURL(state.outerHref, state.navigationState) + FILES_PREFIX.slice(1);
+  if (!appHref.startsWith(filesHome)) return appHref;
+  const rest = appHref.slice(filesHome.length);
+  if (rest === '') return state.filesHrefBase;
+  if (rest.startsWith('/')) return state.filesHrefBase + rest.slice(1);
+  if (rest.startsWith('?') || rest.startsWith('#')) return state.filesHrefBase + rest;
+  // `files…` that is not the `files` segment (`/filesystem/x`): not this space.
+  return appHref;
+};
+
+/**
+ * The inverse of {@link displayHref}: the app-space URL to NAVIGATE with for a target that
+ * may be a rendered (display) href. Code that reads an anchor's real `href` and navigates
+ * with it, which grove's link policy does (`e.currentTarget.href`, R3-1029), would otherwise
+ * post the host's bundle address, which the host does not map from the app. A target under
+ * the base becomes the app's `files/` URL. The base is matched as an opaque prefix and never
+ * parsed. Anything else is returned unchanged.
+ */
+export const appHrefFor = (
+  target: string,
+  state: { outerHref: string; navigationState: NavigationState; filesHrefBase?: string | null },
+): string => {
+  const base = state.filesHrefBase;
+  if (!base || !target.startsWith(base)) return target;
+  const filesHome = repositoryPrefixURL(state.outerHref, state.navigationState) + FILES_PREFIX.slice(1);
+  const rest = target.slice(base.length);
+  if (rest === '') return filesHome;
+  if (rest.startsWith('?') || rest.startsWith('#')) return filesHome + rest;
+  return `${filesHome}/${rest}`;
+};
+
 export const isInternalHref = (outerHref: string, target: string, navigationState: NavigationState) => {
   const parsedUrl = maybeParseUrl(target);
   if (parsedUrl) {

@@ -3,7 +3,7 @@ import { isBrowserGestureClick, useComposedAnchorClick } from '../anchorClick';
 import { navigate } from '../routing';
 import { scrollToId } from '../scrollToId';
 import { TinkerableContext } from '../TinkerableContext';
-import { constructOuterUrl, isInternalHref } from '../urlUtils';
+import { constructOuterUrl, displayHref, isInternalHref } from '../urlUtils';
 
 /** A same-page anchor (`#frag`): scrolls the addressed section into view on click
  *  **without a route change** (MARKDOWN_SYNTAX_SPEC §13.5). The default behavior of a
@@ -45,14 +45,21 @@ export const FragmentLink = ({
  *  reloading the whole app (and framing the host inside its own sandbox).
  *
  *  Modifier/middle clicks and explicit non-self `target`s keep the browser
- *  default: the rendered href is a real host URL, so open-in-new-tab works. */
+ *  default: the rendered href is a real host URL, so open-in-new-tab works.
+ *
+ *  `navigateHref` (R3-1397) is what a plain click routes to when it differs from the
+ *  rendered `href`: inside a bundle, {@link Link} renders the address the bar will show
+ *  and routes with the app-space URL the host maps to it. Defaults to `href`. */
 export const InternalLink = ({
   href,
+  navigateHref,
   children,
   onClick,
   target,
   ...props
-}: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
+}: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement> & {
+  navigateHref?: string;
+}): ReactNode => {
   const clickHandler = useComposedAnchorClick(
     onClick,
     (e) => {
@@ -61,9 +68,9 @@ export const InternalLink = ({
       if (isBrowserGestureClick(e)) return;
       if (target && target !== '_self') return;
       e.preventDefault();
-      navigate(href);
+      navigate(navigateHref ?? href);
     },
-    [href, target],
+    [href, navigateHref, target],
   );
   // Spread FIRST so no forwarded prop can clobber the interception or the href.
   return (
@@ -80,7 +87,8 @@ export const Link = ({
   children,
   ...properties
 }: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>): ReactNode => {
-  const { outerHref, navigationState } = use(TinkerableContext);
+  const context = use(TinkerableContext);
+  const { outerHref, navigationState } = context;
   // A pure same-page fragment (`#sec-8-9`) scrolls in place — no route change (§13.5).
   if (href && href.startsWith('#')) {
     return (
@@ -90,9 +98,11 @@ export const Link = ({
     );
   }
   if (href && isInternalHref(outerHref, href, navigationState)) {
+    // The click routes with the app-space URL; the href shows the address the bar will
+    // (inside a bundle, the bundle's own — `displayHref`, R3-1397).
     const targetHref = constructOuterUrl(outerHref, href, navigationState);
     return (
-      <InternalLink href={targetHref} {...properties}>
+      <InternalLink {...properties} href={displayHref(targetHref, context)} navigateHref={targetHref}>
         {children}
       </InternalLink>
     );

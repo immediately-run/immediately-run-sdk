@@ -5,7 +5,7 @@ import { sendMessage } from './sandboxUtils';
 import { NavigationState, TinkerableContext } from './TinkerableContext';
 import { RouteParams, RoutingRule, RoutingSpec } from './RoutingSpec';
 import { matchRoute } from './routeMatch';
-import { constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
+import { appHrefFor, constructUrl, isAbsolutePath, parseTarget } from './urlUtils';
 import { joinPaths } from './pathUtils';
 import { takeQueuedEntryState } from './entryState';
 import { URLCHANGE, type UrlchangePayload } from './generated/protocol';
@@ -133,7 +133,29 @@ export const setViewedDocumentResolver = (
   viewedDocumentResolver = resolver;
 };
 
-export const navigate = (target: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
+// R3-1397: the shell's current href state (its `outerHref`, `navigationState` and
+// `filesHrefBase`), kept here so `navigate()` can map a rendered bundle href back to the app's
+// `files/` URL (`appHrefFor`). Each mounted `TinkerableApp` registers its own entry and removes
+// exactly that entry on unmount, so a second instance unmounting never erases the first's
+// (round 2, rg:2-r2-1). The newest live registration wins. Empty before boot and outside the
+// shell, and then `navigate()` posts its target unchanged.
+type HrefState = Parameters<typeof appHrefFor>[1];
+const hrefStates: HrefState[] = [];
+
+/** Register the shell's href state for `navigate()` (R3-1397); returns its removal. */
+export const registerNavigationHrefState = (state: HrefState): (() => void) => {
+  hrefStates.push(state);
+  return () => {
+    const i = hrefStates.lastIndexOf(state);
+    if (i !== -1) hrefStates.splice(i, 1);
+  };
+};
+
+export const navigate = (rawTarget: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
+  // A rendered bundle href (an anchor's real `href`, read by a consumer's own click policy)
+  // goes back to the app-space URL the host maps. Identity with no base.
+  const hrefState = hrefStates[hrefStates.length - 1];
+  const target = hrefState ? appHrefFor(rawTarget, hrefState) : rawTarget;
   console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
   // wire (the host derives from the URL convention). A resolver throw is
