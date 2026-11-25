@@ -186,6 +186,9 @@
     "MountImage": "fn(1..1)",
     "MountImageProps": "interface(fallback?, mount, placeholder?, relPath, type?)"
   },
+  "components/Prose": {
+    "Prose": "fn(1..1)"
+  },
   "components/Routes": {
     "Route": "fn(1..1)",
     "RouteProps": "object(component?, element?, name?, path)",
@@ -732,6 +735,7 @@
     "OpenRepositoryErrorCode": "union('forbidden'|'invalid'|'no-activation'|'unknown'|'unsupported')",
     "Orientation": "union('landscape'|'portrait')",
     "PENDING_NOTICE_MS": "const(3000)",
+    "PROSE_CLASS": "const(\"ir-prose\")",
     "ParseSafeMdastOptions": "interface(sectionIds?)",
     "PauseController": "class(isPaused(0..0), listeners, onChange(1..1), paused, set(1..1), waiters, whenResumed(0..1))",
     "PauseSource": "interface(isPaused(0..0), whenResumed(0..1))",
@@ -739,6 +743,7 @@
     "PendingState": "interface(attendance, awaiting?, call, elapsedMs, reason?)",
     "PlatformLink": "fn(1..1)",
     "PlatformLinkProps": "interface(children?, path)",
+    "Prose": "fn(1..1)",
     "ProtocolCancelledError": "class(code)",
     "ProtocolTimeoutError": "class(attendance, bound, call, code, timeoutMs)",
     "PublishedSpaceKey": "interface(addedAt, alg, kid, pub, uid)",
@@ -771,7 +776,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.94.0\")",
+    "SDK_VERSION": "const(\"0.95.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1339,6 +1344,15 @@
     "PlatformLinkProps": "interface(children?, path)",
     "usePlatformHref": "fn(0..0)"
   },
+  "proseStyles": {
+    "PROSE_CLASS": "const(\"ir-prose\")",
+    "PROSE_STYLE_ID": "const(\"ir-sdk-prose-styles\")",
+    "PROSE_STYLE_TEXT": "const(string)",
+    "PROSE_TOKENS": "const(readonly ProseToken[])",
+    "ProseToken": "interface(dark, light, name)",
+    "ensureProseStyles": "fn(0..0)",
+    "isProseFile": "fn(1..1)"
+  },
   "protocolDeadline": {
     "ATTENDED_FIRST_FRAME_MS": "const(300000)",
     "ATTENDED_TIMEOUT_MS": "const(600000)",
@@ -1434,7 +1448,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.94.0\")",
+    "SDK_VERSION": "const(\"0.95.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1640,7 +1654,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.94.0\")"
+    "SDK_VERSION": "const(\"0.95.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
