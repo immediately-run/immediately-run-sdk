@@ -65,7 +65,13 @@ describe('PROSE_STYLE_TEXT', () => {
   });
 
   it('spaces an hr with start margins only (grid items do not collapse margins)', () => {
-    expect(PROSE_STYLE_TEXT).toContain('> hr + * { margin-block-start: 2.5em; }');
+    // In the BODY font (not em), so a smaller-font pre/table/h4 after a rule gets the same gap.
+    expect(PROSE_STYLE_TEXT).toContain(
+      '> hr + * { margin-block-start: calc(2.5 * var(--prose-size, var(--_ir-prose-size))); }',
+    );
+    expect(PROSE_STYLE_TEXT).toMatch(
+      /> hr \+ :is\(h1, h2, h3, h4, h5, h6\):not\(:first-child\) \{ margin-block-start: max\(2\.2em,/,
+    );
     expect(PROSE_STYLE_TEXT).not.toMatch(/hr \{[^}]*margin-block:/);
   });
 

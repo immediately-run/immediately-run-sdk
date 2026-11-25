@@ -182,7 +182,8 @@ ${P} li.task-list-item { list-style: none; margin-inline-start: -1.3em; }
 ${P} input[type="checkbox"] { margin-inline-end: 0.5em; accent-color: ${t('accent')}; }
 ${P} blockquote { padding-inline-start: 1em; border-inline-start: 3px solid ${t('line')}; color: ${t('ink-2')}; }
 ${P} hr { border: 0; border-block-start: 1px solid ${t('line')}; }
-${P} > hr, ${P} > hr + * { margin-block-start: 2.5em; }
+${P} > hr, ${P} > hr + * { margin-block-start: calc(2.5 * ${t('prose-size')}); }
+${P} > hr + ${HEADINGS}:not(:first-child) { margin-block-start: max(2.2em, 2.5 * ${t('prose-size')}); }
 ${P} :is(img, video) { max-width: 100%; height: auto; border-radius: ${t('radius-shape')}; }
 ${P} table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.94em; font-variant-numeric: tabular-nums; }
 ${P} :is(th, td) { padding: 0.45em 0.8em; border: 1px solid ${t('line')}; text-align: start; }
