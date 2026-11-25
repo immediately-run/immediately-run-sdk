@@ -199,6 +199,13 @@ describe('resolveTokenFile', () => {
     expect(resolved.warnings).toEqual([expect.stringContaining('not valid JSON')]);
   });
 
+  it('stops at an unparseable marker: a broken bundle marker never reaches the root tokens', async () => {
+    const probe = probeOver({ [`b/${PROSE_MARKER_FILE}`]: '{ nope', [PROSE_TOKEN_FILE]: ':root{}' });
+    const resolved = await resolveTokenFile('b', probe);
+    expect(resolved).toMatchObject({ path: null, dir: 'b' });
+    expect(resolved.warnings).toEqual([expect.stringContaining('not valid JSON')]);
+  });
+
   it('warns when a named file is missing, and is silent when the default is', async () => {
     const named = await resolveTokenFile(
       '',

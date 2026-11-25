@@ -68,7 +68,14 @@ async function loadTokens(fs: MountFs, startDir: string): Promise<Loaded> {
     warn(`${path} is larger than ${PROSE_TOKEN_FILE_MAX_BYTES} bytes; author tokens are off`);
     return { blocks: null, watch };
   }
-  const text = await probeOf(fs).read(path);
+  let text: string | null;
+  try {
+    text = await probeOf(fs).read(path);
+  } catch (error) {
+    // Keep the watch: fixing the file must restyle the page, even a `styles`-named one.
+    warn(`${error instanceof Error ? error.message : String(error)}; author tokens are off`);
+    return { blocks: null, watch };
+  }
   if (text === null) {
     // Present at the lookup, gone at the read: a delete raced it, and its change re-runs us.
     warn(`${path} disappeared while it was being read; author tokens are off`);

@@ -34,6 +34,8 @@ jest.mock('../sandboxUtils', () => ({ protocolRequest: jest.fn() }));
 const files: Record<string, string> = {};
 const fsListeners = new Set<(paths: string[]) => void>();
 const failing = new Set<string>();
+/** Paths that stat as present but read back not-found: a delete racing the read. */
+const vanishing = new Set<string>();
 const notFound = () => Object.assign(new Error('not found'), { code: 'not-found' });
 jest.mock('../fs', () => ({
   openAppFs: () => ({
@@ -43,6 +45,7 @@ jest.mock('../fs', () => ({
     },
     readFile: async (path: string) => {
       if (failing.has(path)) throw Object.assign(new Error('EIO'), { code: 'unknown' });
+      if (vanishing.has(path)) throw notFound();
       if (!(path in files)) throw notFound();
       return files[path];
     },
@@ -80,6 +83,7 @@ beforeEach(() => {
   for (const k of Object.keys(files)) delete files[k];
   fsListeners.clear();
   failing.clear();
+  vanishing.clear();
 });
 
 /** Let the token reads (in-memory, so done within one macrotask) settle inside act. */
@@ -235,6 +239,34 @@ describe('Prose author tokens', () => {
     expect(container.querySelector('article')!.style.length).toBe(0);
     expect(warn).toHaveBeenCalledTimes(1);
     expect(warn.mock.calls[0][0]).toContain(`${CSS} could not be read (unknown)`);
+    warn.mockRestore();
+    unmount();
+  });
+
+  it('keeps watching a styles-named file whose read failed, so fixing it restyles the page', async () => {
+    files[MARKER] = JSON.stringify({ styles: 'theme.css' });
+    files['theme.css'] = ':root { --accent: navy; }';
+    failing.add('theme.css');
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container, unmount } = mount(<Prose filename="README.md" />);
+    await settle();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('theme.css could not be read'));
+    failing.delete('theme.css');
+    await changeFs('theme.css', ':root { --accent: olive; }');
+    expect(container.querySelector('article')!.style.getPropertyValue('--accent')).toBe('olive');
+    warn.mockRestore();
+    unmount();
+  });
+
+  it('warns when the token file disappears between the lookup and the read', async () => {
+    files[CSS] = TOKENS;
+    vanishing.add(CSS);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container, unmount } = mount(<Prose filename="README.md" />);
+    await settle();
+    expect(container.querySelector('article')!.style.length).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain(`${CSS} disappeared`);
     warn.mockRestore();
     unmount();
   });
