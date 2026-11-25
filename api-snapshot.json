@@ -149,6 +149,9 @@
     "Admonition": "fn(1..1)",
     "AdmonitionType": "union('caution'|'important'|'note'|'tip'|'warning')"
   },
+  "components/DirectoryView": {
+    "DirectoryView": "fn(1..1)"
+  },
   "components/FileRouter": {
     "FileRouter": "const(FC)"
   },
@@ -272,6 +275,16 @@
     "DialogProps": "interface('aria-label'?, children, className?, onDismiss(0..0), style?)",
     "useDialogDismiss": "fn(1..2)",
     "useDialogFocus": "fn(1..2)"
+  },
+  "directoryListing": {
+    "DirectoryEntry": "interface(isDirectory, name, path)",
+    "DirectoryListing": "interface(dir, entries, parent, readme)",
+    "isDirectoryPath": "fn(1..1)",
+    "namesDirectory": "fn(1..1)",
+    "pickReadme": "fn(1..1)",
+    "readDirectoryListing": "fn(1..1)",
+    "sortEntries": "fn(1..1)",
+    "toDirPath": "fn(1..1)"
   },
   "dnd": {
     "DraggableItem": "interface(bytes?, kind, mountId, name, relPath)",
@@ -777,7 +790,7 @@
     "Routes": "fn(1..1)",
     "RunAgentOptions": "interface(client, contextWindow?, events?, execute, history?, keepRecentTurns?, maxNudges?, maxTruncationRetries?, maxTurns?, pause?, prompt, reserveTokens?, signal?, steering?, system?, tokenBudget?, tools)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.96.0\")",
+    "SDK_VERSION": "const(\"0.97.0\")",
     "STEER_INTERRUPT_MARKER": "const(\"\\u241F[steer:interrupt]\\n\")",
     "STEER_MARKER": "const(\"\\u241F[steer]\\n\")",
     "STREAM_IDLE_TIMEOUT_MS": "const(120000)",
@@ -1468,7 +1481,7 @@
   "runtime": {
     "ImmediatelyRunGlobal": "interface(appMountPath?, protocolVersion?, ready?, region?, runtimeVersion?, transport?)",
     "SDK_PROTOCOL_VERSION": "const(\"1.0.0\")",
-    "SDK_VERSION": "const(\"0.96.0\")",
+    "SDK_VERSION": "const(\"0.97.0\")",
     "SdkHandshake": "interface(protocolVersion, sdkVersion)",
     "announceHandshake": "fn(0..0)",
     "getHostRuntime": "fn(0..0)",
@@ -1677,7 +1690,7 @@
     "useVcsState": "fn(0..0)"
   },
   "version": {
-    "SDK_VERSION": "const(\"0.96.0\")"
+    "SDK_VERSION": "const(\"0.97.0\")"
   },
   "workspace": {
     "Workspace": "interface(label, namespace, provider, ref, repository)",
