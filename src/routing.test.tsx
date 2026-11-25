@@ -8,7 +8,7 @@ jest.mock('./sandboxUtils', () => ({
 }));
 
 import { sendMessage } from './sandboxUtils';
-import { navigate, setNavigationHrefState } from './routing';
+import { navigate, registerNavigationHrefState } from './routing';
 import { parseHref } from './urlUtils';
 
 const mockSend = sendMessage as jest.MockedFunction<typeof sendMessage>;
@@ -48,27 +48,46 @@ describe('navigate — the urlchange payload (R3-876)', () => {
 // R3-1397 review rg:1-A-0: grove's followLinkOnClick calls preventDefault itself and then
 // navigates with `e.currentTarget.href`, which inside a bundle is the RENDERED bundle address.
 // navigate() must post the app-space files/ URL the host maps, as InternalLink's own click does.
+// The end-to-end case through a booted TinkerableApp is in boot.test.tsx.
 describe('navigate — a rendered bundle href posts the app-space URL (R3-1397)', () => {
   const PREFIX = 'https://immediately.run/present/github/immediately-run/baton/main/';
   const BASE = `${PREFIX}bundle/tickets/`;
   const outerHref = `${PREFIX}files/B-10.md`;
-  afterEach(() => setNavigationHrefState(null));
+  const state = (filesHrefBase: string | null) => ({ outerHref, navigationState: parseHref(outerHref), filesHrefBase });
+  const urlOf = (i: number) => (mockSend.mock.calls[i][1] as { url: string }).url;
 
   it("posts files/<rest> for an anchor's bundle href, as grove's policy sends it", () => {
-    setNavigationHrefState({ outerHref, navigationState: parseHref(outerHref), filesHrefBase: BASE });
+    const remove = registerNavigationHrefState(state(BASE));
     navigate(`${BASE}B-11.md#r-1`);
     expect(mockSend).toHaveBeenCalledWith('urlchange', {
       url: `${PREFIX}files/B-11.md#r-1`,
       back: false,
       forward: false,
     });
+    remove();
   });
 
-  it('posts its target unchanged with no base, or before the shell set any state', () => {
+  it('posts its target unchanged with no base, or before any shell registered', () => {
     navigate(`${BASE}B-11.md`);
-    expect((mockSend.mock.calls[0][1] as { url: string }).url).toBe(`${BASE}B-11.md`);
-    setNavigationHrefState({ outerHref, navigationState: parseHref(outerHref), filesHrefBase: null });
+    expect(urlOf(0)).toBe(`${BASE}B-11.md`);
+    const remove = registerNavigationHrefState(state(null));
     navigate(`${PREFIX}files/B-11.md`);
-    expect((mockSend.mock.calls[1][1] as { url: string }).url).toBe(`${PREFIX}files/B-11.md`);
+    expect(urlOf(1)).toBe(`${PREFIX}files/B-11.md`);
+    remove();
+  });
+
+  it("a second shell unmounting, in either order, never erases the survivor's state (rg:2-r2-1)", () => {
+    const removeA = registerNavigationHrefState(state(BASE));
+    const removeB = registerNavigationHrefState(state(BASE));
+    removeA();
+    navigate(`${BASE}B-11.md`);
+    expect(urlOf(0)).toBe(`${PREFIX}files/B-11.md`);
+    const removeC = registerNavigationHrefState(state(BASE));
+    removeC();
+    navigate(`${BASE}B-12.md`);
+    expect(urlOf(1)).toBe(`${PREFIX}files/B-12.md`);
+    removeB();
+    navigate(`${BASE}B-13.md`);
+    expect(urlOf(2)).toBe(`${BASE}B-13.md`);
   });
 });

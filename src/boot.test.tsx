@@ -8,6 +8,8 @@ import { createRoot } from 'react-dom/client';
 
 import { CATCH_ALL_ROUTING_SPEC, DEFAULT_ROUTING_SPEC, TinkerableApp } from './boot';
 import { Route, Routes } from './components/Routes';
+import { Link } from './components/Link';
+import { navigate } from './routing';
 import { matchRoute } from './routeMatch';
 import { createMockHost } from './testing';
 import type { RoutingSpec } from './RoutingSpec';
@@ -76,5 +78,62 @@ describe('TinkerableApp', () => {
     const r = renderApp(<TinkerableApp routingSpec={spec} />);
     expect(r.text()).toBe('routed');
     r.unmount();
+  });
+});
+
+// R3-1397 round 2 (rg:2-r2-0): the wiring that makes navigate() map a rendered bundle href,
+// driven end to end. A booted TinkerableApp receives the host's push with a filesHrefBase,
+// renders an SDK Link, and a click handled the way grove's followLinkOnClick handles it
+// (preventDefault, then navigate(e.currentTarget.href), the DOM-normalised anchor href)
+// must post the app-space files/ URL. Deleting TinkerableApp's registration turns this red.
+describe('TinkerableApp inside a bundle (R3-1397)', () => {
+  const PREFIX = 'https://localhost/present/github/acme/blog/main/';
+  const BASE = `${PREFIX}bundle/tickets/`;
+
+  const mountInBundle = () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <TinkerableApp routingSpec={CATCH_ALL_ROUTING_SPEC}>
+          <Link
+            href="B-11.md"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate(e.currentTarget.href);
+            }}
+          >
+            next
+          </Link>
+        </TinkerableApp>,
+      );
+    });
+    act(() => {
+      host.emit({ type: 'urlchange', url: `${PREFIX}files/B-10.md`, back: false, forward: false, filesHrefBase: BASE });
+    });
+    const anchor = () => container.querySelector('a')!;
+    const unmount = () => {
+      act(() => root.unmount());
+      container.remove();
+    };
+    return { anchor, unmount };
+  };
+  const lastUrlchange = () => host.sent.filter((m) => m.type === 'urlchange').slice(-1)[0]?.data.url;
+
+  it("renders the bundle href, and a grove-shaped click on it posts the app's files/ URL", () => {
+    const app = mountInBundle();
+    expect(app.anchor().href).toBe(`${BASE}B-11.md`);
+    act(() => {
+      app.anchor().dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 }));
+    });
+    expect(lastUrlchange()).toBe(`${PREFIX}files/B-11.md`);
+    app.unmount();
+  });
+
+  it('after the shell unmounts, navigate() no longer maps', () => {
+    mountInBundle().unmount();
+    act(() => navigate(`${BASE}B-11.md`));
+    expect(lastUrlchange()).toBe(`${BASE}B-11.md`);
   });
 });

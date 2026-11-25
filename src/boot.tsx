@@ -12,7 +12,7 @@ import { getInitialContext, updateContext } from './contextUtils';
 import { getInjectedMetadataEmitter, resolveMetadataSource } from './injectedBundler';
 import { MDXProvider } from './MDXProvider';
 import { ModuleCache, ModuleCacheContextProvider } from './moduleCache';
-import { Router, setNavigationHrefState } from './routing';
+import { Router, registerNavigationHrefState } from './routing';
 import type { RoutingSpec } from './RoutingSpec';
 import { FilesMetadata } from './sandboxTypes';
 import { addListener } from './sandboxUtils';
@@ -128,10 +128,10 @@ export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingS
 
   // R3-1397: keep `navigate()`'s inverse mapping on the same href state the links render from.
   const { outerHref, navigationState, filesHrefBase } = context;
-  useLayoutEffect(() => {
-    setNavigationHrefState({ outerHref, navigationState, filesHrefBase });
-    return () => setNavigationHrefState(null);
-  }, [outerHref, navigationState, filesHrefBase]);
+  useLayoutEffect(
+    () => registerNavigationHrefState({ outerHref, navigationState, filesHrefBase }),
+    [outerHref, navigationState, filesHrefBase],
+  );
 
   return (
     <TinkerableContext value={context}>

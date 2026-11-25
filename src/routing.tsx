@@ -135,19 +135,26 @@ export const setViewedDocumentResolver = (
 
 // R3-1397: the shell's current href state (its `outerHref`, `navigationState` and
 // `filesHrefBase`), kept here so `navigate()` can map a rendered bundle href back to the app's
-// `files/` URL (`appHrefFor`). `TinkerableApp` sets it whenever its context changes. It is null
-// before boot and outside the shell, and then `navigate()` posts its target unchanged.
+// `files/` URL (`appHrefFor`). Each mounted `TinkerableApp` registers its own entry and removes
+// exactly that entry on unmount, so a second instance unmounting never erases the first's
+// (round 2, rg:2-r2-1). The newest live registration wins. Empty before boot and outside the
+// shell, and then `navigate()` posts its target unchanged.
 type HrefState = Parameters<typeof appHrefFor>[1];
-let hrefState: HrefState | null = null;
+const hrefStates: HrefState[] = [];
 
-/** Hand `navigate()` the shell's current href state (R3-1397); `null` clears it. */
-export const setNavigationHrefState = (state: HrefState | null): void => {
-  hrefState = state;
+/** Register the shell's href state for `navigate()` (R3-1397); returns its removal. */
+export const registerNavigationHrefState = (state: HrefState): (() => void) => {
+  hrefStates.push(state);
+  return () => {
+    const i = hrefStates.lastIndexOf(state);
+    if (i !== -1) hrefStates.splice(i, 1);
+  };
 };
 
 export const navigate = (rawTarget: string, opts?: { viewedDocument?: string | null; replace?: boolean }) => {
   // A rendered bundle href (an anchor's real `href`, read by a consumer's own click policy)
   // goes back to the app-space URL the host maps. Identity with no base.
+  const hrefState = hrefStates[hrefStates.length - 1];
   const target = hrefState ? appHrefFor(rawTarget, hrefState) : rawTarget;
   console.log(`[Sandbox] Navigating to ${target}`);
   // Explicit option first; else the registered resolver; else nothing on the
