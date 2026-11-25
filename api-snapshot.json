@@ -1559,6 +1559,9 @@
     "Status": "fn(1..1)",
     "StatusProps": "interface(assertive?, children, className?, style?)"
   },
+  "styleElement": {
+    "ensureStyleElement": "fn(2..3)"
+  },
   "tasks": {
     "CaptureOptions": "interface(facing?)",
     "CaptureResult": "interface(bytes, durationMs, mimeType)",
