@@ -1,0 +1,1 @@
+{"version":3,"sources":["../../src/safeContent/sanitizeUrl.ts"],"sourcesContent":["// R3-279 (phase 3): re-export shim — the implementation lives in\n// `@immediately-run/safe-content`; this subpath keeps working byte-compatibly.\nexport { sanitizeUrl } from '@immediately-run/safe-content';\n"],"mappings":";AAEA,SAAS,mBAAmB;","names":[]}
