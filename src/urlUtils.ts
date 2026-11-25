@@ -120,6 +120,61 @@ export const constructOuterUrl = (
   return new URL(sandboxTarget, constructUrl(previousOuterHref, navigationState)).toString();
 };
 
+/**
+ * The host's href base for this app's `files/` space, or `null` (R3-1397).
+ *
+ * Inside a bundle the host hands the app its own route space (`files/<rest>`, relative to
+ * the bundle) while the address bar shows the bundle's own address. A link rendered from
+ * the app's space is therefore right to CLICK (the host maps it) and wrong to COPY: as a
+ * URL, `files/` is filesystem-true and names a different file. The host sends the
+ * address its bar would show for the app's `files/` home as `filesHrefBase`, an opaque
+ * string the SDK prepends and never parses (REPO_CONTENT_DISPATCH_SPEC §9, the owner
+ * 2026-11-25).
+ *
+ * A base that is not an absolute URL ending in `/` on `outerHref`'s own origin is a host
+ * bug: it is dropped with a warning, and links keep their app-space href.
+ */
+export const acceptFilesHrefBase = (base: unknown, outerHref: string): string | null => {
+  if (base === undefined || base === null || base === '') return null;
+  let ok = false;
+  try {
+    ok = typeof base === 'string' && base.endsWith('/') && getOuterHostname(base) === getOuterHostname(outerHref);
+  } catch {
+    ok = false;
+  }
+  if (!ok) {
+    console.warn(
+      `[sdk] ignoring filesHrefBase ${JSON.stringify(
+        base,
+      )}: not an absolute URL ending in '/' on ${outerHref}'s origin`,
+    );
+    return null;
+  }
+  return base as string;
+};
+
+/**
+ * The href to RENDER for an app-space URL (one {@link constructOuterUrl} built). With a
+ * {@link acceptFilesHrefBase} base, a URL in the app's `files/` space becomes the base
+ * plus the rest (path, `?search`, `#hash` kept verbatim); anything else, and everything
+ * when there is no base, is returned unchanged. Only what is rendered changes: a click
+ * still navigates with the app-space URL, which is what the host maps.
+ */
+export const displayHref = (
+  appHref: string,
+  state: { outerHref: string; navigationState: NavigationState; filesHrefBase?: string | null },
+): string => {
+  if (!state.filesHrefBase) return appHref;
+  const filesHome = repositoryPrefixURL(state.outerHref, state.navigationState) + FILES_PREFIX.slice(1);
+  if (!appHref.startsWith(filesHome)) return appHref;
+  const rest = appHref.slice(filesHome.length);
+  if (rest === '') return state.filesHrefBase;
+  if (rest.startsWith('/')) return state.filesHrefBase + rest.slice(1);
+  if (rest.startsWith('?') || rest.startsWith('#')) return state.filesHrefBase + rest;
+  // `files…` that is not the `files` segment (`/filesystem/x`): not this space.
+  return appHref;
+};
+
 export const isInternalHref = (outerHref: string, target: string, navigationState: NavigationState) => {
   const parsedUrl = maybeParseUrl(target);
   if (parsedUrl) {

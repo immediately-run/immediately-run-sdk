@@ -1,6 +1,6 @@
 import type { RoutingSpec } from './RoutingSpec';
 import { type TinkerableState } from './TinkerableContext';
-import { parseHref, getSearchParams } from './urlUtils';
+import { acceptFilesHrefBase, parseHref, getSearchParams } from './urlUtils';
 import { FilesMetadata } from './sandboxTypes';
 import { applyRoutingRule } from './routing';
 import { getInjectedMetadataSnapshot } from './injectedBundler';
@@ -9,6 +9,7 @@ export const getContextFromUrl = (
   routingSpec: RoutingSpec,
   outerHref: string,
   filesMetadata?: FilesMetadata,
+  filesHrefBase?: unknown,
 ): TinkerableState => {
   const navigationState = parseHref(outerHref);
   const appliedRoutingRule = applyRoutingRule(routingSpec, navigationState);
@@ -20,6 +21,7 @@ export const getContextFromUrl = (
     filesMetadata: filesMetadata ?? {},
     routingSpec,
     outerHref,
+    filesHrefBase: acceptFilesHrefBase(filesHrefBase, outerHref),
     navigationState: {
       ...navigationState,
       ...appliedRoutingRule,
@@ -33,13 +35,24 @@ export const getInitialContext = (routingSpec: RoutingSpec): (() => TinkerableSt
   // injected bundler's boot snapshot (§1.4) so the first synchronous frame already
   // holds the full MDX collection (injected path). Off-injection the snapshot is null
   // → `{}`, and the store fills from `metadata-update` events as before (event-fill).
-  return () => getContextFromUrl(routingSpec, searchParams['href'], getInjectedMetadataSnapshot() ?? undefined);
+  // R3-1397: the host's href base rides beside it, as its own search param.
+  return () =>
+    getContextFromUrl(
+      routingSpec,
+      searchParams['href'],
+      getInjectedMetadataSnapshot() ?? undefined,
+      searchParams['filesHrefBase'],
+    );
 };
 
-export const updateContext = (context: TinkerableState, href: string): TinkerableState => {
-  // No update is necessary if outerHref has not changed.
-  if (href === context.outerHref) {
+/** Apply a host `urlchange`. Each push carries the whole truth, so a push without a
+ *  `filesHrefBase` clears the base (R3-1397). */
+export const updateContext = (context: TinkerableState, href: string, filesHrefBase?: unknown): TinkerableState => {
+  // Validated once, so a rejected base warns once; an accepted one re-validates silently.
+  const base = acceptFilesHrefBase(filesHrefBase, href);
+  // No update is necessary if neither the href nor the base has changed.
+  if (href === context.outerHref && base === (context.filesHrefBase ?? null)) {
     return context;
   }
-  return getContextFromUrl(context.routingSpec, href, context.filesMetadata);
+  return getContextFromUrl(context.routingSpec, href, context.filesMetadata, base);
 };

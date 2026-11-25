@@ -178,3 +178,60 @@ describe('Link — the drawer-shaped case end to end', () => {
     r.unmount();
   });
 });
+
+// R3-1397 — inside a bundle the host sends `filesHrefBase`; the rendered href is the
+// bundle's own address while a plain click still routes the app-space URL (which is
+// what the host maps). The outer state is `parseHref` of a host-shaped URL.
+describe('Link inside a bundle (R3-1397)', () => {
+  const PREFIX = 'https://immediately.run/present/github/immediately-run/baton/main/';
+  const BASE = `${PREFIX}bundle/tickets/`;
+  const stateAt = (filesHrefBase: string | null) => {
+    const outerHref = `${PREFIX}files/B-10.md`;
+    return { outerHref, navigationState: parseHref(outerHref), filesHrefBase } as TinkerableState;
+  };
+
+  it('renders the bundle address and routes the app-space URL on click', () => {
+    const r = render(
+      <TinkerableContext value={stateAt(BASE)}>
+        <Link href="B-11.md#r-2">B-11</Link>
+      </TinkerableContext>,
+    );
+    expect(r.anchor().getAttribute('href')).toBe(`${BASE}B-11.md#r-2`);
+    click(r.anchor());
+    expect(navigate).toHaveBeenCalledWith(`${PREFIX}files/B-11.md#r-2`);
+    r.unmount();
+  });
+
+  it('without a base, href and click are the app-space URL, as before', () => {
+    const r = render(
+      <TinkerableContext value={stateAt(null)}>
+        <Link href="B-11.md">B-11</Link>
+      </TinkerableContext>,
+    );
+    expect(r.anchor().getAttribute('href')).toBe(`${PREFIX}files/B-11.md`);
+    click(r.anchor());
+    expect(navigate).toHaveBeenCalledWith(`${PREFIX}files/B-11.md`);
+    r.unmount();
+  });
+
+  it('an external link is untouched by the base', () => {
+    const r = render(
+      <TinkerableContext value={stateAt(BASE)}>
+        <Link href="https://example.com/files/x">x</Link>
+      </TinkerableContext>,
+    );
+    expect(r.anchor().getAttribute('href')).toBe('https://example.com/files/x');
+    r.unmount();
+  });
+
+  it('InternalLink never forwards navigateHref to the DOM', () => {
+    const r = render(
+      <InternalLink href={`${BASE}B-11.md`} navigateHref={`${PREFIX}files/B-11.md`}>
+        x
+      </InternalLink>,
+    );
+    expect(r.anchor().hasAttribute('navigatehref')).toBe(false);
+    expect(r.anchor().getAttribute('href')).toBe(`${BASE}B-11.md`);
+    r.unmount();
+  });
+});

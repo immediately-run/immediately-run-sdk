@@ -23,6 +23,9 @@ export type TinkerableState = {
   navigationState: NavigationState;
   routingSpec: RoutingSpec;
   filesMetadata: FilesMetadata;
+  /** The host's href base for the app's `files/` space inside a bundle, or `null`
+   *  (absent: an older host, or no bundle). Read it through `displayHref`. */
+  filesHrefBase?: string | null;
 };
 
 export const TinkerableContext = createContext<TinkerableState>({} as TinkerableState);

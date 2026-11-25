@@ -75,24 +75,27 @@ const updateAlreadyApplied = (filesMetadata: FilesMetadata, update: FilesMetadat
 export const TinkerableApp = ({ routingSpec, children }: { routingSpec: RoutingSpec; children?: ReactNode }) => {
   const [context, setContext] = useState<TinkerableState>(getInitialContext(routingSpec));
   useEffect(() => {
-    const removeListener = addListener(URLCHANGE, ({ url, entryState, back, forward }: UrlchangePayload) => {
-      // R3-627: record what the host says about this arrival BEFORE the route state
-      // updates, so a consumer reacting to the new route already sees the scratch
-      // and the direction that produced it.
-      receiveNavigation({
-        state: (entryState ?? undefined) as Record<string, unknown> | undefined,
-        direction: back ? 'back' : forward ? 'forward' : 'push',
-      });
-      setContext((context) => {
-        const updatedContext = updateContext(context, url);
-        if (updatedContext !== context) {
-          console.log(
-            `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`,
-          );
-        }
-        return updatedContext;
-      });
-    });
+    const removeListener = addListener(
+      URLCHANGE,
+      ({ url, entryState, back, forward, filesHrefBase }: UrlchangePayload) => {
+        // R3-627: record what the host says about this arrival BEFORE the route state
+        // updates, so a consumer reacting to the new route already sees the scratch
+        // and the direction that produced it.
+        receiveNavigation({
+          state: (entryState ?? undefined) as Record<string, unknown> | undefined,
+          direction: back ? 'back' : forward ? 'forward' : 'push',
+        });
+        setContext((context) => {
+          const updatedContext = updateContext(context, url, filesHrefBase);
+          if (updatedContext !== context) {
+            console.log(
+              `[Sandbox] Updating path from ${context.navigationState.sandboxPath} to ${updatedContext.navigationState.sandboxPath}`,
+            );
+          }
+          return updatedContext;
+        });
+      },
+    );
     return removeListener;
   }, [setContext]);
   useEffect(() => {

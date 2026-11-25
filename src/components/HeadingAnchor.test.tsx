@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 
 import { HeadingAnchor } from './HeadingAnchor';
 import { TinkerableContext } from '../TinkerableContext';
+import { parseHref } from '../urlUtils';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -72,6 +73,22 @@ describe('HeadingAnchor — the permalink a reader copies', () => {
   it('renders nothing without an id, rather than a dead `#` link', () => {
     const { container, unmount } = render(<HeadingAnchor />);
     expect(container.querySelector('a')).toBeNull();
+    unmount();
+  });
+});
+
+// R3-1397 — inside a bundle the permalink a reader copies is the bundle's own address.
+describe('HeadingAnchor inside a bundle (R3-1397)', () => {
+  it('prefixes the host base and keeps the fragment', () => {
+    const outerHref = 'https://immediately.run/present/github/immediately-run/baton/main/files/B-10.md';
+    const base = 'https://immediately.run/present/github/immediately-run/baton/main/bundle/tickets/';
+    const state = { outerHref, navigationState: parseHref(outerHref), filesHrefBase: base } as never;
+    const { container, unmount } = render(
+      <TinkerableContext.Provider value={state}>
+        <HeadingAnchor id="r-2" />
+      </TinkerableContext.Provider>,
+    );
+    expect(container.querySelector('a')?.getAttribute('href')).toBe(`${base}B-10.md#r-2`);
     unmount();
   });
 });
