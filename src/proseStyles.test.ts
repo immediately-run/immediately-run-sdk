@@ -60,6 +60,13 @@ describe('PROSE_STYLE_TEXT', () => {
     expect(PROSE_STYLE_TEXT).toContain('display: grid;');
     expect(PROSE_STYLE_TEXT).not.toMatch(/padding-inline:[^;]*100%/);
     expect(PROSE_STYLE_TEXT).toMatch(/> \* \{ grid-column: 2;/);
+    // With min-height: 100dvh, auto rows would otherwise stretch to fill a short file.
+    expect(PROSE_STYLE_TEXT).toContain('align-content: start;');
+  });
+
+  it('spaces an hr with start margins only (grid items do not collapse margins)', () => {
+    expect(PROSE_STYLE_TEXT).toContain('> hr + * { margin-block-start: 2.5em; }');
+    expect(PROSE_STYLE_TEXT).not.toMatch(/hr \{[^}]*margin-block:/);
   });
 
   it('drops the bullet of every task item, tight or loose (the checkbox is not a direct child in a loose list)', () => {

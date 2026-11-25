@@ -4,7 +4,6 @@
 // dist CSS import as JavaScript — so the stylesheet is text generated here and injected
 // once through `ensureStyleElement`, the guard `loading.tsx` shares.
 
-import { ensureStyleElement } from './styleElement';
 //
 // Two properties carry the design:
 //   - every rule sits in `@layer ir.defaults`, so any unlayered author rule beats it
@@ -13,6 +12,8 @@ import { ensureStyleElement } from './styleElement';
 //     `var(--ink, var(--_ir-ink))`. The defaults live in private `--_ir-*` properties.
 //     An app or theme that already defines `--ink` higher in the tree therefore flows
 //     into its prose, and an author's value set on the article wins over the default.
+
+import { ensureStyleElement } from './styleElement';
 
 /** The class on the element that wraps rendered Markdown. */
 export const PROSE_CLASS = 'ir-prose';
@@ -97,6 +98,7 @@ ${P} {
   overflow-wrap: break-word;
   padding-block: clamp(1.5rem, 6vw, 4rem) 6rem;
   display: grid;
+  align-content: start;
   grid-template-columns:
     minmax(${t('page-gutter')}, 1fr)
     min(${t('prose-measure')}, 100% - 2 * ${t('page-gutter')})
@@ -179,7 +181,8 @@ ${P} li::marker { color: ${t('ink-2')}; }
 ${P} li.task-list-item { list-style: none; margin-inline-start: -1.3em; }
 ${P} input[type="checkbox"] { margin-inline-end: 0.5em; accent-color: ${t('accent')}; }
 ${P} blockquote { padding-inline-start: 1em; border-inline-start: 3px solid ${t('line')}; color: ${t('ink-2')}; }
-${P} hr { border: 0; border-block-start: 1px solid ${t('line')}; margin-block: 2.5em; }
+${P} hr { border: 0; border-block-start: 1px solid ${t('line')}; }
+${P} > hr, ${P} > hr + * { margin-block-start: 2.5em; }
 ${P} :is(img, video) { max-width: 100%; height: auto; border-radius: ${t('radius-shape')}; }
 ${P} table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.94em; font-variant-numeric: tabular-nums; }
 ${P} :is(th, td) { padding: 0.45em 0.8em; border: 1px solid ${t('line')}; text-align: start; }
