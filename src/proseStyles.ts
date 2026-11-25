@@ -2,7 +2,9 @@
 //
 // A published library cannot `import './prose.css'` — the sandbox bundler evaluates a
 // dist CSS import as JavaScript — so the stylesheet is text generated here and injected
-// once, the way `loading.tsx` injects its keyframes.
+// once through `ensureStyleElement`, the guard `loading.tsx` shares.
+
+import { ensureStyleElement } from './styleElement';
 //
 // Two properties carry the design:
 //   - every rule sits in `@layer ir.defaults`, so any unlayered author rule beats it
@@ -68,6 +70,14 @@ const declarations = (pick: (token: ProseToken) => string, only?: (token: ProseT
     .join(' ');
 
 const P = `.${PROSE_CLASS}`;
+
+/**
+ * The narrowest viewport that keeps the heading anchor in the gutter. Below it the side
+ * column shrinks to `--page-gutter` (20px), narrower than an h1's `#`, so the anchor
+ * floats to the line end as on touch devices instead of being clipped at the edge.
+ */
+const GUTTER_ANCHOR_MIN_WIDTH = '48rem';
+const FLOAT_ANCHOR_MAX_WIDTH = '47.99rem';
 const HEADINGS = ':is(h1, h2, h3, h4, h5, h6)';
 
 /** The whole default stylesheet. */
@@ -87,11 +97,14 @@ ${P} {
   -webkit-font-smoothing: antialiased;
   overflow-wrap: break-word;
   padding-block: clamp(1.5rem, 6vw, 4rem) 6rem;
-  padding-inline: max(${t('page-gutter')}, calc((100% - ${t('prose-measure')}) / 2));
+  display: grid;
+  grid-template-columns:
+    minmax(${t('page-gutter')}, 1fr)
+    min(${t('prose-measure')}, 100% - 2 * ${t('page-gutter')})
+    minmax(${t('page-gutter')}, 1fr);
 }
-${P} > * { margin-block: 0; }
+${P} > * { grid-column: 2; min-inline-size: 0; margin-block: 0; }
 ${P} > * + * { margin-block-start: ${t('prose-flow')}; }
-${P} > :first-child { margin-block-start: 0; }
 
 ${P} ${HEADINGS} {
   position: relative;
@@ -113,7 +126,7 @@ ${P} > :is(h1, h2, h3, h4) + * { margin-block-start: 0.7em; }
 
 ${P} .ir-heading-anchor { color: ${t('ink-3')}; text-decoration: none; font-weight: 400; }
 ${P} .ir-heading-anchor:hover { color: ${t('accent')}; }
-@media (hover: hover) {
+@media (hover: hover) and (min-width: ${GUTTER_ANCHOR_MIN_WIDTH}) {
   ${P} .ir-heading-anchor {
     position: absolute;
     inset-inline-end: 100%;
@@ -126,7 +139,7 @@ ${P} .ir-heading-anchor:hover { color: ${t('accent')}; }
   ${P} ${HEADINGS}:hover .ir-heading-anchor,
   ${P} .ir-heading-anchor:focus-visible { opacity: 1; }
 }
-@media (hover: none) {
+@media (hover: none), (max-width: ${FLOAT_ANCHOR_MAX_WIDTH}) {
   ${P} .ir-heading-anchor {
     float: inline-end;
     min-inline-size: 24px;
@@ -164,7 +177,7 @@ ${P} pre code { font: inherit; background: none; padding: 0; }
 ${P} :is(ul, ol) { padding-inline-start: 1.5em; }
 ${P} li + li, ${P} li > :is(ul, ol) { margin-block-start: 0.35em; }
 ${P} li::marker { color: ${t('ink-2')}; }
-${P} li:has(> input[type="checkbox"]) { list-style: none; margin-inline-start: -1.3em; }
+${P} li.task-list-item { list-style: none; margin-inline-start: -1.3em; }
 ${P} input[type="checkbox"] { margin-inline-end: 0.5em; accent-color: ${t('accent')}; }
 ${P} blockquote { padding-inline-start: 1em; border-inline-start: 3px solid ${t('line')}; color: ${t('ink-2')}; }
 ${P} hr { border: 0; border-block-start: 1px solid ${t('line')}; margin-block: 2.5em; }
@@ -189,10 +202,5 @@ export const isProseFile = (path: string): boolean => /\.mdx?$/i.test(path);
  * First in the document makes it the lowest layer; unlayered rules beat it either way.
  */
 export function ensureProseStyles(): void {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(PROSE_STYLE_ID)) return;
-  const el = document.createElement('style');
-  el.id = PROSE_STYLE_ID;
-  el.textContent = PROSE_STYLE_TEXT;
-  document.head.prepend(el);
+  ensureStyleElement(PROSE_STYLE_ID, PROSE_STYLE_TEXT, { first: true });
 }

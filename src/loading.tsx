@@ -18,6 +18,7 @@
 // Self-contained: the SDK ships no CSS pipeline, so the keyframes are injected once
 // into the document and everything else is inline styles — zero config for the author.
 import { useEffect, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { ensureStyleElement } from './styleElement';
 
 /** Loading timing constants, matching the host (LOADING_UX_SPEC §3, the 2026-06-22
  *  design bundle). Exported so authors who hand-roll still match the platform. */
@@ -45,12 +46,7 @@ const STYLE_TEXT = `
 
 /** Inject the shimmer/spin keyframes once (idempotent, browser-only). */
 function ensureLoadingStyles(): void {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(STYLE_ID)) return;
-  const el = document.createElement('style');
-  el.id = STYLE_ID;
-  el.textContent = STYLE_TEXT;
-  document.head.appendChild(el);
+  ensureStyleElement(STYLE_ID, STYLE_TEXT);
 }
 
 /** Ensure the loading keyframes exist before the component paints. */

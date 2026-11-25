@@ -49,9 +49,22 @@ describe('PROSE_STYLE_TEXT', () => {
   });
 
   it('places the heading anchor in the gutter for hover devices and floats it for touch', () => {
-    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: hover\)[\s\S]*inset-inline-end: 100%/);
-    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: none\)[\s\S]*float: inline-end/);
+    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: hover\) and \(min-width: 48rem\)[\s\S]*inset-inline-end: 100%/);
+    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: none\), \(max-width: 47\.99rem\)[\s\S]*float: inline-end/);
     expect(PROSE_STYLE_TEXT).not.toContain('flex-direction');
+  });
+
+  it('centres the column with a grid on the article itself, not with percentage padding', () => {
+    // Percentage padding resolves against the PARENT's width, which squeezed a <Prose>
+    // placed as a flex item beside a sidebar.
+    expect(PROSE_STYLE_TEXT).toContain('display: grid;');
+    expect(PROSE_STYLE_TEXT).not.toMatch(/padding-inline:[^;]*100%/);
+    expect(PROSE_STYLE_TEXT).toMatch(/> \* \{ grid-column: 2;/);
+  });
+
+  it('drops the bullet of every task item, tight or loose (the checkbox is not a direct child in a loose list)', () => {
+    expect(PROSE_STYLE_TEXT).toContain('li.task-list-item { list-style: none;');
+    expect(PROSE_STYLE_TEXT).not.toContain(':has(> input');
   });
 });
 
