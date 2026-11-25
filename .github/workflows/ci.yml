@@ -534,7 +534,7 @@ jobs:
           echo "::warning::Dispatch was accepted but no NEW deploy run became visible within 60s (newest is still ${before}). Check https://github.com/immediately-run/deploy/actions and, if nothing is queued, run: ${MANUAL}"
 
   # Serve the gh-pages branch the release job just pushed (pages.yml: the
-  # Actions-based deploy with our own timeout). Runs after every release, version
+  # Actions-based deploy, upload and deploy in two jobs). Runs after every release, version
   # bump or not, so the docs at the root stay current too. A failed deploy fails
   # this job visibly; the legacy builder's failures were only on the Pages tab.
   pages:
