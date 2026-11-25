@@ -33,6 +33,7 @@ jest.mock('../sandboxUtils', () => ({ protocolRequest: jest.fn() }));
 // `changeFs` exactly as the host's working-tree push would reach `openAppFs().onChange`.
 const files: Record<string, string> = {};
 const fsListeners = new Set<(paths: string[]) => void>();
+const failing = new Set<string>();
 const notFound = () => Object.assign(new Error('not found'), { code: 'not-found' });
 jest.mock('../fs', () => ({
   openAppFs: () => ({
@@ -41,6 +42,7 @@ jest.mock('../fs', () => ({
       return { kind: 'file', size: new TextEncoder().encode(files[path]).length };
     },
     readFile: async (path: string) => {
+      if (failing.has(path)) throw Object.assign(new Error('EIO'), { code: 'unknown' });
       if (!(path in files)) throw notFound();
       return files[path];
     },
@@ -57,6 +59,10 @@ let act: typeof import('react').act;
 let createRoot: typeof import('react-dom/client').createRoot;
 let Prose: typeof import('./Prose').Prose;
 let styles: typeof import('../proseStyles');
+// Imported once, not reset: plain string constants, so the registry reset cannot split them.
+const { PROSE_TOKEN_FILE: CSS, PROSE_MARKER_FILE: MARKER } = jest.requireActual(
+  '../proseTokens',
+) as typeof import('../proseTokens');
 
 const push = (theme: 'light' | 'dark') =>
   act(() => {
@@ -73,6 +79,7 @@ beforeEach(() => {
   document.head.innerHTML = '';
   for (const k of Object.keys(files)) delete files[k];
   fsListeners.clear();
+  failing.clear();
 });
 
 /** Let the token reads (in-memory, so done within one macrotask) settle inside act. */
@@ -134,8 +141,8 @@ describe('Prose author tokens', () => {
 :root[data-theme="dark"] { --ink: #eee; }`;
 
   it("applies each wrapper its own directory's tokens, as properties, never as a stylesheet", async () => {
-    files['guide/immediately.run.css'] = TOKENS;
-    files['notes/immediately.run.css'] = ':root { --accent: green; }';
+    files[`guide/${CSS}`] = TOKENS;
+    files[`notes/${CSS}`] = ':root { --accent: green; }';
     const a = mount(<Prose filename="guide/intro.md" />);
     const b = mount(<Prose filename="notes/todo.md" />);
     await settle();
@@ -151,7 +158,7 @@ describe('Prose author tokens', () => {
   });
 
   it('clears every property it set on unmount', async () => {
-    files['immediately.run.css'] = TOKENS;
+    files[CSS] = TOKENS;
     let seen: HTMLElement | null = null;
     const m = mount(<Prose filename="README.md" ref={(el) => void (el && (seen = el))} />);
     await settle();
@@ -163,7 +170,7 @@ describe('Prose author tokens', () => {
   });
 
   it('re-applies the other polarity on a theme push', async () => {
-    files['immediately.run.css'] = TOKENS;
+    files[CSS] = TOKENS;
     const { container, unmount } = mount(<Prose filename="README.md" />);
     await settle();
     const el = container.querySelector('article')!;
@@ -175,40 +182,65 @@ describe('Prose author tokens', () => {
   });
 
   it('re-reads on a change to the token file, and drops a token removed from it', async () => {
-    files['immediately.run.css'] = TOKENS;
+    files[CSS] = TOKENS;
     const { container, unmount } = mount(<Prose filename="docs/a.md" />);
     await settle();
     const el = container.querySelector('article')!;
-    await changeFs('immediately.run.css', ':root { --accent: purple; }');
+    await changeFs(CSS, ':root { --accent: purple; }');
     expect(el.style.getPropertyValue('--accent')).toBe('purple');
     expect(el.style.getPropertyValue('--ink')).toBe('');
     unmount();
   });
 
   it('picks up a marker created on the walked path', async () => {
-    files['immediately.run.css'] = TOKENS;
+    files[CSS] = TOKENS;
     files['alt.css'] = ':root { --accent: teal; }';
     const { container, unmount } = mount(<Prose filename="README.md" />);
     await settle();
-    await changeFs('immediately.run.json', JSON.stringify({ styles: 'alt.css' }));
+    await changeFs(MARKER, JSON.stringify({ styles: 'alt.css' }));
     expect(container.querySelector('article')!.style.getPropertyValue('--accent')).toBe('teal');
     unmount();
   });
 
   it('warns once naming the file and renders with the defaults when the file is refused', async () => {
     const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    files['immediately.run.css'] = 'h2 { --accent: red; }';
+    files[CSS] = 'h2 { --accent: red; }';
     const { container, unmount } = mount(<Prose filename="README.md" />);
     await settle();
     expect(container.querySelector('article')!.style.length).toBe(0);
     expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn.mock.calls[0][0]).toContain('immediately.run.css');
+    expect(warn.mock.calls[0][0]).toContain(CSS);
+    warn.mockRestore();
+    unmount();
+  });
+
+  it('picks up a styles-named file created after its marker', async () => {
+    files[MARKER] = JSON.stringify({ styles: 'theme.css' });
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container, unmount } = mount(<Prose filename="README.md" />);
+    await settle();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('theme.css'));
+    await changeFs('theme.css', ':root { --accent: navy; }');
+    expect(container.querySelector('article')!.style.getPropertyValue('--accent')).toBe('navy');
+    warn.mockRestore();
+    unmount();
+  });
+
+  it('warns naming the path when a read fails for a reason other than absence', async () => {
+    files[CSS] = TOKENS;
+    failing.add(CSS);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container, unmount } = mount(<Prose filename="README.md" />);
+    await settle();
+    expect(container.querySelector('article')!.style.length).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain(`${CSS} could not be read (unknown)`);
     warn.mockRestore();
     unmount();
   });
 
   it('reads nothing without a filename', async () => {
-    files['immediately.run.css'] = TOKENS;
+    files[CSS] = TOKENS;
     const { container, unmount } = mount(<Prose />);
     await settle();
     expect(container.querySelector('article')!.style.length).toBe(0);

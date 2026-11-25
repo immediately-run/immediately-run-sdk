@@ -19,50 +19,68 @@ const warn = (message: string): void => {
   console.warn(`[immediately.run] ${message}`);
 };
 
-/** A missing file, a directory, or no sandbox fs at all are each "no file here". */
+/**
+ * "No file here" is a missing path, a directory, or no sandbox fs at all. Any other error
+ * (a failed read, a permission error) is not an absence: it propagates with the path named,
+ * and the hook warns rather than quietly dropping a marker's boundary or a token file.
+ */
+const isAbsent = (error: unknown): boolean => {
+  const code = (error as { code?: unknown } | null)?.code;
+  return code === 'not-found' || code === 'unavailable';
+};
+
+const failed = (path: string, error: unknown): Error =>
+  new Error(`${path} could not be read (${(error as { code?: unknown } | null)?.code ?? String(error)})`);
+
 const probeOf = (fs: MountFs): ProseTokenProbe => ({
   async size(path) {
     try {
       const stat = await fs.stat(path);
       return stat.kind === 'file' ? stat.size : null;
-    } catch {
-      return null;
+    } catch (error) {
+      if (isAbsent(error)) return null;
+      throw failed(path, error);
     }
   },
   async read(path) {
     try {
       return await fs.readFile(path, 'utf8');
-    } catch {
-      return null;
+    } catch (error) {
+      if (isAbsent(error)) return null;
+      throw failed(path, error);
     }
   },
 });
 
 interface Loaded {
   readonly blocks: ProseTokenBlocks | null;
-  /** The token file the lookup resolved, watched for changes. */
-  readonly path: string | null;
+  /** The token file to re-run the lookup for when it changes (`ResolvedTokenFile.watch`). */
+  readonly watch: string | null;
 }
 
 /** Resolve, size-check, read and parse. Every refusal warns and yields no tokens. */
 async function loadTokens(fs: MountFs, startDir: string): Promise<Loaded> {
   const resolved = await resolveTokenFile(startDir, probeOf(fs));
   resolved.warnings.forEach(warn);
-  const { path, size } = resolved;
-  if (path === null) return { blocks: null, path: null };
+  const { path, size, watch } = resolved;
+  if (path === null) return { blocks: null, watch };
   if (size !== null && size > PROSE_TOKEN_FILE_MAX_BYTES) {
     warn(`${path} is larger than ${PROSE_TOKEN_FILE_MAX_BYTES} bytes; author tokens are off`);
-    return { blocks: null, path };
+    return { blocks: null, watch };
   }
   const text = await probeOf(fs).read(path);
-  if (text === null) return { blocks: null, path };
+  if (text === null) {
+    // Present at the lookup, gone at the read: a delete raced it, and its change re-runs us.
+    warn(`${path} disappeared while it was being read; author tokens are off`);
+    return { blocks: null, watch };
+  }
   const parsed = parseProseTokenFile(text);
   if (!parsed.ok) {
     warn(`${path} is refused because ${parsed.reason}; author tokens are off`);
-    return { blocks: null, path };
+    return { blocks: null, watch };
   }
   parsed.warnings.forEach((w) => warn(`${path}: ${w}`));
-  return { blocks: parsed.blocks, path };
+  return { blocks: parsed.blocks, watch };
 }
 
 /**
@@ -73,7 +91,7 @@ async function loadTokens(fs: MountFs, startDir: string): Promise<Loaded> {
 export function useProseTokens(filename: string | undefined): ProseTokenBlocks | null {
   const startDir = filename === undefined ? null : dirOfFile(filename);
   const [change, setChange] = useState(0);
-  const [loaded, setLoaded] = useState<Loaded & { key: string | null }>({ blocks: null, path: null, key: null });
+  const [loaded, setLoaded] = useState<Loaded & { key: string | null }>({ blocks: null, watch: null, key: null });
 
   // One read per (directory, change). A result that lands after unmount, or after a newer
   // read has started, is dropped.
@@ -85,7 +103,9 @@ export function useProseTokens(filename: string | undefined): ProseTokenBlocks |
         if (live) setLoaded({ ...result, key: startDir });
       },
       (error: unknown) => {
-        if (live) warn(`the prose token file could not be read: ${String(error)}`);
+        if (!live) return;
+        warn(`${error instanceof Error ? error.message : String(error)}; author tokens are off`);
+        setLoaded({ blocks: null, watch: null, key: startDir });
       },
     );
     return () => {
@@ -93,7 +113,7 @@ export function useProseTokens(filename: string | undefined): ProseTokenBlocks |
     };
   }, [startDir, change]);
 
-  const watchedPath = loaded.key === startDir ? loaded.path : null;
+  const watchedPath = loaded.key === startDir ? loaded.watch : null;
   useEffect(() => {
     if (startDir === null) return;
     return openAppFs().onChange((paths) => {

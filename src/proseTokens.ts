@@ -217,6 +217,11 @@ export interface ResolvedTokenFile {
   readonly path: string | null;
   /** Its size in bytes when `path` is set. */
   readonly size: number | null;
+  /**
+   * The file a change should re-run the lookup for: `path`, or the file a marker's `styles`
+   * names while it does not exist yet, so creating it restyles the page.
+   */
+  readonly watch: string | null;
   /** The directory the walk stopped in (`''` is the repo root). */
   readonly dir: string;
   readonly warnings: readonly string[];
@@ -278,30 +283,31 @@ export async function resolveTokenFile(startDir: string, probe: ProseTokenProbe)
         styles = undefined;
       }
     }
-    if (styles === false) return { path: null, size: null, dir, warnings };
+    if (styles === false) return { path: null, size: null, watch: null, dir, warnings };
     if (typeof styles === 'string') {
       const resolved = resolveStyles(dir, styles);
       if ('reason' in resolved) {
         warnings.push(`${markerPath}: ${resolved.reason}; author tokens are off`);
-        return { path: null, size: null, dir, warnings };
+        return { path: null, size: null, watch: null, dir, warnings };
       }
       const size = await probe.size(resolved.path);
       if (size === null) warnings.push(`${markerPath}: "styles" names ${resolved.path}, which does not exist`);
-      return { path: size === null ? null : resolved.path, size, dir, warnings };
+      return { path: size === null ? null : resolved.path, size, watch: resolved.path, dir, warnings };
     }
-    return { path: defaultSize === null ? null : defaultPath, size: defaultSize, dir, warnings };
+    const path = defaultSize === null ? null : defaultPath;
+    return { path, size: defaultSize, watch: path, dir, warnings };
   }
-  return { path: null, size: null, dir: '', warnings };
+  return { path: null, size: null, watch: null, dir: '', warnings };
 }
 
 /**
  * Does a changed repo-relative path bear on the token lookup for `startDir`? True for the
- * resolved token file, and for any marker or default token file in a directory the walk
+ * watched token file (`ResolvedTokenFile.watch`), and for any marker or default token file in a directory the walk
  * visits (one created or deleted there moves the lookup).
  */
-export function affectsTokenLookup(changed: string, startDir: string, resolvedPath: string | null): boolean {
+export function affectsTokenLookup(changed: string, startDir: string, watched: string | null): boolean {
   const path = changed.replace(/^\/+/, '');
-  if (resolvedPath !== null && path === resolvedPath) return true;
+  if (watched !== null && path === watched) return true;
   const name = path.slice(path.lastIndexOf('/') + 1);
   if (name !== PROSE_MARKER_FILE && name !== PROSE_TOKEN_FILE) return false;
   const dir = dirOfFile(path);

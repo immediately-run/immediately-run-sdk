@@ -8,7 +8,7 @@ import { useHostTheme } from '../theme';
 export interface ProseProps extends ComponentPropsWithRef<'article'> {
   /**
    * The repo-relative path of the Markdown file this wraps. When set, the author token
-   * file that governs it (`immediately.run.css`, or the file a bundle marker's `styles`
+   * file that governs it (`PROSE_TOKEN_FILE`, or the file a bundle marker's `styles`
    * names — MARKDOWN_SYNTAX_SPEC §16.6) restyles this article. `FileRouter` passes it.
    */
   filename?: string;

@@ -227,6 +227,11 @@ describe('affectsTokenLookup', () => {
     expect(affectsTokenLookup(`b/docs/${PROSE_TOKEN_FILE}`, 'b/docs', null)).toBe(true);
   });
 
+  it('is true for a styles-named file that is watched before it exists', () => {
+    expect(affectsTokenLookup('theme/alt.css', '', 'theme/alt.css')).toBe(true);
+    expect(affectsTokenLookup('theme/alt.css', '', null)).toBe(false);
+  });
+
   it('is false for other files and for a sibling directory', () => {
     expect(affectsTokenLookup('b/docs/README.md', 'b/docs', null)).toBe(false);
     expect(affectsTokenLookup(`c/${PROSE_TOKEN_FILE}`, 'b/docs', null)).toBe(false);
