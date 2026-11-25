@@ -77,7 +77,6 @@ const P = `.${PROSE_CLASS}`;
  * floats to the line end as on touch devices instead of being clipped at the edge.
  */
 const GUTTER_ANCHOR_MIN_WIDTH = '48rem';
-const FLOAT_ANCHOR_MAX_WIDTH = '47.99rem';
 const HEADINGS = ':is(h1, h2, h3, h4, h5, h6)';
 
 /** The whole default stylesheet. */
@@ -126,7 +125,7 @@ ${P} > :is(h1, h2, h3, h4) + * { margin-block-start: 0.7em; }
 
 ${P} .ir-heading-anchor { color: ${t('ink-3')}; text-decoration: none; font-weight: 400; }
 ${P} .ir-heading-anchor:hover { color: ${t('accent')}; }
-@media (hover: hover) and (min-width: ${GUTTER_ANCHOR_MIN_WIDTH}) {
+@media (hover: hover) and (width >= ${GUTTER_ANCHOR_MIN_WIDTH}) {
   ${P} .ir-heading-anchor {
     position: absolute;
     inset-inline-end: 100%;
@@ -139,7 +138,7 @@ ${P} .ir-heading-anchor:hover { color: ${t('accent')}; }
   ${P} ${HEADINGS}:hover .ir-heading-anchor,
   ${P} .ir-heading-anchor:focus-visible { opacity: 1; }
 }
-@media (hover: none), (max-width: ${FLOAT_ANCHOR_MAX_WIDTH}) {
+@media (hover: none), (width < ${GUTTER_ANCHOR_MIN_WIDTH}) {
   ${P} .ir-heading-anchor {
     float: inline-end;
     min-inline-size: 24px;

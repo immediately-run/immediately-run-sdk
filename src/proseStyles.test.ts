@@ -49,8 +49,8 @@ describe('PROSE_STYLE_TEXT', () => {
   });
 
   it('places the heading anchor in the gutter for hover devices and floats it for touch', () => {
-    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: hover\) and \(min-width: 48rem\)[\s\S]*inset-inline-end: 100%/);
-    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: none\), \(max-width: 47\.99rem\)[\s\S]*float: inline-end/);
+    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: hover\) and \(width >= 48rem\)[\s\S]*inset-inline-end: 100%/);
+    expect(PROSE_STYLE_TEXT).toMatch(/@media \(hover: none\), \(width < 48rem\)[\s\S]*float: inline-end/);
     expect(PROSE_STYLE_TEXT).not.toContain('flex-direction');
   });
 
