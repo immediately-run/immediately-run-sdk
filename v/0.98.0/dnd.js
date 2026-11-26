@@ -1,0 +1,29 @@
+import "./chunk-VHAA22YE.js";
+import { useEffect, useState } from "react";
+import { throwOnRefusal } from "./protocolRefusal.js";
+import { protocolRequest, sendMessage, addListener } from "./sandboxUtils.js";
+import { DND_CANCEL, DROPPED_ITEM, PROTOCOL_DND } from "./generated/protocol.js";
+import { SCHEMES } from "./protocolSchemes.js";
+const startItemDrag = async (item) => {
+  const res = await protocolRequest(SCHEMES[PROTOCOL_DND], "startDrag", [item]);
+  throwOnRefusal(res, "dnd startDrag failed");
+};
+const cancelItemDrag = () => {
+  sendMessage(DND_CANCEL, {});
+};
+const onItemDrop = (listener) => addListener(
+  DROPPED_ITEM,
+  (m) => listener({ item: m.item, from: m.from, position: m.position })
+);
+const useDroppedItem = () => {
+  const [dropped, setDropped] = useState(null);
+  useEffect(() => onItemDrop(setDropped), []);
+  return dropped;
+};
+export {
+  cancelItemDrag,
+  onItemDrop,
+  startItemDrag,
+  useDroppedItem
+};
+//# sourceMappingURL=dnd.js.map

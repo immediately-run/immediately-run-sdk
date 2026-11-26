@@ -1,6 +1,6 @@
 # @immediately-run/sdk
 
-> Runtime SDK for code executing inside an immediately.run sandbox. (v0.97.0)
+> Runtime SDK for code executing inside an immediately.run sandbox. (v0.98.0)
 
 Runtime SDK imported by code running inside an immediately.run sandboxed iframe. Every export below is importable from the package root `@immediately-run/sdk` or from its per-module subpath shown in the heading (e.g. `@immediately-run/sdk/auth`). `react`/`react-dom` (v19+) are peer dependencies the host provides. All platform interaction goes through this SDK.
 
@@ -41,6 +41,7 @@ Import: `@immediately-run/sdk/routing`
 - `AppliedRoutingRule` (type) — The result of matching a path: the winning RoutingRule plus its captured params.
 - `applyRoutingRule` (function) — Find the first rule in `routingSpec` whose pattern matches the current `sandboxPath`, returning it with the captured params (or `undefined`).
 - `navigate` (function)
+- `registerNavigationHrefState` (function) — Register the shell's href state for `navigate()` (R3-1397); returns its removal.
 - `renderRoute` (function) — Render a matched rule, passing params to a `component` and falling back to `element`/`reactNode`.
 - `Router` (function) — Render the route matched for the current location (set up by `boot`'s route table).
 - `setViewedDocumentResolver` (function) — Register the app's route→viewed-document rule (R3-268); pass `null` to clear.
